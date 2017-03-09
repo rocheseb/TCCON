@@ -1,12 +1,17 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This README would normally document whatever steps are necessary to get your application running.
+
+Python codes are written to run with Python 2.7
+
+libraries:
+	- netCDF4: http://unidata.github.io/netcdf4-python/
+	- bokeh: http://bokeh.pydata.org/en/latest/docs/installation.html
+	- NumPy: http://www.numpy.org/
 
 ### What is this repository for? ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+This repository will contain some programs that can be used to process some of the outputs of GGG, the retrieval algorithm of TCCON (http://www.tccon.caltech.edu/)
 
 ### How do I get set up? ###
 
@@ -26,4 +31,6 @@ This README would normally document whatever steps are necessary to get your app
 ### Who do I talk to? ###
 
 * Repo owner or admin
+sebastien.roche@mail.utoronto.ca
+
 * Other community or team contact
