@@ -15,12 +15,7 @@ This repository will contain some programs that can be used to process some of t
 
 ### How do I get set up? ###
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+Each code contains a description section at the top that explains how to use it.
 
 ### Contribution guidelines ###
 
