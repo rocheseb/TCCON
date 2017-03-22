@@ -13,18 +13,22 @@
 ####################
 
 '''
-Read TCCON data from .eof, .eof.csv, or .ncdf files in a given folder.
+Read TCCON data from .eof, .eof.csv, or .ncdf files in a given folder. 
+Files must be from the same site !  
+File names must be such that they appear in chronological order if sorted by name.
 
-Produce .html plots of the data
+Produce .html plots of the data in /path/to/folder/SAVE
 
 How to use:
 
-Can be used with or without commandline arguments. If no arguments are given, teh user will be asked to provide the necessary input after the code starts.
+Can be used with or without commandline arguments. If no arguments are given, the user will be asked to provide the necessary input after the code starts.
 
 python TCCON_eof.py /path/to/folder flag
 
 - the first argument is the path to the folder containing the TCCON files, (.eof, .eof.csv, or .nc)
 - the second argument is the flag that can be a number or 'all'. If the flag is 'all', all the data will be read. Otherwise only the data with a specific flag will be read.
+
+the last 3 lines of the code should be modified to customize the .html file name or the chain of character that appears in the internet tab when you open the plot.
 
 How to modify the plot structure:
 
@@ -754,7 +758,7 @@ for panel_key in bok_struct:
 
 final=Tabs(tabs=tabs)
 
-outfile=open(os.path.join(save_path,'test.html'),'w')
-outfile.write(file_html(final,CDN,'TCCON'))
+outfile=open(os.path.join(save_path,'test.html'),'w') # you can modify the name of the html file generate here, make sure it finishes with '.html'
+outfile.write(file_html(final,CDN,'TCCON')) # you can modify 'TCCON' to something else, this appears in the internet tab when you open the page
 outfile.close()
 
