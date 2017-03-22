@@ -54,6 +54,8 @@ bok_struct =  OrderedDict([
 								}),	
 					])),
 				])
+
+You should probably create a file to save different bok_struct objects that you may find useful
 '''
 
 #############
@@ -123,7 +125,7 @@ colors_dict = {
 # to add an error plot below regular plots, set the 'errlines' parameter to True.
 # this only works for variables that have a '_error' extension (e.g. xco2_ppm, xco2_ppm_error)								
 bok_struct = OrderedDict([
-			('All',OrderedDict([	
+			('xgas',OrderedDict([	
 					('xair',{
 								'lines':['xair'],
 								'errlines':False,
@@ -166,7 +168,8 @@ bok_struct = OrderedDict([
 								'plot_height':125,
 								'plot_width':1000,
 								}),
-					])),
+					])), # end of 'xgas' Panel
+
 			# the 'Custom' panel is a special case, it can only have one figure with several lines in it.
 			('Custom_xgas',OrderedDict([
 					('custom',{
@@ -175,7 +178,7 @@ bok_struct = OrderedDict([
 								'plot_height':500,
 								'plot_width':1000,
 								}),	
-					])),
+					])), # end of Custom_xgas panel
 			('Custom_col',OrderedDict([
 					('custom',{
 								'lines':['column_hf','column_h2o','column_hdo','column_co','column_n2o','column_ch4','column_co2'],
@@ -183,7 +186,7 @@ bok_struct = OrderedDict([
 								'plot_height':500,
 								'plot_width':1000,
 								}),	
-					])),
+					])), # end of Custom_col panel
 			('Custom_VSF',OrderedDict([
 					('custom',{
 								'lines':['vsf_air','vsf_hf','vsf_h2o','vsf_hdo','vsf_co','vsf_n2o','vsf_ch4','vsf_co2'],
@@ -191,7 +194,8 @@ bok_struct = OrderedDict([
 								'plot_height':500,
 								'plot_width':1000,
 								}),	
-					])),
+					])), # end of 'Custom_VSF' panel
+
 			# panels that include 'Key' in their name are another special case, the 'lines' attribute must be a tuple of keywords
 			# all variables that include each keyword will be availabe (e.g. ('co2_6220') will get 25 variables !)
 			# 'Key' panels do not have an 'errlines' parameter
@@ -202,7 +206,7 @@ bok_struct = OrderedDict([
 								'plot_height':250,
 								'plot_width':1000,
 								}),	
-					])),
+					])), # end of 'Key_co2_6220' panel
 			('other',OrderedDict([
 					('fvsi_%',{
 								'lines':['fvsi_%'], #eof
@@ -238,7 +242,7 @@ bok_struct = OrderedDict([
 								'plot_width':1000,
 								'errlines':False,
 								}),	
-					])),
+					])), # end of 'other' panel
 			])
 
 #############
