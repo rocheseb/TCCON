@@ -13,9 +13,47 @@
 ####################
 
 '''
-Read TCCON data from .eof or .ncdf files in a given folder.
+Read TCCON data from .eof, .eof.csv, or .ncdf files in a given folder.
 
-Produce .html plots of the data 
+Produce .html plots of the data
+
+How to use:
+
+Can be used with or without commandline arguments. If no arguments are given, teh user will be asked to provide the necessary input after the code starts.
+
+python TCCON_eof.py /path/to/folder flag
+
+- the first argument is the path to the folder containing the TCCON files, (.eof, .eof.csv, or .nc)
+- the second argument is the flag that can be a number or 'all'. If the flag is 'all', all the data will be read. Otherwise only the data with a specific flag will be read.
+
+How to modify the plot structure:
+
+Two python objects can be edited by the user to customize the plot, they are in the section "modify here"
+
+- colors_dict : dictionary that associate a color to a key, all variables that contain a given key will be ploted with the associated color
+
+- bok_struct :  this is the crucial part of the code. The structure of this ordered dictionary controls the structure of the plot ( Number of panels, figures in panels, and lines plotted in figures ).
+
+- you need to know the exact variables names of the variables you want to plot. Be careful as some variables don't have the exact same name in .eof and .nc files ...
+
+
+TIPS:
+
+if you think setting up the bok_struct dictionary is too confusing/complicated, you should try just using 'Key' panels. 
+Key panels include 'Key' in the panel name, and their attribute 'lines' is a tuple containing 1 or several keywords.
+All variables that include the keywords in their name will be read and available for plotting in two figures.
+
+For example, to have a one panel plot with all variables that include 'co2_6220' or 'x':
+
+bok_struct =  OrderedDict([
+			('Key_test',OrderedDict([
+					('custom',{
+								'lines':('co2_6220','x',),
+								'plot_height':250,
+								'plot_width':1000,
+								}),	
+					])),
+				])
 '''
 
 #############
@@ -74,13 +112,13 @@ colors_dict = {
 
 # dictionary with a structure that will define the final plot layout.
 '''
--> Key => Panel
+-> first key => Panel
 	-> subkey 1 => figure in panel
-		-> subkey 2 => plot in figure (specific lines/scatter lists)
+		-> 'lines' => variables to plot in figure (specific lines/scatter lists)
 '''
 			# this indent is for panels
 					# this indent is for figures under a panel (the key will be used as figure title)
-								# this indent if for lines in a figure, given in a list named 'lines' (the key will be used as Y axis label and must be an exact variable name from the EOF file header)
+								# this indent if for lines in a figure, given in a list named 'lines' (the keys will be used as Y axis label and must be exact variable names from the EOF file header or from the .nc file)
 
 # to add an error plot below regular plots, set the 'errlines' parameter to True.
 # this only works for variables that have a '_error' extension (e.g. xco2_ppm, xco2_ppm_error)								
@@ -157,6 +195,7 @@ bok_struct = OrderedDict([
 			# panels that include 'Key' in their name are another special case, the 'lines' attribute must be a tuple of keywords
 			# all variables that include each keyword will be availabe (e.g. ('co2_6220') will get 25 variables !)
 			# 'Key' panels do not have an 'errlines' parameter
+			# the search for the given keys in variables names is CASE SENSITIVE
 			('Key_co2_6220',OrderedDict([
 					('custom',{
 								'lines':('co2_6220',),
