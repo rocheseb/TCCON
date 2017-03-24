@@ -45,7 +45,7 @@ TIPS:
 
 if you think setting up the bok_struct dictionary is too confusing/complicated, you should try just using 'Key' panels. 
 Key panels include 'Key' in the panel name, and their attribute 'lines' is a tuple containing 1 or several keywords.
-All variables that include the keywords in their name will be read and available for plotting in two figures.
+All variables that include the keywords in their name will be read and available for plotting in two figures, the y axis from the two figures will be plotted against each other in a third figure.
 
 For example, to have a one panel plot with all variables that include 'co2_6220' or 'x':
 
@@ -491,45 +491,7 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 S_main.trigger("change");
 """
 
-key_dropdown_code= """
-all = S_all.data;
-main = S_main.data;
-varlist = S_save.data["varlist"];
-colors = S_save.data["colors"][0];
-
-var vartoplot = cb_obj.value;
-
-console.log(vartoplot);
-
-main_laby.axis_label = vartoplot;
-
-for (var key in colors) {
-if(vartoplot.includes(key)){
-var colo = colors[key]
-}
-}
-
-var y = all[vartoplot];
-var min = Math.min.apply(null,y);
-var max = Math.max.apply(null,y);
-var ampli = max - min;
-mainy.start = min - 0.1*ampli;
-mainy.end = max + 0.1*ampli;
-
-main["y"] = [];
-main["colo"] = [];
-
-for (i=0;i<y.length;i++) {
-main["y"].push(all[vartoplot][i]);
-
-if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("grey");}
-	
-}
-
-S_main.trigger("change");
-"""
-
-diag_dropdown_code= """
+dropdown_code= """
 all = S_all.data;
 main = S_main.data;
 fill = S_fill.data;
@@ -798,7 +760,7 @@ for panel_key in bok_struct:
 										main_laby=figs[0].yaxis[0],
 										fill_lab=figs[2].yaxis[0],
 										),  
-								code=diag_dropdown_code)
+								code=dropdown_code)
 
 			callback_1=CustomJS(	args=dict(
 										S_all=all_source,
@@ -809,7 +771,7 @@ for panel_key in bok_struct:
 										main_laby=figs[1].yaxis[0],
 										fill_lab=figs[2].xaxis[0],
 										),  
-								code=diag_dropdown_code)
+								code=dropdown_code)
 
 			menu = [(plot_var,plot_var) for plot_var in var_list]
 			dropdown_0 = Dropdown(label="Figure 1", menu=menu, callback=callback_0)
