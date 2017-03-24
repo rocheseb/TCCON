@@ -81,6 +81,9 @@ import calendar
 #netcdf reader
 import netCDF4
 
+#round up
+from math import ceil
+
 # html plots
 from bokeh.plotting import figure, output_file
 from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown
@@ -413,7 +416,7 @@ colors = S_save.data["colors"][0];
 var val = cb_obj.active;
 var vartoplot = varlist[val];
 
-mainlaby.axis_label = vartoplot;
+main_laby.axis_label = vartoplot;
 
 for (var key in colors) {
 if(vartoplot.includes(key)){
@@ -460,7 +463,7 @@ colors = S_save.data["colors"][0];
 var val = cb_obj.active;
 var vartoplot = varlist[val];
 
-mainlaby.axis_label = vartoplot;
+main_laby.axis_label = vartoplot;
 
 for (var key in colors) {
 if(vartoplot.includes(key)){
@@ -488,7 +491,7 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 S_main.trigger("change");
 """
 
-dropdown_code= """
+key_dropdown_code= """
 all = S_all.data;
 main = S_main.data;
 varlist = S_save.data["varlist"];
@@ -498,7 +501,7 @@ var vartoplot = cb_obj.value;
 
 console.log(vartoplot);
 
-mainlaby.axis_label = vartoplot;
+main_laby.axis_label = vartoplot;
 
 for (var key in colors) {
 if(vartoplot.includes(key)){
@@ -524,6 +527,61 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 }
 
 S_main.trigger("change");
+"""
+
+diag_dropdown_code= """
+all = S_all.data;
+main = S_main.data;
+fill = S_fill.data;
+varlist = S_save.data["varlist"];
+colors = S_save.data["colors"][0];
+
+var vartoplot = cb_obj.value;
+
+console.log(vartoplot);
+
+main_laby.axis_label = vartoplot;
+fill_lab.axis_label = vartoplot;
+
+for (var key in colors) {
+if(vartoplot.includes(key)){
+var colo = colors[key]
+}
+}
+
+var y = all[vartoplot];
+var min = Math.min.apply(null,y);
+var max = Math.max.apply(null,y);
+var ampli = max - min;
+mainy.start = min - 0.1*ampli;
+mainy.end = max + 0.1*ampli;
+
+main["y"] = [];
+main["colo"] = [];
+
+fill["colo"] = [];
+if (cb_obj.label.includes("1")) {
+fill["y"]=[];
+}
+if (cb_obj.label.includes("2")) {
+fill["x"]=[];
+}
+
+for (i=0;i<y.length;i++) {
+main["y"].push(all[vartoplot][i]);
+
+if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push(colo);} else {main["colo"].push("grey");fill["colo"].push("grey");}
+
+if (cb_obj.label.includes("1")) {fill["y"].push(all[vartoplot][i]);}
+if (cb_obj.label.includes("2")) {fill["x"].push(all[vartoplot][i]);}
+	
+}
+
+console.log(fill["y"]);
+console.log(fill["x"]);
+
+S_main.trigger("change");
+S_fill.trigger("change");
 """
 
 # flatten the bok_struct dictionary to get all the different variable names that should be read in the eof/netcdf files
@@ -603,7 +661,7 @@ save_sources = [] # this will just contain python objects I want to pass to the 
 tabs = [] # the different panels in the final bokeh plot
 for panel_key in bok_struct:
 	figs = [] # the different figures in the panel
-	if ('Custom' not in panel_key) and ('Key' not in panel_key): # general case
+	if True not in [elem in panel_key for elem in ['Custom','Key','Diag']]: # general case
 		for fig_key in bok_struct[panel_key]:
 
 			width = bok_struct[panel_key][fig_key]['plot_width']
@@ -684,7 +742,7 @@ for panel_key in bok_struct:
 											S_save=save_sources[-1],
 											mainy=figs[0].y_range,
 											erry=figs[1].y_range,
-											mainlaby=figs[0].yaxis[0],
+											main_laby=figs[0].yaxis[0],
 											),  
 									code=err_code)
 			else:
@@ -693,7 +751,7 @@ for panel_key in bok_struct:
 											S_main=main_sources[-1],
 											S_save=save_sources[-1],
 											mainy=figs[0].y_range,
-											mainlaby=figs[0].yaxis[0],
+											main_laby=figs[0].yaxis[0],
 											),  
 									code=code)
 
@@ -707,6 +765,7 @@ for panel_key in bok_struct:
 
 	if 'Key' in panel_key: # second special case, key plots
 
+		main_sources.append( ColumnDataSource(data={"x":[],"y":[],"colo":[]}) )
 		main_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
 		main_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
 		save_sources.append( ColumnDataSource(data={"colors":[colors_dict]}) )
@@ -718,47 +777,51 @@ for panel_key in bok_struct:
 			figs.append( figure(title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
 			figs.append( figure(title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
 
+			figs.append( figure(title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
+
 			key_list = bok_struct[panel_key][fig_key]['lines']
 
 			var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
 
 			save_sources[-1].data['varlist'] = var_list
 
-			for plot_var in var_list:
-				figs[0].scatter(x="x",y="y",color='colo',source=main_sources[-1])
-				figs[1].scatter(x="x",y="y",color='colo',source=main_sources[-2])		
+			figs[0].scatter(x="x",y="y",color='colo',source=main_sources[-1])
+			figs[1].scatter(x="x",y="y",color='colo',source=main_sources[-2])
+			figs[2].scatter(x="x",y="y",color='colo',source=main_sources[-3])
 
 			callback_0=CustomJS(	args=dict(
 										S_all=all_source,
 										S_main=main_sources[-1],
+										S_fill=main_sources[-3],
 										S_save=save_sources[-1],
 										mainy=figs[0].y_range,
-										mainlaby=figs[0].yaxis[0],
+										main_laby=figs[0].yaxis[0],
+										fill_lab=figs[2].yaxis[0],
 										),  
-								code=dropdown_code)
+								code=diag_dropdown_code)
 
 			callback_1=CustomJS(	args=dict(
 										S_all=all_source,
 										S_main=main_sources[-2],
-										S_save=save_sources[-2],
+										S_fill=main_sources[-3],
+										S_save=save_sources[-1],
 										mainy=figs[1].y_range,
-										mainlaby=figs[1].yaxis[0],
+										main_laby=figs[1].yaxis[0],
+										fill_lab=figs[2].xaxis[0],
 										),  
-								code=dropdown_code)
-			#radiogroup = RadioGroup(labels=var_list,active=0,callback=callback)
-			#radiobox = VBox(radiogroup,width=100)
+								code=diag_dropdown_code)
 
 			menu = [(plot_var,plot_var) for plot_var in var_list]
 			dropdown_0 = Dropdown(label="Figure 1", menu=menu, callback=callback_0)
 			dropdown_1 = Dropdown(label="Figure 2", menu=menu, callback=callback_1)
 
-		grid = gridplot([[dropdown_0,dropdown_1],[figs[0]],[figs[1]]],toolbar_location='left',tools=TOOLS)
+		grid = gridplot([[dropdown_0,dropdown_1],[figs[0]],[figs[1]],[figs[2],None]],toolbar_location='left',tools=TOOLS)	
 
 	tabs.append( Panel(child=grid,title=panel_key) )
 
 final=Tabs(tabs=tabs)
 
-outfile=open(os.path.join(save_path,'test.html'),'w') # you can modify the name of the html file generate here, make sure it finishes with '.html'
+outfile=open(os.path.join(save_path,'test.html'),'w') # you can modify the name of the html file generated here, make sure it finishes with '.html'
 outfile.write(file_html(final,CDN,'TCCON')) # you can modify 'TCCON' to something else, this appears in the internet tab when you open the page
 outfile.close()
 
