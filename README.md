@@ -1,8 +1,8 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application running.
+Various python codes to plot data from TCCON files.
 
-Python codes are written to run with Python 2.7
+All codes are written to run with Python 2.7
 
 libraries:
 	- netCDF4: http://unidata.github.io/netcdf4-python/
