@@ -229,13 +229,12 @@ for spectrum in select_spectra:
 	TOOLS = ["pan,box_zoom,wheel_zoom,undo,redo,reset,crosshair,save"] #tools for bokeh figures
 
 	# spectrum figure 
-	fig = figure(webgl=True,plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
-	#,title=spectrum+';\tSZA='+SZA+';\tRMSresid='+('%.4f' % sigma_rms)+'%'
+	fig = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
 	# residual figure
-	fig_resid = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
+	fig_resid = figure(webgl=True,plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
 
 	# axes labels
-	fig.xaxis.axis_label = 'Wavenumber (cm-1)'
+	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
 	fig_resid.yaxis.axis_label = '% Residuals'
 	fig.yaxis.axis_label = 'Transmittance'
 	
@@ -294,7 +293,7 @@ for spectrum in select_spectra:
 	group=widgetbox(checkbox,clear_button,check_button,width=120)	
 
 	# define the grid with the figures and widget box
-	grid = gridplot([[fig_resid,None],[fig,group]],tools=TOOLS,toolbar_location='left')
+	grid = gridplot([[fig,group],[fig_resid]],tools=TOOLS,toolbar_location='left')
 
 	# write the HTML file
 	outfile=open(os.path.join(save_path,spectrum+'.html'),'w')
