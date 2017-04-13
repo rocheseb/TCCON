@@ -209,30 +209,30 @@ bok_struct = OrderedDict([
 			# the search for the given keys in variables names is CASE SENSITIVE
 			('Key_co2_6220',OrderedDict([
 					('custom',{
-								'lines':('co2_6220',),
+								'lines':('air','hf',),
 								'plot_height':250,
 								'plot_width':1000,
 								}),	
 					])), # end of 'Key_co2_6220' panel
 			('other',OrderedDict([
 					('fvsi_%',{
-								'lines':['fvsi_%'], #eof
-								#'lines':['fvsi'], #netcdf
+								#'lines':['fvsi_%'], #eof
+								'lines':['fvsi'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),			
 
 					('hout_%RH',{
-								'lines':['hout_%RH'], #eof
-								#'lines':['hout_RH'], #netcdf
+								#'lines':['hout_%RH'], #eof
+								'lines':['hout_RH'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),														
 					('wspd_m/s',{
-								'lines':['wspd_m/s'], #eof
-								#'lines':['wspd_m_s'], #netcdf
+								#'lines':['wspd_m/s'], #eof
+								'lines':['wspd_m_s'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.7
- # -*- coding: ascii -*-
+ # -*- coding: utf-8 -*-
 
 ########################################################
 # 					  2017-02-07
@@ -83,10 +83,10 @@ from collections import OrderedDict
 def progress(i,tot,bar_length=20,word=''):
 	if tot==0:
 		tot=1
-	percent=float(i)/tot
+	percent=float(i+1)/tot
 	hashes='#' * int(round(percent*bar_length))
 	spaces=' ' * (bar_length - len(hashes))
-	sys.stdout.write("\rPercent:[{0}] {1}%".format(hashes + spaces, int(round(percent * 100)))+"    "+str(i)+"/"+str(tot)+'  Now plotting: '+word)
+	sys.stdout.write("\rPercent:[{0}] {1}%".format(hashes + spaces, int(round(percent * 100)))+"    "+str(i+1)+"/"+str(tot)+'  Now plotting: '+word)
 	sys.stdout.flush()
 
 #####
@@ -110,8 +110,9 @@ def read_spt(path):
 		DATA['columns'][var] = content_T[head.index(var)]
 
 	DATA['sza'] = float(content[1].split()[3])
+	DATA['zobs'] = float(content[1].split()[4])
 
-	resid = 100.0*(DATA['columns']['Tc']-DATA['columns']['Tm']) #the % residuals, tm and tc are transmittances so we just need to multiply by 100 to get %
+	resid = 100.0*(DATA['columns']['Tm']-DATA['columns']['Tc']) #the % residuals, tm and tc are transmittances so we just need to multiply by 100 to get %
 	rms_resid = np.sqrt(np.mean(np.square(resid)))  #rms of residuals
 
 	DATA['resid'] = resid
@@ -147,7 +148,6 @@ if not os.path.isdir(save_path):
 
 spectra=os.listdir(path) # list of everything in the given directory
 
-
 # if A = N or n, select all spectra in the given directory (all files with a '.', so the directory must only have folders and spectra files !).
 # if A = Y or y, ask the question on selection after the program starts.
 # otherwise select all spectra that include the given keyword in their name.
@@ -174,7 +174,7 @@ if keyword in ['N','n']:
 # loop over the selected spectra
 for spectrum in select_spectra:
 
-	progress(select_spectra.index(spectrum),len(select_spectra)-1,word=spectrum) #fancy loadbar
+	progress(select_spectra.index(spectrum),len(select_spectra),word=spectrum) #fancy loadbar
 
 	#read the spectrum file
 	spt_data = read_spt(os.path.join(path,spectrum))
@@ -182,6 +182,7 @@ for spectrum in select_spectra:
 	
 	species = np.array([spt_data['columns'][var] for var in header])
 	SZA = str(spt_data['sza'])
+	zobs = str(spt_data['zobs'])
 
 	freq=species[0] # the frequency list
 	tm=species[1]	# measured transmittance list
@@ -228,12 +229,13 @@ for spectrum in select_spectra:
 	TOOLS = ["pan,box_zoom,wheel_zoom,undo,redo,reset,crosshair,save"] #tools for bokeh figures
 
 	# spectrum figure 
-	fig = figure(webgl=True,title=spectrum+';\tSZA='+SZA+';\tRMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+	fig = figure(webgl=True,plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+	#,title=spectrum+';\tSZA='+SZA+';\tRMSresid='+('%.4f' % sigma_rms)+'%'
 	# residual figure
-	fig_resid = figure(webgl=True,title='100*(Calculated-Measured)',plot_width=1000,plot_height=200,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
+	fig_resid = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
 
 	# axes labels
-	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
+	fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	fig_resid.yaxis.axis_label = '% Residuals'
 	fig.yaxis.axis_label = 'Transmittance'
 	
@@ -292,7 +294,7 @@ for spectrum in select_spectra:
 	group=widgetbox(checkbox,clear_button,check_button,width=120)	
 
 	# define the grid with the figures and widget box
-	grid = gridplot([[fig,group],[fig_resid,None]],tools=TOOLS,toolbar_location='left')
+	grid = gridplot([[fig_resid,None],[fig,group]],tools=TOOLS,toolbar_location='left')
 
 	# write the HTML file
 	outfile=open(os.path.join(save_path,spectrum+'.html'),'w')
