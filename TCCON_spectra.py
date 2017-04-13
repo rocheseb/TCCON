@@ -249,17 +249,17 @@ for spectrum in select_spectra:
 		plots.append(fig.line(x=freq,y=species[j+3],color=colors[header[j+3]],line_width=2,name=header[j+3])) 
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
 		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
-		fig.add_tools( HoverTool(mode='vline',line_policy='nearest',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x=freq,y=tm,color='black',line_width=2,name='Tm'))
 	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+1, j+1)
-	fig.add_tools( HoverTool(mode='vline',line_policy='nearest',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x=freq,y=tc,color='chartreuse',line_width=2,name='Tc'))
 	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+2, j+2)
-	fig.add_tools( HoverTool(mode='vline',line_policy='nearest',renderers=[plots[j+2]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+2]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 
 	# legend outside of the figure
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
@@ -267,7 +267,7 @@ for spectrum in select_spectra:
 
 	# now the residual figure
 	fig_resid.line(x=freq,y=residuals,color='black',name='residuals')
-	fig_resid.add_tools(HoverTool(mode='vline',line_policy='nearest',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @y{0.000})'}))
+	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @y{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(freq))],color='white',visible=False)
