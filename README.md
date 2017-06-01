@@ -11,7 +11,7 @@ libraries:
 
 ### What is this repository for? ###
 
-This repository will contain some programs that can be used to process some of the outputs of GGG, the retrieval algorithm of TCCON (http://www.tccon.caltech.edu/)
+This repository will contain some programs that can be used to visualize some of the outputs of GGG, the retrieval algorithm of TCCON (http://www.tccon.caltech.edu/)
 
 ### How do I get set up? ###
 
