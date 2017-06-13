@@ -5,8 +5,11 @@ Various python codes to plot data from TCCON files.
 All codes are written to run with Python 2.7
 
 libraries:
+
 	- netCDF4: http://unidata.github.io/netcdf4-python/
+	
 	- bokeh: http://bokeh.pydata.org/en/latest/docs/installation.html
+	
 	- NumPy: http://www.numpy.org/
 
 ### What is this repository for? ###
