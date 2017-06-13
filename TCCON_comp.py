@@ -70,7 +70,7 @@ import numpy as np
 from math import ceil
 
 # interactive plots
-from bokeh.plotting import Figure, output_file
+from bokeh.plotting import figure, output_file
 from bokeh.models import Legend, Panel, Tabs, CustomJS, ColumnDataSource, CheckboxGroup, RadioGroup, Button, VBox, PreText, Range1d
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.layouts import gridplot, widgetbox
@@ -602,9 +602,9 @@ if QP in ['D','d']:
 	milestone = time.time()
 
 	if type(min_x) == datetime:
-		fig = Figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_axis_type='datetime', x_range = Range1d(min_x,max_x)) 
+		fig = figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_axis_type='datetime', x_range = Range1d(min_x,max_x)) 
 	else:
-		fig = Figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_range = Range1d(int(min_x),ceil(max_x))) 
+		fig = figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_range = Range1d(int(min_x),ceil(max_x))) 
 
 	plots=[]
 	for site in lat_ordered_sites:
@@ -814,7 +814,7 @@ else:
 		min_y = min_y - ampli*0.1/100
 		max_y = max_y + ampli*0.1/100
 
-		fig = Figure(webgl = True, title = 'TCCON '+var+' vs '+'datetime', y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, x_axis_type='datetime', x_range = Range1d(min_x,max_x))
+		fig = figure(webgl = True, title = 'TCCON '+var+' vs '+'datetime', y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, x_axis_type='datetime', x_range = Range1d(min_x,max_x))
 
 		fig.tools[-2].dimensions='width' # only allow the box select tool to select data along the X axis (will select all Y data in a given X range)
 
@@ -857,7 +857,7 @@ else:
 		fig.xaxis.axis_label = 'Time'
 
 		# correlation plot
-		corfig = Figure(webgl = True, title = 'Correlations', plot_width = 400, plot_height = 400, x_range = [min_y,max_y], y_range = [min_y,max_y]) 
+		corfig = figure(webgl = True, title = 'Correlations', plot_width = 400, plot_height = 400, x_range = [min_y,max_y], y_range = [min_y,max_y]) 
 		corfig.toolbar.logo = None
 		corfig.toolbar_location = None
 		corfig.xaxis.axis_label = ' '.join([SELECT,var])

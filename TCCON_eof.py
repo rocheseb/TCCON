@@ -216,23 +216,23 @@ bok_struct = OrderedDict([
 					])), # end of 'Key_co2_6220' panel
 			('other',OrderedDict([
 					('fvsi_%',{
-								#'lines':['fvsi_%'], #eof
-								'lines':['fvsi'], #netcdf
+								'lines':['fvsi_%'], #eof
+								#'lines':['fvsi'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),			
 
 					('hout_%RH',{
-								#'lines':['hout_%RH'], #eof
-								'lines':['hout_RH'], #netcdf
+								'lines':['hout_%RH'], #eof
+								#'lines':['hout_RH'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),														
 					('wspd_m/s',{
-								#'lines':['wspd_m/s'], #eof
-								'lines':['wspd_m_s'], #netcdf
+								'lines':['wspd_m/s'], #eof
+								#'lines':['wspd_m_s'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
@@ -601,8 +601,10 @@ for tccon_file in files:
 		for key in file_data:
 			for time_id,new_time in enumerate(file_data['xtime']):
 				if new_time>all_files_data['xtime'][-1]:
-					all_files_data[key].append(file_data[key][time_id])
-
+					try:
+						all_files_data[key].append(file_data[key][time_id])
+					except AttributeError:
+						np.append(all_files_data[key],file_data[key][time_id])
 # this a special dictionary for bokeh plots. The HTML file will contain this
 all_source = ColumnDataSource(data={key:value for key,value in all_files_data.iteritems()}, id='all_source')
 
