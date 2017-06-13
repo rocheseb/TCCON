@@ -1,12 +1,9 @@
 #!/usr/bin/env python2.7
  # -*- coding: ascii -*-
 
-########################################################
-# 					  2017-01-26
-# 					Sebastien Roche
-#			sebastien.roche@mail.utoronto.ca
-#     Various functions to read gfit/gfit2 files
-########################################################
+##############################################
+# Various functions to read gfit/gfit2 files #
+##############################################
 
 ####################
 # Code description #

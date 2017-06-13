@@ -1,12 +1,9 @@
 #!/usr/bin/env python2.7
  # -*- coding: ascii -*-
 
-################################################################
-# 					       2017-03-09
-# 					     Sebastien Roche
-#			      sebastien.roche@mail.utoronto.ca
-#     Code to produce HTML plots from TCCON EOF or ncdf files
-################################################################
+###########################################################
+# Code to produce HTML plots from TCCON EOF or ncdf files #
+###########################################################
 
 ####################
 # Code description #

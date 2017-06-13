@@ -1,28 +1,9 @@
 #!/usr/bin/env python2.7
  # -*- coding: utf-8 -*-
 
-########################################################
-# 					  2017-02-07
-# 					Sebastien Roche
-#			sebastien.roche@mail.utoronto.ca
-#     Code to produce HTML plots with TCCON spetra
-########################################################
-
-################
-# Last updates #
-################
-
-'''
-2017-02-07: 
-	- colors in dictionary
-	- hovertool for each species with on/off callback linked to checkbox group status
-	- line labels in OrderedDict instead ofregular dictionary
-	- added the spectrum file reading as a function read_spt(/path/to/spectrum)
-
-2017-03-09:
-	- more comments added.
-	- use os.path.join() so the SAVE path is os independent.
-'''
+################################################
+# Code to produce HTML plots with TCCON spetra #
+################################################
 
 ####################
 # Code Description #
