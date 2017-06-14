@@ -25,6 +25,9 @@ There is a commented out code that produces the plots with plotly
 Be careful if you plot a huge amount of spectra:
 	- The size of one bokeh plot is typically ~1.5-3 MB for CO2 windows
 	- Plotly plots produce ~50% larger files.
+
+Simple modifications:
+The color of the species are determined based on the dictionary "colors". If you retrieve a window that include species that are not specified in that dictionary, you need to add them with an associated color or the code will give a KeyError
 '''
 
 ####################
@@ -172,10 +175,10 @@ for spectrum in select_spectra:
 	sigma_rms = spt_data['rms_resid'] # sqrt(mean(residuals**2))
 
 	# hardcode colors of elements
-	# different species with the same color are usually not retrieved in the same window
+	# it is ok for different species to have the same color if they are not retrieved in the same window
 	colors = {
 			'co2':'red',
-			'2co2':'green',
+			'2co2':'orange',
 			'3co2':'pink',
 			'4co2':'purple',
 			'0co2':'green',
@@ -183,6 +186,7 @@ for spectrum in select_spectra:
 			'h2o':'blue',
 			'hdo':'cyan',
 			'o2':'purple',
+			'0o2':'orange',
 			'hf':'pink',
 			'hcl':'magenta',
 			'solar':'goldenrod',
@@ -227,7 +231,11 @@ for spectrum in select_spectra:
 	# plotting species lines
 	plots = []
 	for j in range(len(species)-3):
-		plots.append(fig.line(x=freq,y=species[j+3],color=colors[header[j+3]],line_width=2,name=header[j+3])) 
+		try:
+			plots.append(fig.line(x=freq,y=species[j+3],color=colors[header[j+3]],line_width=2,name=header[j+3]))
+		except KeyError:
+			print 'KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color'
+			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
 		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
 		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
