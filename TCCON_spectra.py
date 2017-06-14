@@ -27,7 +27,8 @@ Be careful if you plot a huge amount of spectra:
 	- Plotly plots produce ~50% larger files.
 
 Simple modifications:
-The color of the species are determined based on the dictionary "colors". If you retrieve a window that include species that are not specified in that dictionary, you need to add them with an associated color or the code will give a KeyError
+- The color of the species are determined based on the dictionary "colors". If you retrieve a window that include species that are not specified in that dictionary, you need to add them with an associated color or the code will give a KeyError
+- If you prefer scatter plots instead of line plots, just search and replace ".line" with ".scatter" 
 '''
 
 ####################
