@@ -212,7 +212,7 @@ for spectrum in select_spectra:
 	# html files are ~50% larger than with bokeh. Bokeh is also more customizable and should be better at handling a lot of data.
 
 	## start bokeh plot
-	TOOLS = ["pan,box_zoom,wheel_zoom,undo,redo,reset,crosshair,save"] #tools for bokeh figures
+	TOOLS = ["box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save"] #tools for bokeh figures
 
 	# spectrum figure 
 	fig = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
