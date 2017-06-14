@@ -179,7 +179,7 @@ for spectrum in select_spectra:
 	# it is ok for different species to have the same color if they are not retrieved in the same window
 	colors = {
 			'co2':'red',
-			'2co2':'orange',
+			'2co2':'green',
 			'3co2':'pink',
 			'4co2':'purple',
 			'0co2':'green',
@@ -187,7 +187,7 @@ for spectrum in select_spectra:
 			'h2o':'blue',
 			'hdo':'cyan',
 			'o2':'purple',
-			'0o2':'orange',
+			'0o2':'green',
 			'hf':'pink',
 			'hcl':'magenta',
 			'solar':'goldenrod',
