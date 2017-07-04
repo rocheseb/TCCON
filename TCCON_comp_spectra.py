@@ -204,17 +204,17 @@ for spec_ID,spectrum in enumerate(select_spectra):
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
 		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
-		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','($~x{0.00} ; @'+gas+'{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x='Freq',y='Tm',color='black',line_width=2,name='Tm',source=source_list[spectrum]))
 	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+1, j+1)
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','($~x{0.00} ; @Tm{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x='Freq',y='Tc',color='chartreuse',line_width=2,name='Tc',source=source_list[spectrum]))
 	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+2, j+2)
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
 
 	# legend outside of the figure
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
@@ -222,7 +222,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	# now the residual figure
 	fig_resid.line(x='Freq',y='resid',color='black',name='residuals',source=source_list[spectrum])
-	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @y{0.000})'}))
+	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @resid{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(residuals))],color='white',visible=False)
@@ -250,7 +250,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	# define the grid with the figures and widget box
 	grid = gridplot([[fig,group],[fig_resid]],tools=TOOLS,toolbar_location='left')
 
-	tabs.append( Panel(child=grid,title=spectrum) )
+	tabs.append( Panel(child=grid,title=spectrum.split('.')[-1]) )
 
 	# put spectra in a window specific Tab if the next spectrum has a new prefix, or if the current spectrum is the last one
 	try:
@@ -265,7 +265,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 final=Tabs(tabs=window_tabs,width=1100)
 
 # write the HTML file
-outfile=open(os.path.join(save_path,'comp_spectra.html'),'w')
+outfile=open(os.path.join(save_path,'comp_spectra_ncbf.html'),'w')
 outfile.write(file_html(final,CDN,'GFIT2 spectra'))
 outfile.close()
 
