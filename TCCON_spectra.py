@@ -1,9 +1,7 @@
-#!/usr/bin/env python2.7
+#!/var/lib/py27_sroche/bin/python
  # -*- coding: utf-8 -*-
 
-################################################
-# Code to produce HTML plots with TCCON spetra #
-################################################
+from __future__ import print_function # allows the use of Python 3.x print(function in python 2.x code so that print('a','b') prints 'a b' and not ('a','b')
 
 ####################
 # Code Description #
@@ -17,14 +15,6 @@ arg1 is the /path/to/spectra
 arg2 is a common chain of characters in the name of the spectra to be plotted
 if arg2 = n it will make plots for all the spectra in /path/to/spectra
 Plots will be saved in /path/to/spectra/SAVE
-There are two libraries to do html plots:
-- plotly
-- bokeh
-I personally think bokeh looks better
-There is a commented out code that produces the plots with plotly
-Be careful if you plot a huge amount of spectra:
-	- The size of one bokeh plot is typically ~1.5-3 MB for CO2 windows
-	- Plotly plots produce ~50% larger files.
 
 Simple modifications:
 - The color of the species are determined based on the dictionary "colors". If you retrieve a window that include species that are not specified in that dictionary, you need to add them with an associated color or the code will give a KeyError
@@ -44,14 +34,8 @@ import numpy as np
 # prompt interactions
 import sys
 
-# interactive html plots with plotly
-'''
-from plotly.offline import download_plotlyjs, init_notebook_mode, plot, iplot
-from plotly.graph_objs import Bar, Scattergl, Figure, Layout
-from plotly import tools
-'''
 # interactive html plots with bokeh
-from bokeh.plotting import figure, output_file
+from bokeh.plotting import figure
 from bokeh.models import Legend, CustomJS, ColumnDataSource, HoverTool, CheckboxGroup, Button, PreText, Range1d
 from bokeh.layouts import gridplot,widgetbox
 from bokeh.resources import CDN
@@ -119,10 +103,10 @@ while os.path.isdir(path)==False:
 		path = argu[1] # first commandline argument is the path to the spectra
 	else:
 		# if no argument is given, ask for the path
-		print'Please create a folder and put your processed TCCON spectra in it\n'
+		print('Please create a folder and put your processed TCCON spectra in it\n')
 		path=raw_input('Give the path to your folder /YOUR/PATH/TO/SPECTRA   :\n')
 	if os.path.isdir(path)==False:
-		print '/!\\ You gave a wrong path /!\\\n' #error message if the given path doesn't exist
+		print('/!\\ You gave a wrong path /!\\\n') #error message if the given path doesn't exist)
 		if len(argu)>1:
 			sys.exit()
 
@@ -194,30 +178,13 @@ for spectrum in select_spectra:
 			'other':'salmon',
 			}
 
-	## start plotly plot
-	'''	
-	figly=tools.make_subplots(rows=5,specs=[[{'rowspan':4}],[None],[None],[None],[{}]],shared_xaxes=True,print_grid=False)
-	traces=[Scattergl(x=freq,y=species[j+3],name=header[j+3],marker=dict(color=colors[header[j+3]])) for j in range(len(species)-3)]+[Scattergl(x=freq,y=tm,name='Measured',marker=dict(color='black')),Scattergl(x=freq,y=tc,name='Calculated',marker=dict(color='chartreuse'))]
-	
-	for trace in traces:
-		figly.append_trace(trace,1,1)
-	figly.append_trace(Scattergl(x=freq,y=residuals,name='Tc-Tm',marker=dict(color='black'),xaxis='x',yaxis='y2',showlegend=False),5,1)
-	figly['layout']['yaxis1'].update(title='Transmittance')
-	figly['layout']['yaxis2'].update(title='% Residual')
-	figly['layout'].update(title=spectrum+'  SZA='+SZA+' RMSresid='+('%.4f' % sigma_rms)+'%')
-	plot(figly,filename=os.path.join(save_path,spectrum+'.html'),show_link=False,auto_open=False)
-	'''
-	## end plotly plot
-	# the plotly code is much smaller than the bokeh code as there are more built-in interactions, but the offline plotly library is not very well supported and the resulting
-	# html files are ~50% larger than with bokeh. Bokeh is also more customizable and should be better at handling a lot of data.
-
 	## start bokeh plot
-	TOOLS = ["box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save"] #tools for bokeh figures
+	TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures
 
 	# spectrum figure 
-	fig = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+	fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
 	# residual figure
-	fig_resid = figure(webgl=True,plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
+	fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0)
 
 	# axes labels
 	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
@@ -235,7 +202,7 @@ for spectrum in select_spectra:
 		try:
 			plots.append(fig.line(x=freq,y=species[j+3],color=colors[header[j+3]],line_width=2,name=header[j+3]))
 		except KeyError:
-			print 'KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color'
+			print('KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
 		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
@@ -257,10 +224,10 @@ for spectrum in select_spectra:
 
 	# now the residual figure
 	fig_resid.line(x=freq,y=residuals,color='black',name='residuals')
-	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @y{0.000})'}))
+	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($x{0.00} ; $y{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
-	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(freq))],color='white',visible=False)
+	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(freq))],color='white',visible=False,alpha=0)
 	fig_resid_legend=Legend(items=[('               ',[dummy])],location=(0,0),border_line_alpha=0)
 	fig_resid.add_layout(fig_resid_legend,'right')
 	
@@ -280,16 +247,16 @@ for spectrum in select_spectra:
 	check_button.callback = CustomJS(args={key: value for key,value in checkbox_iterable}, code=check_button_code)
 
 	# put all the widgets in a box
-	group=widgetbox(checkbox,clear_button,check_button,width=120)	
+	group=widgetbox(checkbox,clear_button,check_button,width=120)
 
 	# define the grid with the figures and widget box
-	grid = gridplot([[fig,group],[fig_resid]],tools=TOOLS,toolbar_location='left')
+	grid = gridplot([[fig,group],[fig_resid]],toolbar_location='left')
 
 	# write the HTML file
 	outfile=open(os.path.join(save_path,spectrum+'.html'),'w')
 	outfile.write(file_html(grid,CDN,spectrum[:12]+spectrum[-3:]))
 	outfile.close()
 	## end bokeh plot
-print '\n'
+print('\n')
 
 sys.exit() # to make sure the program doesn't hang after it's finished
