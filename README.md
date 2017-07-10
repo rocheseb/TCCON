@@ -14,7 +14,7 @@ libraries:
 	
 	- NumPy: http://www.numpy.org/
 
-Codes have been tested with Bokeh 0.12.4, there may be incompatibilities with latest version (0.12.6)
+Codes have been tested with Bokeh 0.12.6
 
 ### What is this repository for? ###
 

@@ -1,9 +1,7 @@
-#!/usr/bin/env python2.7
- # -*- coding: ascii -*-
+#!/var/lib/py27_sroche/bin/python
+ # -*- coding: utf-8 -*-
 
-##############################################
-# Various functions to read gfit/gfit2 files #
-##############################################
+from __future__ import print_function # allows the use of Python 3.x print(function in python 2.x code so that print('a','b') prints 'a b' and not ('a','b')
 
 ####################
 # Code description #
@@ -97,13 +95,13 @@ time.tzset()
 # This will not change your system timezone settings
 ################################################################################################################################################################
 
-print '\n\nPut in a folder all the .ncdf files (containing the complete eof data) you want to process, give the path to that folder'
+print('\n\nPut in a folder all the .ncdf files (containing the complete eof data) you want to process, give the path to that folder')
 
 TCCON_path='1'
 while os.path.isdir(TCCON_path)==False:
 	TCCON_path=raw_input('Give the path to your folder /YOUR/PATH/TO/FILES  :\n')
 	if os.path.isdir(TCCON_path)==False:
-		print '/!\\ You gave a wrong path /!\\\n'
+		print('/!\\ You gave a wrong path /!\\\n')
 
 save_path=os.path.join(TCCON_path,'SAVE')
 if not os.path.isdir(save_path):
@@ -214,10 +212,10 @@ Q = ''
 while Q not in ['Y','y','N','n']:
 	Q=raw_input("\nSkip to plotting? (y/n):\n")
 	if Q not in ['Y','y','N','n']:
-		print 'Your must type y for yes or n for no'
+		print('Your must type y for yes or n for no')
 
 # plots tools
-TOOLS = ["pan,wheel_zoom,box_zoom,undo,redo,reset,save"]
+TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
 #############
 # MAIN CODE #
@@ -244,19 +242,19 @@ if Q in ['N','n']:
 	while QF not in ['Y','y','N','n']:
 		QF=raw_input("\nSkip matching and averaging? (y/n):\n")
 		if QF not in ['Y','y','N','n']:
-			print 'Your must type y for yes or n for no'
+			print('Your must type y for yes or n for no')
 
 	if QF in ['N','n']:
 
-		print '\nTCCON sites and two letter abbreviations:\n'
+		print('\nTCCON sites and two letter abbreviations:\n')
 		for i in T_FULL.keys():
-			print '\t-',T_FULL[i],':',i
+			print('\t-',T_FULL[i],':',i)
 
 		SELECT = ''
 		while SELECT not in T_FULL.keys():
 			SELECT = raw_input('\nGive the two letter abreviation of the site you wish to compare with other TCCON sites (e.g. "eu" for Eureka):\n')
 			if SELECT not in T_FULL.keys():
-				print 'Wrong entry'
+				print('Wrong entry')
 		SELECT = T_FULL[SELECT]
 
 		# Ask user if (s)he wants to set a custom time range; if not, use the time range of the selected site
@@ -264,7 +262,7 @@ if Q in ['N','n']:
 		while QS not in ['Y','y','N','n']:
 			QS=raw_input("Use a specific time range? (y/n) if no, "+SELECT+" full time range will be used:\n")
 			if QS not in ['Y','y','N','n']:
-				print 'Your must type y for yes or n for no'
+				print('Your must type y for yes or n for no')
 
 		if QS in ['Y','y']:		
 			time_switch = True
@@ -284,7 +282,7 @@ if Q in ['N','n']:
 					else:
 						t0 = datetime.strptime(start,'%Y-%m-%d')
 				else:
-					print "Invalid input"
+					print("Invalid input")
 					t0 = ''
 
 			tf = ''	
@@ -296,12 +294,12 @@ if Q in ['N','n']:
 					else:
 						tf = datetime.strptime(end,'%Y-%m-%d')
 				else:
-					print "Invalid input"
+					print("Invalid input")
 					tf = ''
 
 				if type(tf) == datetime:
 					if tf < t0:
-						print "The starting date shall precede the end date"
+						print("The starting date shall precede the end date")
 						tf = ''
 
 		# Frequency of data matching and averaging
@@ -314,11 +312,11 @@ if Q in ['N','n']:
 						float(FREQ.split()[0])
 						switch = True # if above conditions are met, get out of the while loop, otherwise output an error message and prompt user with the question again
 					except ValueError:
-						print "Invalid input (1)"
+						print("Invalid input (1)")
 				else:
-					print "Invalid input (2)"			
+					print("Invalid input (2)")			
 			else:
-				print "Invalid input (3)"
+				print("Invalid input (3)")
 
 		if FREQ.split()[1] == 'weeks':
 			time_step = timedelta(weeks=float(FREQ.split()[0]))
@@ -334,7 +332,7 @@ if Q in ['N','n']:
 	###########################
 
 	milestone = time.time()
-	print '\nRead TCCON netCDF files ...'
+	print('\nRead TCCON netCDF files ...')
 
 	ALL_DATA = {}
 	prev_site = ''
@@ -349,10 +347,10 @@ if Q in ['N','n']:
 		if site == prev_site:
 			check = True
 		else:
-			print '\n',site
+			print('\n',site)
 			data_site = {}
 
-		print file
+		print(file)
 
 		f = netCDF4.Dataset(site_path,'r')
 
@@ -388,7 +386,7 @@ if Q in ['N','n']:
 			ALL_DATA[site] = data_site
 
 		except KeyError:
-			print site,'has no',var
+			print(site,'has no',var)
 			pass
 
 		prev_site = site
@@ -397,14 +395,14 @@ if Q in ['N','n']:
 
 	del data_site # we will just need the ALL_DATA[site] from now on
 
-	print '\nRead TCCON netCDF files DONE in',time.time()-milestone,'seconds\n'
+	print('\nRead TCCON netCDF files DONE in',time.time()-milestone,'seconds\n')
 
 	#####################
 	#    Filter DATA    #
 	#####################
 
 	milestone = time.time()
-	print 'Get flag=0 data ...'
+	print('Get flag=0 data ...')
 	DATA = {} # flag 0 data
 
 	for site in ALL_DATA:
@@ -417,34 +415,34 @@ if Q in ['N','n']:
 			count+=1
 			if len(ALL_DATA[site][var])==len(ALL_DATA[site]['flag']):
 				DATA[site][var] = np.array([ALL_DATA[site][var][i] for i in no_flag])
-	print '\nGet flag=0 data DONE in',time.time()-milestone,'seconds\n'
+	print('\nGet flag=0 data DONE in',time.time()-milestone,'seconds\n')
 
 	del ALL_DATA # memory relief as this can represent several GB of data
 
 	if SZA!='':
 		milestone = time.time()
-		print 'Get sza<'+SZA+' data ...'
+		print('Get sza<'+SZA+' data ...')
 		for site in DATA:
-			print '\n',site
+			print('\n',site)
 			small_sza = [i for i in range(len(DATA[site]['asza_deg'])) if DATA[site]['asza_deg'][i]<=float(SZA)]
 			tot=len([var for var in DATA[site]])
 			count=0
 			for var in DATA[site]:
 
-				print var
+				print(var)
 				#progress(count,tot,char=site)
 				count+=1
 				if len(DATA[site][var])==len(DATA[site]['asza_deg']):
 					DATA[site][var] = np.array([DATA[site][var][i] for i in small_sza])
-				print len(DATA[site][var])
-		print 'Get sza<'+SZA+' data DONE in',time.time()-milestone,'seconds\n'
+				print(len(DATA[site][var]))
+		print('Get sza<'+SZA+' data DONE in',time.time()-milestone,'seconds\n')
 
 	if time_switch == False:
 		t0 = DATA[SELECT]['datetime'][0]
 		tf = DATA[SELECT]['datetime'][-1]
 	
 	if QF in ['N','n']:
-		print SELECT,'time range:\nStart',t0.strftime('%d-%m-%Y %H:%M'),'\nEnd',tf.strftime('%d-%m-%Y %H:%M')
+		print(SELECT,'time range:\nStart',t0.strftime('%d-%m-%Y %H:%M'),'\nEnd',tf.strftime('%d-%m-%Y %H:%M'))
 		
 	########################
 	# FREQly averaged data #
@@ -456,7 +454,7 @@ if Q in ['N','n']:
 		span = int(ceil((tf-t0).total_seconds()/frequency))
 
 		milestone = time.time()
-		print 'Dividing',SELECT,'time range in',span,'intervals of',FREQ
+		print('Dividing',SELECT,'time range in',span,'intervals of',FREQ)
 		tmin = t0
 		temp = [[] for i in range(span)]
 		for interval in range(span):
@@ -467,8 +465,8 @@ if Q in ['N','n']:
 			temp[interval] = [j for j in times_ID]
 			tmin = tmax
 
-		print '\ntimes DONE in',time.time()-milestone,'seconds'
-		print SELECT,'has',len([i for i in temp if i!=[]]),'intervals of',FREQ,'with data within the time range\n'
+		print('\ntimes DONE in',time.time()-milestone,'seconds')
+		print(SELECT,'has',len([i for i in temp if i!=[]]),'intervals of',FREQ,'with data within the time range\n')
 
 		for site in DATA:
 
@@ -480,7 +478,7 @@ if Q in ['N','n']:
 			if site != SELECT:
 
 				milestone = time.time()
-				print site+':\nMatching and averaging:'
+				print(site+':\nMatching and averaging:')
 				tmin = t0
 				temp1 = [[] for i in range(span)]
 				# this loop can be very time consuming if the frequency of matching/averaging is small
@@ -499,20 +497,20 @@ if Q in ['N','n']:
 					tmin=tmax
 				try:
 					if len([i for i in temp1 if i!=[]])==0:
-						print '\nmatching DONE in',time.time()-milestone,'seconds'
-						print '(1) Matching intervals of',FREQ,'within the time range: 0 /',len([i for i in temp if i!=[]]),'\n'
+						print('\nmatching DONE in',time.time()-milestone,'seconds')
+						print('(1) Matching intervals of',FREQ,'within the time range: 0 /',len([i for i in temp if i!=[]]),'\n')
 						continue
 				except NameError:
-					print '\n',site,' has no data within the time range\n'
+					print('\n',site,' has no data within the time range\n')
 					continue
 
 				tp=[i for i in temp if i!=[] and temp1[temp.index(i)]!=[]] # Matching indices for data in DATA[SELECT]
 				tp1=[i for i in temp1 if i!=[] and temp[temp1.index(i)]!=[]] # Matching indices for data in DATA[site]
 
-				print '\nmatching and averaging DONE in',time.time()-milestone,'seconds' # the averaging is in fact done after that but it takes less than 0.01 seconds for each site
+				print('\nmatching and averaging DONE in',time.time()-milestone,'seconds') # the averaging is in fact done after that but it takes less than 0.01 seconds for each site
 
 				if len(tp)!=len(tp1):
-					print 'WARNING: length of matches is different: tp1=',len(tp1),'; tp=',len(tp)
+					print('WARNING: length of matches is different: tp1=',len(tp1),'; tp=',len(tp))
 
 				comn_var = [var for var in DATA[site] if var in DATA[SELECT]]
 				for var in comn_var:
@@ -524,7 +522,7 @@ if Q in ['N','n']:
 				freq_select_data['datetime'] = np.array([datetime(*time.gmtime(i*24*3600)[:6]) for i in freq_site_data['time'][:]])
 				freq_site_data['datetime'] = np.array([datetime(*time.gmtime(i*24*3600)[:6]) for i in freq_site_data['time'][:]])
 				
-				print '(2) Matching','intervals of',FREQ,'within the time range: ',len(tp),'/',len([i for i in temp if i!=[]]),'\n'
+				print('(2) Matching','intervals of',FREQ,'within the time range: ',len(tp),'/',len([i for i in temp if i!=[]]),'\n')
 
 				freq_data[site] = freq_site_data
 				freq_data[SELECT] = freq_select_data
@@ -546,14 +544,14 @@ else:
 	try:
 		DATA = np.load(os.path.join(save_path,'DATA.npy')).item()
 	except IOError:
-		print "You can't skip to plots because the data files don't exist\nExiting now ...\n"
+		print("You can't skip to plots because the data files don't exist\nExiting now ...\n")
 		sys.exit()
 
 QP = ''
 while QP not in ['D','d','F','f']:
 	QP=raw_input("\nPlot with DATA or FREQ_DATA? (d/f):\n")
 	if QP not in ['D','d','F','f']:
-		print 'Your must type d for DATA or f for FREQ_DATA'
+		print('Your must type d for DATA or f for FREQ_DATA')
 
 
 # for DATA
@@ -571,7 +569,7 @@ for lat in all_latitudes:
 # Plots #
 #########
 
-print '\nVariables:\n','  '.join([var for var in DATA[DATA.keys()[0]]]),'\n'
+print('\nVariables:\n','  '.join([var for var in DATA[DATA.keys()[0]]]),'\n')
 
 if QP in ['D','d']:
 
@@ -581,7 +579,7 @@ if QP in ['D','d']:
 	for site in DATA:
 		sources[site] = ColumnDataSource(data = {'x':DATA[site][which[0]],'y':DATA[site][which[1]]})
 
-	print 'Plotting:'
+	print('Plotting:')
 
 	lat_ordered_sites = [[key for key in dic][0] for dic in [ALL_site_lat[ID] for ID in ALL_site_lat]] # sites ordered by decreasing latitude
 
@@ -599,9 +597,9 @@ if QP in ['D','d']:
 	milestone = time.time()
 
 	if type(min_x) == datetime:
-		fig = figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_axis_type='datetime', x_range = Range1d(min_x,max_x)) 
+		fig = figure(output_backend = "webgl", title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_axis_type='datetime', x_range = Range1d(min_x,max_x)) 
 	else:
-		fig = figure(webgl = True, title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_range = Range1d(int(min_x),ceil(max_x))) 
+		fig = figure(output_backend = "webgl", title = 'TCCON '+which[1]+' vs '+which[0], y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, toolbar_location = 'above', x_range = Range1d(int(min_x),ceil(max_x))) 
 
 	plots=[]
 	for site in lat_ordered_sites:
@@ -634,11 +632,11 @@ if QP in ['D','d']:
 
 	grid = gridplot([[fig,group]])
 
-	print ' -writting TCCON_'+which[0]+'_'+which[1]+'.html'
+	print(' -writting TCCON_'+which[0]+'_'+which[1]+'.html')
 	outfile=open(os.path.join(save_path,'TCCON_'+which[0]+'_'+which[1]+'.html'),'w')
 	outfile.write(file_html(grid,CDN,which[1]))
 	outfile.close()
-	print 'TCCON_'+which[0]+'_'+which[1]+'.html DONE in', time.time()-milestone,'seconds\n'
+	print('TCCON_'+which[0]+'_'+which[1]+'.html DONE in', time.time()-milestone,'seconds\n')
 
 else:
 	# for FREQ_DATA
@@ -648,7 +646,7 @@ else:
 	rangelist = range(len(freq_filenames))
 
 	for i in rangelist:
-		print '\t',i,'-',freq_filenames[i]
+		print('\t',i,'-',freq_filenames[i])
 
 	Qid = ''
 	while Qid not in rangelist:
@@ -657,7 +655,7 @@ else:
 		except ValueError: 
 			pass
 		if Qid not in rangelist:
-			print 'You must enter the corresponding number'
+			print('You must enter the corresponding number')
 
 	FREQ_DATA = np.load(os.path.join(save_path,freq_filenames[Qid])).item()
 	SELECT = freq_filenames[Qid].split('_')[-1].split('.')[0]
@@ -666,10 +664,10 @@ else:
 
 	arbit = FREQ_DATA.keys()[0]
 	variabs = FREQ_DATA[arbit][arbit].keys()
-	print '\n\nVariables:\n'
+	print('\n\nVariables:\n')
 
 	for i in range(len(variabs)):
-		print '\t',i,' - ',variabs[i]
+		print('\t',i,' - ',variabs[i])
 
 	numtab = ''
 	vartoplot = []
@@ -691,7 +689,7 @@ else:
 	lat_ordered_sites = [[key for key in dic][0] for dic in [site_lat[ID] for ID in site_lat]]
 
 	tabs = []
-	TOOLS = ["pan,wheel_zoom,box_zoom,undo,redo,reset,box_select,save"]
+	TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,box_select,save"
 
 	temp = [0 for i in FREQ_DATA]
 
@@ -760,7 +758,7 @@ else:
 				tab['Bias']["""+str(count)+"""] = 0;
 				tab['Scatter']["""+str(count)+"""] = 0;
 				tab['R']["""+str(count)+"""] = 0;
-				dt.trigger('change');
+				dt.change.emit();
 				return;
 			}
 
@@ -794,8 +792,8 @@ else:
 			tab['Scatter']["""+str(count)+"""] = Math.sqrt(scat/(inds.length -1)).toFixed("""+prec+""");
 			tab['R']["""+str(count)+"""] = (T1/Math.sqrt(T2*T3)).toFixed("""+prec+""");
 
-			dt.trigger('change');
-			scor.trigger('change');
+			dt.change.emit();
+			scor.change.emit();
 			""")
 			count += 1
 
@@ -811,7 +809,7 @@ else:
 		min_y = min_y - ampli*0.1/100
 		max_y = max_y + ampli*0.1/100
 
-		fig = figure(webgl = True, title = 'TCCON '+var+' vs '+'datetime', y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, x_axis_type='datetime', x_range = Range1d(min_x,max_x))
+		fig = figure(output_backend = "webgl", title = 'TCCON '+var+' vs '+'datetime', y_range=[min_y,max_y], plot_width = 900, plot_height = 650, tools = TOOLS, x_axis_type='datetime', x_range = Range1d(min_x,max_x))
 
 		fig.tools[-2].dimensions='width' # only allow the box select tool to select data along the X axis (will select all Y data in a given X range)
 
@@ -834,7 +832,7 @@ else:
 
 			txt.text = 'Selection range from '+startstring + ' to ' + finishstring;
 
-			txt.trigger("change"); 
+			txt.change.emit(); 
 			""")
 
 		plots=[]
@@ -854,7 +852,7 @@ else:
 		fig.xaxis.axis_label = 'Time'
 
 		# correlation plot
-		corfig = figure(webgl = True, title = 'Correlations', plot_width = 400, plot_height = 400, x_range = [min_y,max_y], y_range = [min_y,max_y]) 
+		corfig = figure(output_backend = "webgl", title = 'Correlations', plot_width = 400, plot_height = 400, x_range = [min_y,max_y], y_range = [min_y,max_y]) 
 		corfig.toolbar.logo = None
 		corfig.toolbar_location = None
 		corfig.xaxis.axis_label = ' '.join([SELECT,var])
@@ -923,14 +921,14 @@ else:
 
 	final=Tabs(tabs=tabs)
 
-	print '\n -writting FREQ_TCCON_'+'_'.join(FREQ.split())+'_'+SELECT+'.html'+' ...'
+	print('\n -writting FREQ_TCCON_'+'_'.join(FREQ.split())+'_'+SELECT+'.html'+' ...')
 	outfile=open(os.path.join(save_path,'FREQ_TCCON_'+'_'.join(FREQ.split())+'_'+SELECT+'.html'),'w')
 	outfile.write(file_html(final,CDN,'FREQ_TCCON'))
 	outfile.close()
-	print 'FREQ_TCCON.html DONE in', time.time()-milestone,'seconds\n'
+	print('FREQ_TCCON.html DONE in', time.time()-milestone,'seconds\n')
 
 ###########
 # THE END #
 ###########
 
-print 'TCCON_comp.py DONE in',time.time()-codestart,'seconds'
+print('TCCON_comp.py DONE in',time.time()-codestart,'seconds')

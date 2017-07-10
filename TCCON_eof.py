@@ -1,9 +1,7 @@
-#!/usr/bin/env python2.7
- # -*- coding: ascii -*-
+#!/var/lib/py27_sroche/bin/python
+ # -*- coding: utf-8 -*-
 
-###########################################################
-# Code to produce HTML plots from TCCON EOF or ncdf files #
-###########################################################
+from __future__ import print_function # allows the use of Python 3.x print(function in python 2.x code so that print('a','b') prints 'a b' and not ('a','b')
 
 ####################
 # Code description #
@@ -258,7 +256,7 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 	DATA = {}
 
 	if mode.lower() not in ['eof','netcdf']:
-		print 'in function read_tccon() : The file format was not recognized'
+		print('in function read_tccon() : The file format was not recognized')
 		return DATA
 
 	if mode.lower() == 'eof':
@@ -296,12 +294,12 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 
 		for var in variables:
 			if var not in header:
-				print 'in function read_tccon(): wrong variable input:',var,'not in',path
+				print('in function read_tccon(): wrong variable input:',var,'not in',path)
 				return {}				
 			try:
 				DATA[var] = np.array( content_T[header.index(var)], dtype=np.float )
 			except ValueError:
-				print 'Skipping string variable:',var
+				print('Skipping string variable:',var)
 
 		DATA['xtime'] = [datetime(int(DATA['year'][i]),1,1)+timedelta(days=int(DATA['day'][i])-1,hours=float(DATA['hour'][i])) for i in range(len(DATA[var]))]
 
@@ -370,10 +368,10 @@ while os.path.isdir(path)==False:
 	if len(argu)>1:
 		path = argu[1]
 	else:
-		print '\n\nPut in a folder all the .eof files you want to process, give the path to that folder'
+		print('\n\nPut in a folder all the .eof files you want to process, give the path to that folder')
 		path=raw_input('Give the path to your folder /YOUR/PATH/TO/FILES  :\n')
 	if os.path.isdir(path)==False:
-		print '/!\\ You gave a wrong path /!\\\n'
+		print('/!\\ You gave a wrong path /!\\\n')
 		if len(argu)>1:
 			sys.exit()
 
@@ -381,7 +379,7 @@ save_path=os.path.join(path,'SAVE')
 if not os.path.isdir(save_path):
 	os.makedirs(save_path)
 
-print '\nPlots will be saved in',save_path,'\n'
+print('\nPlots will be saved in',save_path,'\n')
 
 flag_check = True
 while flag_check:
@@ -395,7 +393,7 @@ while flag_check:
 			test = int(flag)
 			flag_check = False
 		except ValueError:
-			print 'The flag must be a number (or blank "")'
+			print('The flag must be a number (or blank "")')
 			flag_check = True
 			if len(argu)>2:
 				sys.exit()
@@ -447,8 +445,8 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 	
 }
 
-S_main.trigger("change");
-S_err.trigger("change");
+S_main.change.emit();
+S_err.change.emit();
 """
 
 code = """
@@ -485,7 +483,7 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 	
 }
 
-S_main.trigger("change");
+S_main.change.emit();
 """
 
 dropdown_code= """
@@ -539,8 +537,8 @@ if (cb_obj.label.includes("2")) {fill["x"].push(all[vartoplot][i]);}
 console.log(fill["y"]);
 console.log(fill["x"]);
 
-S_main.trigger("change");
-S_fill.trigger("change");
+S_main.change.emit();
+S_fill.change.emit();
 """
 
 # flatten the bok_struct dictionary to get all the different variable names that should be read in the eof/netcdf files
@@ -574,13 +572,13 @@ if '.nc' in files[0]:
 if '.eof' in files[0]:
 	mode = 'eof'
 if ('.nc' not in files[0]) and ('.netcdf' not in files[0]) and ('.eof' not in files[0]):
-	print 'You need netCDF or .eof tccon files to run this program'
+	print('You need netCDF or .eof tccon files to run this program')
 	sys.exit()
 
 diag_var += ['year','day','hour','flag'] # append some default variables to be read. So we can create datetime objects, and also the quality flags
 
 # tools for the plotting
-TOOLS = ["pan,wheel_zoom,box_zoom,undo,redo,reset,save"]
+TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
 
 # loop over files and merge all the data in a dictionary, this will skip any data that is not properly time sorted
@@ -629,13 +627,13 @@ for panel_key in bok_struct:
 			height = bok_struct[panel_key][fig_key]['plot_height']
 			
 			if panel_key==bok_struct.keys()[0] and len(figs)==0:
-				figs.append( figure(title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
+				figs.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
 				save_fig = figs[0]
 			else: 
-				figs.append( figure(title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
+				figs.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
 
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				figs.append( figure(plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
+				figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
 
 			for plot_var in bok_struct[panel_key][fig_key]['lines']:
 				colo = [colors_dict[key] for key in colors_dict if key in plot_var]
@@ -675,10 +673,10 @@ for panel_key in bok_struct:
 
 			# the figure in the custom panel is not linked to other panels figures
 
-			figs.append( figure(plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
+			figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
 
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				figs.append( figure(plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
+				figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
 
 			var_list = bok_struct[panel_key][fig_key]['lines']
 
@@ -735,10 +733,10 @@ for panel_key in bok_struct:
 			width = bok_struct[panel_key][fig_key]['plot_width']
 			height = bok_struct[panel_key][fig_key]['plot_height']
 
-			figs.append( figure(title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
-			figs.append( figure(title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
+			figs.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
+			figs.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
 
-			figs.append( figure(title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
+			figs.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
 
 			key_list = bok_struct[panel_key][fig_key]['lines']
 

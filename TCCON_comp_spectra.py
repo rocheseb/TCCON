@@ -1,10 +1,7 @@
-#!/usr/bin/env python2.7
+#!/var/lib/py27_sroche/bin/python
  # -*- coding: utf-8 -*-
 
-################################################
-# Code to produce HTML plots with TCCON spetra #
-#     all spectra will be in one .HTML plot    #
-################################################
+from __future__ import print_function # allows the use of Python 3.x print(function in python 2.x code so that print('a','b') prints 'a b' and not ('a','b')
 
 ####################
 # Code Description #
@@ -99,11 +96,11 @@ path='not_a_directory_1e7fwf8wrf78wf' #this should just be a non-existent direct
 if len(argu)>1:
 	path = argu[1] # first commandline argument is the path to the spectra
 else:
-	print 'You must give your /PATH/TO/SPECTRA as argument\n'
+	print('You must give your /PATH/TO/SPECTRA as argument\n')
 	sys.exit()
 
 if os.path.isdir(path)==False:
-	print '/!\\ You gave a wrong path /!\\\n' #error message if the given path doesn't exist
+	print('/!\\ You gave a wrong path /!\\\n') #error message if the given path doesn't exist
 	if len(argu)>1:
 		sys.exit()
 
@@ -134,7 +131,7 @@ colors = {
 
 window_dic = {'y':'6339','w':'6073','z':'6220','s':'4852'} # dictionary to associate a spectrum prefix letter to a window center wavenumber.
 
-TOOLS = ["box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save"] #tools for bokeh figures, the first tool in the list will be active by default
+TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures, the first tool in the list will be active by default
 
 select_spectra=sorted([i for i in spectra if ('.' in i)])
 
@@ -178,14 +175,14 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	
 	if first_check:
 		# spectrum figure 
-		fig = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+		fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
 		# residual figure
-		fig_resid = figure(webgl=True,plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
+		fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
 		
 		save_figs[spectrum[0]] = [fig,fig_resid]
 	else:
-		fig = figure(webgl=True,title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0)
-		fig_resid = figure(webgl=True,plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range)
+		fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0)
+		fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range)
 	# axes labels
 	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
 	fig_resid.yaxis.axis_label = '% Residuals'
@@ -200,7 +197,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 		try:
 			plots.append(fig.line(x='Freq',y=gas,color=colors[gas],line_width=2,name=gas,source=source_list[spectrum]))
 		except KeyError:
-			print 'KeyError:',gas,'is not specified in the "colors" dictionary, you need to add it with an associated color'
+			print('KeyError:',gas,'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
 		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
@@ -225,7 +222,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @resid{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
-	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(residuals))],color='white',visible=False)
+	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(residuals))],color='white',visible=False,alpha=0)
 	fig_resid_legend=Legend(items=[('               ',[dummy])],location=(0,0),border_line_alpha=0)
 	fig_resid.add_layout(fig_resid_legend,'right')
 	
@@ -269,6 +266,6 @@ outfile=open(os.path.join(save_path,'comp_spectra_ncbf.html'),'w')
 outfile.write(file_html(final,CDN,'GFIT2 spectra'))
 outfile.close()
 
-print '\n'
+print('\n')
 
 sys.exit() # to make sure the program doesn't hang after it's finished
