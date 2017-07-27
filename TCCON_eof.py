@@ -81,8 +81,8 @@ from math import ceil
 
 # html plots
 from bokeh.plotting import figure
-from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown, Div
-from bokeh.layouts import gridplot
+from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown, Div, BoxSelectTool, DataTable, TableColumn
+from bokeh.layouts import gridplot, widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
 
@@ -117,7 +117,7 @@ colors_dict = {
 				'air':'pink',
 				'_o2':'firebrick',
 				'hcl':'goldenrod',
-				'sza':'fushia',
+				'sza':'fuchsia',
 				}
 
 # dictionary with a structure that will define the final plot layout.
@@ -579,6 +579,87 @@ S_main.change.emit();
 S_fill.change.emit();
 """
 
+key_source_code = """
+var inds = cb_obj.selected['1d'].indices;
+var d1 = cb_obj.data;
+var d2 = s2.data;
+var tab = dt.source.data;
+var dcor = scor.data;
+
+s2.selected['1d'].indices = inds;
+scor.selected['1d'].indices = inds;
+
+scor.change.emit();
+s2.change.emit();
+
+var ym1 = 0;
+var ym2 = 0;
+
+var T1 = 0;
+var T2 = 0;
+var T3 = 0;
+
+tab['N'][0] = inds.length;
+
+if (inds.length == 0) {
+	tab['R'][0] = 0;
+	dt.change.emit();
+	return;
+}
+
+for (i=0; i < inds.length; i++){
+	ym1 += d1['y'][inds[i]];
+	ym2 += d2['y'][inds[i]];
+}
+
+ym1 /= inds.length;
+ym2 /= inds.length;
+
+for (i=0; i < inds.length; i++){
+	T1 += (d1['y'][inds[i]] - ym1)*(d2['y'][inds[i]] - ym2);
+	T2 += Math.pow(d1['y'][inds[i]] - ym1,2);
+	T3 += Math.pow(d2['y'][inds[i]] - ym2,2);
+}
+
+tab['R'][0] = (T1/Math.sqrt(T2*T3)).toFixed(3);
+
+dt.change.emit();
+"""
+
+box_select_code = """
+var sel = cb_data["geometry"];
+
+var startsec = sel["x0"]/1000;
+var start = new Date(0);
+
+start.setUTCSeconds(startsec)
+
+var startstring = ("0" + start.getUTCDate()).slice(-2) + "-" + ("0"+(start.getUTCMonth()+1)).slice(-2) + "-" +start.getUTCFullYear() + " " + ("0" + start.getUTCHours()).slice(-2) + ":" + ("0" + start.getUTCMinutes()).slice(-2);
+
+var finishsec = sel["x1"]/1000;
+var finish = new Date(0);
+
+finish.setUTCSeconds(finishsec)
+
+var finishstring = ("0" + finish.getUTCDate()).slice(-2) + "-" + ("0"+(finish.getUTCMonth()+1)).slice(-2) + "-" +finish.getUTCFullYear() + " " + ("0" + finish.getUTCHours()).slice(-2) + ":" + ("0" + finish.getUTCMinutes()).slice(-2);
+
+txt.text = 'Selection range from '+startstring + ' to ' + finishstring;
+
+txt.change.emit(); 
+"""
+
+key_notes = """
+<font size=4><b>Notes:</b></font><font size=2></br>
+</br>
+Use the dropdown buttons to select the variable to display in Figure 1 and Figure 2</br>
+</br>
+Use the "Box Select" tool to select data in Figure 1, number of points (N) and correlations (R) will be shown in the table</br>
+</br>
+Data in grey has a flag != 0</br></br>If the axis labels do not update, use the "Reset" tool</br>
+</br>
+<img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Warning_icon.svg" height="20" width="20"> The "Save" tool from the toolbar will save each figure to a different .png</font>
+"""
+
 # flatten the bok_struct dictionary to get all the different variable names that should be read in the eof/netcdf files
 bok_struct_values = list(descend_values(bok_struct))
 all_var = list(flatten([i for i in bok_struct_values if type(i)==list])) # all the variables names that should be read
@@ -659,21 +740,21 @@ save_source_list = [] # this will just contain python objects I want to pass to 
 
 tabs = [] # the different panels in the final bokeh plot
 for panel_key in bok_struct:
-	figs = [] # the different figures in the panel
+	fig_list = [] # the different figures in the panel
 	if True not in [elem in panel_key for elem in ['Custom','Key','Diag']]: # general case
 		for fig_key in bok_struct[panel_key]:
 
 			width = bok_struct[panel_key][fig_key]['plot_width']
 			height = bok_struct[panel_key][fig_key]['plot_height']
 			
-			if panel_key==bok_struct.keys()[0] and len(figs)==0:
-				figs.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
-				save_fig = figs[0]
+			if panel_key==bok_struct.keys()[0] and len(fig_list)==0:
+				fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
+				save_fig = fig_list[0]
 			else: 
-				figs.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
+				fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
 
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
+				fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
 
 			for plot_var in bok_struct[panel_key][fig_key]['lines']:
 				colo = [colors_dict[key] for key in colors_dict if key in plot_var]
@@ -681,24 +762,24 @@ for panel_key in bok_struct:
 				if bok_struct[panel_key][fig_key]['errlines'] is True:
 					if len(colo)==1:
 						colo = colo[0]
-						figs[-2].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
+						fig_list[-2].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
 					else:
-						figs[-2].scatter(x='xtime',y=plot_var,source=all_source)
+						fig_list[-2].scatter(x='xtime',y=plot_var,source=all_source)
 				
-					figs[-1].scatter(x='xtime',y=plot_var+'_error',color='black',source=all_source)
-					figs[-1].yaxis.axis_label = 'Error'
+					fig_list[-1].scatter(x='xtime',y=plot_var+'_error',color='black',source=all_source)
+					fig_list[-1].yaxis.axis_label = 'Error'
 
-					figs[-2].yaxis.axis_label = plot_var
+					fig_list[-2].yaxis.axis_label = plot_var
 				else:
 					if len(colo)==1:
 						colo = colo[0]
-						figs[-1].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
+						fig_list[-1].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
 					else:
-						figs[-1].scatter(x='xtime',y=plot_var,source=all_source)
+						fig_list[-1].scatter(x='xtime',y=plot_var,source=all_source)
 
-					figs[-1].yaxis.axis_label = plot_var
+					fig_list[-1].yaxis.axis_label = plot_var
 
-			grid = gridplot( [[fig] for fig in figs],toolbar_location='left',tools=TOOLS )
+			grid = gridplot( [[fig] for fig in fig_list],toolbar_location='left',tools=TOOLS )
 
 	if 'Custom' in panel_key: # first special case, custom plots
 
@@ -713,10 +794,10 @@ for panel_key in bok_struct:
 
 			# the figure in the custom panel is not linked to other panels figures
 
-			figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
+			fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
 
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				figs.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
+				fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=fig_list[0].x_range,tools=TOOLS) )
 
 			var_list = bok_struct[panel_key][fig_key]['lines']
 
@@ -724,14 +805,14 @@ for panel_key in bok_struct:
 
 			for plot_var in var_list:
 
-				figs[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
+				fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
 
 				if bok_struct[panel_key][fig_key]['errlines'] is True:
-					figs[1].scatter(x="x",y="y",color='black',source=err_source_list[-1])				
-					figs[1].yaxis.axis_label='Error'
+					fig_list[1].scatter(x="x",y="y",color='black',source=err_source_list[-1])				
+					fig_list[1].yaxis.axis_label='Error'
 
-			figs[0].xaxis.axis_label='Time'
-			figs[0].yaxis.axis_label='x_gas'
+			fig_list[0].xaxis.axis_label='Time'
+			fig_list[0].yaxis.axis_label='x_gas'
 			
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
 				callback=CustomJS(	args=dict(
@@ -739,9 +820,9 @@ for panel_key in bok_struct:
 											S_main=main_source_list[-1],
 											S_err=err_source_list[-1],
 											S_save=save_source_list[-1],
-											mainy=figs[0].y_range,
-											erry=figs[1].y_range,
-											main_laby=figs[0].yaxis[0],
+											mainy=fig_list[0].y_range,
+											erry=fig_list[1].y_range,
+											main_laby=fig_list[0].yaxis[0],
 											),  
 									code=err_code)
 			else:
@@ -749,8 +830,8 @@ for panel_key in bok_struct:
 											S_all=all_source,
 											S_main=main_source_list[-1],
 											S_save=save_source_list[-1],
-											mainy=figs[0].y_range,
-											main_laby=figs[0].yaxis[0],
+											mainy=fig_list[0].y_range,
+											main_laby=fig_list[0].yaxis[0],
 											),  
 									code=code)
 
@@ -758,68 +839,77 @@ for panel_key in bok_struct:
 			radiobox = VBox(radiogroup,width=100)
 
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				grid = gridplot([[figs[1]],[figs[0],radiobox]],toolbar_location='left',tools=TOOLS)
+				grid = gridplot([[fig_list[1]],[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
 			else:
-				grid = gridplot([[figs[0],radiobox]],toolbar_location='left',tools=TOOLS)
+				grid = gridplot([[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
 
 	if 'Key' in panel_key: # second special case, key plots
 
+		fig_key = [i for i in bok_struct[panel_key]][0] # there is only one key in "Key" panels
+		key_list = bok_struct[panel_key][fig_key]['lines']
+		var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
+
+		# sources
 		main_source_list.append( ColumnDataSource(data={"x":np.array([]),"y":np.array([]),"colo":[]}) )
 		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
 		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
-		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict]}) )
+		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict],"varlist":var_list}) )
+		table_source = ColumnDataSource( data = {'N':[0],'R':[0]} ) # the data source of the table
 
-		for fig_key in bok_struct[panel_key]:
-			width = bok_struct[panel_key][fig_key]['plot_width']
-			height = bok_struct[panel_key][fig_key]['plot_height']
+		# figures
+		width = bok_struct[panel_key][fig_key]['plot_width']
+		height = bok_struct[panel_key][fig_key]['plot_height']
+		fig_list.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools="pan,wheel_zoom,box_zoom,box_select,undo,redo,reset,save") )
+		fig_list[0].select_one(BoxSelectTool).dimensions = 'width'
+		fig_list.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=fig_list[0].x_range,tools=TOOLS) )
+		fig_list.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
 
-			figs.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
-			figs.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=figs[0].x_range,tools=TOOLS) )
+		# glyphrenderers
+		fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
+		fig_list[1].scatter(x="x",y="y",color='colo',source=main_source_list[-2])
+		fig_list[2].scatter(x="x",y="y",color='colo',source=main_source_list[-3])
 
-			figs.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
+		# widgets
+		menu = [(plot_var,plot_var) for plot_var in var_list]
+		dropdown_0 = Dropdown(label="Figure 1", menu=menu,width=200)
+		dropdown_1 = Dropdown(label="Figure 2", menu=menu,width=200)
+		data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
+		select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
+		notes = Div(text=key_notes,width=600)
+		dum = Div(text='',width=250) # dummy div widget for widget spacing in the layout
+		dum2 = Div(text='',width=50) # dummy div widget for widget spacing in the layout
 
-			key_list = bok_struct[panel_key][fig_key]['lines']
+		# callbacks
+		main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,scor=main_source_list[-3]), code=key_source_code)
 
-			var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
+		fig_list[0].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
 
-			save_source_list[-1].data['varlist'] = var_list
+		dropdown_0.callback=CustomJS(	args=dict(
+									S_all=all_source,
+									S_main=main_source_list[-1],
+									S_fill=main_source_list[-3],
+									S_save=save_source_list[-1],
+									mainy=fig_list[0].y_range,
+									main_laby=fig_list[0].yaxis[0],
+									fill_lab=fig_list[2].yaxis[0],
+									),  
+							code=dropdown_code)
 
-			figs[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
-			figs[1].scatter(x="x",y="y",color='colo',source=main_source_list[-2])
-			figs[2].scatter(x="x",y="y",color='colo',source=main_source_list[-3])
+		dropdown_1.callback=CustomJS(	args=dict(
+									S_all=all_source,
+									S_main=main_source_list[-2],
+									S_fill=main_source_list[-3],
+									S_save=save_source_list[-1],
+									mainy=fig_list[1].y_range,
+									main_laby=fig_list[1].yaxis[0],
+									fill_lab=fig_list[2].xaxis[0],
+									),  
+							code=dropdown_code)
 
-			callback_0=CustomJS(	args=dict(
-										S_all=all_source,
-										S_main=main_source_list[-1],
-										S_fill=main_source_list[-3],
-										S_save=save_source_list[-1],
-										mainy=figs[0].y_range,
-										main_laby=figs[0].yaxis[0],
-										fill_lab=figs[2].yaxis[0],
-										),  
-								code=dropdown_code)
+		# layout the final grid
+		notebox = widgetbox(select_text,data_table,notes,width=650)
 
-			callback_1=CustomJS(	args=dict(
-										S_all=all_source,
-										S_main=main_source_list[-2],
-										S_fill=main_source_list[-3],
-										S_save=save_source_list[-1],
-										mainy=figs[1].y_range,
-										main_laby=figs[1].yaxis[0],
-										fill_lab=figs[2].xaxis[0],
-										),  
-								code=dropdown_code)
-
-			menu = [(plot_var,plot_var) for plot_var in var_list]
-			dropdown_0 = Dropdown(label="Figure 1", menu=menu, callback=callback_0,width=200)
-			dropdown_1 = Dropdown(label="Figure 2", menu=menu, callback=callback_1,width=200)
-
-		dum = Div(text='',width=250)
-		dum2 = Div(text='',width=50)
-
-		notes = Div(text='<font size=4><b>Notes:</b></font><font size=2></br></br>Use the dropdown buttons to select the variable to display in Figure 1 and Figure 2</br></br>Data in grey has a flag != 0</br></br>If the axis labels do not update, use the "Reset" tool</br></br><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Warning_icon.svg" height="20" width="20"> The "Save" tool from the toolbar will save each figure to a different .png</font>',width=600)
-
-		figrid = gridplot([[figs[0]],[figs[1]],[figs[2],notes]],toolbar_location='left')
+		figrid = gridplot([[fig_list[0]],[fig_list[1]],[fig_list[2],notebox]],toolbar_location='left')
 
 		grid = gridplot([[dum,dropdown_0,dum2,dropdown_1],[figrid]],toolbar_location=None)	
 
