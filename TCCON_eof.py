@@ -137,7 +137,7 @@ bok_struct = OrderedDict([
 					('custom',{
 								'lines':('co2','sza','air',),
 								'plot_height':250,
-								'plot_width':1000,
+								'plot_width':800,
 								}),	
 					])), # end of 'Key_co2_6220' panel
 			])
@@ -876,8 +876,8 @@ for panel_key in bok_struct:
 		data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
 		select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
 		notes = Div(text=key_notes,width=600)
-		dum = Div(text='',width=250) # dummy div widget for widget spacing in the layout
-		dum2 = Div(text='',width=50) # dummy div widget for widget spacing in the layout
+		dum = Div(text='',height=100) # dummy div widget for widget spacing in the layout
+		dum2 = Div(text='',height=100) # dummy div widget for widget spacing in the layout
 
 		# callbacks
 		main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,scor=main_source_list[-3]), code=key_source_code)
@@ -908,10 +908,10 @@ for panel_key in bok_struct:
 
 		# layout the final grid
 		notebox = widgetbox(select_text,data_table,notes,width=650)
+		dropbox_0 = widgetbox(dum,dropdown_0,width=210) # I use the dummy div widget to have the dropdown button ~aligned with the center of the figure 
+		dropbox_1 = widgetbox(dum2,dropdown_1,width=210)
 
-		figrid = gridplot([[fig_list[0]],[fig_list[1]],[fig_list[2],notebox]],toolbar_location='left')
-
-		grid = gridplot([[dum,dropdown_0,dum2,dropdown_1],[figrid]],toolbar_location=None)	
+		grid = gridplot([[fig_list[0],dropbox_0],[fig_list[1],dropbox_1],[fig_list[2],notebox]],toolbar_location='left')
 
 	tabs.append( Panel(child=grid,title=panel_key) )
 
