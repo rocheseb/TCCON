@@ -80,12 +80,11 @@ import netCDF4
 from math import ceil
 
 # html plots
-from bokeh.plotting import figure, output_file
-from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown
-from bokeh.layouts import gridplot,row
+from bokeh.plotting import figure
+from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown, Div
+from bokeh.layouts import gridplot
 from bokeh.resources import CDN
 from bokeh.embed import file_html
-from bokeh.layouts import row,column
 
 # dictionaries with sorted keys
 import collections
@@ -98,6 +97,12 @@ warnings.filterwarnings('ignore')
 ###############
 # Modify here #
 ###############
+
+# the name of the html file that this code produces, make sure it finishes with '.html'
+save_name = 'test.html'
+
+# tab_name will appear in the internet tab when you open the page
+tab_name = 'TCCON'
 
 # associate a keyword with a color. Variables including the keyword will be plotted with that color. (be careful with co, co2 and o2 ! )
 # note: if you use 'all' for the flag, only flag 0 data will use the colors, flag != 0 data will be grey
@@ -112,6 +117,7 @@ colors_dict = {
 				'air':'pink',
 				'_o2':'firebrick',
 				'hcl':'goldenrod',
+				'sza':'fushia',
 				}
 
 # dictionary with a structure that will define the final plot layout.
@@ -126,6 +132,17 @@ colors_dict = {
 
 # to add an error plot below regular plots, set the 'errlines' parameter to True.
 # this only works for variables that have a '_error' extension (e.g. xco2_ppm, xco2_ppm_error)								
+bok_struct = OrderedDict([
+			('Key_co2',OrderedDict([
+					('custom',{
+								'lines':('co2','sza','air',),
+								'plot_height':250,
+								'plot_width':1000,
+								}),	
+					])), # end of 'Key_co2_6220' panel
+			])
+# below is an example of a more complex bok_struct object containing different kinds of tabs
+"""
 bok_struct = OrderedDict([
 			('xgas',OrderedDict([	
 					('xair',{
@@ -202,32 +219,32 @@ bok_struct = OrderedDict([
 			# all variables that include each keyword will be availabe (e.g. ('co2_6220') will get 25 variables !)
 			# 'Key' panels do not have an 'errlines' parameter
 			# the search for the given keys in variables names is CASE SENSITIVE
-			('Key_co2_6220',OrderedDict([
+			('Key_co2',OrderedDict([
 					('custom',{
-								'lines':('air','hf',),
+								'lines':('co2',),
 								'plot_height':250,
 								'plot_width':1000,
 								}),	
 					])), # end of 'Key_co2_6220' panel
 			('other',OrderedDict([
 					('fvsi_%',{
-								'lines':['fvsi_%'], #eof
-								#'lines':['fvsi'], #netcdf
+								#'lines':['fvsi_%'], #eof
+								'lines':['fvsi'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),			
 
 					('hout_%RH',{
-								'lines':['hout_%RH'], #eof
-								#'lines':['hout_RH'], #netcdf
+								#'lines':['hout_%RH'], #eof
+								'lines':['hout_RH'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
 								}),														
 					('wspd_m/s',{
-								'lines':['wspd_m/s'], #eof
-								#'lines':['wspd_m_s'], #netcdf
+								#'lines':['wspd_m/s'], #eof
+								'lines':['wspd_m_s'], #netcdf
 								'plot_height':150,
 								'plot_width':1000,
 								'errlines':False,
@@ -246,12 +263,20 @@ bok_struct = OrderedDict([
 								}),	
 					])), # end of 'other' panel
 			])
-
+"""
 #############
 # Functions #
 #############
 
 def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
+	'''
+	 can read tccon .eof, .eof.csv, or .nc files with specified variables of two types:
+	 "variables" is a list of exact variables names to be read
+	 "key_variables" is a list of keywords, every variable that includes one of the keywords in their name will be read
+	 if those lists are not specified all variables (>1200) will be read
+	 flag is "all" by default and data with any flag will be read, you can give the appropriate integer if you want to only read data with a specific flag
+	 the mode can be set to 'eof', 'csv', or 'netcdf'
+	'''
 
 	DATA = {}
 
@@ -300,15 +325,23 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 				DATA[var] = np.array( content_T[header.index(var)], dtype=np.float )
 			except ValueError:
 				print('Skipping string variable:',var)
-
-		DATA['xtime'] = [datetime(int(DATA['year'][i]),1,1)+timedelta(days=int(DATA['day'][i])-1,hours=float(DATA['hour'][i])) for i in range(len(DATA[var]))]
-
-		del DATA['year']
-		del DATA['day']
-		del DATA['hour']
 				
 	if mode.lower() == 'netcdf':
 		f = netCDF4.Dataset(path,'r')
+
+		header = [v for v in f.variables]
+
+		if variables == []:
+			variables = header
+
+		# add all the variables that includes keys in key_variables, and make sure there are no repeat variables
+		add_var = []
+		if key_variables != []:
+			for key in key_variables:
+				add_var += [var for var in header if ((key in var) and ('prio' not in var) and ('ak_' not in var))]
+			for var in add_var:
+				if var not in variables:
+					variables.append(var)
 
 		for var in variables:
 			try:
@@ -319,18 +352,20 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 			except ValueError:
 				'Skipping string variable:',var
 
-		DATA['xtime'] = [datetime(int(DATA['year'][i]),1,1)+timedelta(days=int(DATA['day'][i])-1,hours=float(DATA['hour'][i])) for i in range(len(DATA['hour']))]
-
 		f.close()
 
-		del DATA['year']
-		del DATA['day']
-		del DATA['hour']
+	DATA['xtime'] = [datetime(int(DATA['year'][i]),1,1)+timedelta(days=int(DATA['day'][i])-1,hours=float(DATA['hour'][i])) for i in range(len(DATA['hour']))]
+
+	del DATA['year']
+	del DATA['day']
+	del DATA['hour']
 
 	return DATA
 
-# generator to recursively get all the values in a nested dictionary
 def descend_values(dic):
+	'''
+	gets all the values in a dictionnary and put them in a 1d list
+	'''
 	for key in sorted(dic.keys()):
 		if type(dic[key]) in [dict,collections.OrderedDict]:
 			for x in descend_values(dic[key]):
@@ -338,9 +373,12 @@ def descend_values(dic):
 		else:
 			yield dic[key]
 
-# gets all the items in a nested iterable oject and put them in a 1d list, object types can be given in a list as argument in order to skip flattening those objects
 def flatten(obj,keep=[]):
-	if (type(obj) in [dict,collections.OrderedDict]) and (dict not in keep):
+	'''
+	gets all the items in a nested iterable oject and put them in a 1d list
+	keep is a list of object types that should not be flattened ( in python 3 strings will be "exploded" if str is not in the keep list)
+	'''
+	if (type(obj) in [dict,collections.OrderedDict]) and ((dict not in keep) and (collections.OrderedDict not in keep)):
 		for x in descend_values(obj):
 			yield x
 	else:	
@@ -580,10 +618,12 @@ diag_var += ['year','day','hour','flag'] # append some default variables to be r
 # tools for the plotting
 TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
-
 # loop over files and merge all the data in a dictionary, this will skip any data that is not properly time sorted
+print('\nGetting data:')
 all_files_data = {}
 for tccon_file in files:
+
+	print('\t-',tccon_file)
 
 	file_path = os.path.join(path,tccon_file)
 
@@ -591,25 +631,25 @@ for tccon_file in files:
 
 	if len(all_files_data.keys())==0:
 		for key,value in file_data.iteritems():
-			all_files_data[key] = value
+			all_files_data[key] = np.array(value)
 	else:
-		for key in file_data:
+		for key in ['xtime']+[i for i in file_data if i!='xtime']:
 			for time_id,new_time in enumerate(file_data['xtime']):
-				if new_time>all_files_data['xtime'][-1]:
-					try:
-						all_files_data[key].append(file_data[key][time_id])
-					except AttributeError:
-						np.append(all_files_data[key],file_data[key][time_id])
-# this a special dictionary for bokeh plots. The HTML file will contain this
+				if new_time>all_files_data['xtime'][len(file_data)+time_id-1]:
+					all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id])
+				else:
+					print('Time overlap:',new_time,'<',all_files_data['xtime'][-1])
+
+# this is a special dictionary for bokeh plots. The HTML file will contain this
 all_source = ColumnDataSource(data={key:value for key,value in all_files_data.iteritems()}, id='all_source')
 
 # file_data and all_files_data can potentially grow very large, and they are in all_source, so I explicitly remove them to save some memory
 del file_data
 del all_files_data
 
-main_sources = [] # this source will be empty and filled from all_source via callbacks
-err_sources = [] # this source will be empty and filled from all_source via callbacks
-save_sources = [] # this will just contain python objects I want to pass to the javascript callbacks
+main_source_list = [] # this source will be empty and filled from all_source via callbacks
+err_source_list = [] # this source will be empty and filled from all_source via callbacks
+save_source_list = [] # this will just contain python objects I want to pass to the javascript callbacks
 
 #############
 # Main code #
@@ -662,10 +702,10 @@ for panel_key in bok_struct:
 
 	if 'Custom' in panel_key: # first special case, custom plots
 
-		main_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
+		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
 		if True in list(descend_values(bok_struct[panel_key])):
-			err_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[]}) )
-		save_sources.append( ColumnDataSource(data={"colors":[colors_dict]}) )
+			err_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[]}) )
+		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict]}) )
 
 		for fig_key in bok_struct[panel_key]:
 			width = bok_struct[panel_key][fig_key]['plot_width']
@@ -680,14 +720,14 @@ for panel_key in bok_struct:
 
 			var_list = bok_struct[panel_key][fig_key]['lines']
 
-			save_sources[-1].data['varlist'] = var_list
+			save_source_list[-1].data['varlist'] = var_list
 
 			for plot_var in var_list:
 
-				figs[0].scatter(x="x",y="y",color='colo',source=main_sources[-1])
+				figs[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
 
 				if bok_struct[panel_key][fig_key]['errlines'] is True:
-					figs[1].scatter(x="x",y="y",color='black',source=err_sources[-1])				
+					figs[1].scatter(x="x",y="y",color='black',source=err_source_list[-1])				
 					figs[1].yaxis.axis_label='Error'
 
 			figs[0].xaxis.axis_label='Time'
@@ -696,9 +736,9 @@ for panel_key in bok_struct:
 			if bok_struct[panel_key][fig_key]['errlines'] is True:
 				callback=CustomJS(	args=dict(
 											S_all=all_source,
-											S_main=main_sources[-1],
-											S_err=err_sources[-1],
-											S_save=save_sources[-1],
+											S_main=main_source_list[-1],
+											S_err=err_source_list[-1],
+											S_save=save_source_list[-1],
 											mainy=figs[0].y_range,
 											erry=figs[1].y_range,
 											main_laby=figs[0].yaxis[0],
@@ -707,8 +747,8 @@ for panel_key in bok_struct:
 			else:
 				callback=CustomJS(	args=dict(
 											S_all=all_source,
-											S_main=main_sources[-1],
-											S_save=save_sources[-1],
+											S_main=main_source_list[-1],
+											S_save=save_source_list[-1],
 											mainy=figs[0].y_range,
 											main_laby=figs[0].yaxis[0],
 											),  
@@ -724,10 +764,10 @@ for panel_key in bok_struct:
 
 	if 'Key' in panel_key: # second special case, key plots
 
-		main_sources.append( ColumnDataSource(data={"x":[],"y":[],"colo":[]}) )
-		main_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
-		main_sources.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
-		save_sources.append( ColumnDataSource(data={"colors":[colors_dict]}) )
+		main_source_list.append( ColumnDataSource(data={"x":np.array([]),"y":np.array([]),"colo":[]}) )
+		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
+		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
+		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict]}) )
 
 		for fig_key in bok_struct[panel_key]:
 			width = bok_struct[panel_key][fig_key]['plot_width']
@@ -742,17 +782,17 @@ for panel_key in bok_struct:
 
 			var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
 
-			save_sources[-1].data['varlist'] = var_list
+			save_source_list[-1].data['varlist'] = var_list
 
-			figs[0].scatter(x="x",y="y",color='colo',source=main_sources[-1])
-			figs[1].scatter(x="x",y="y",color='colo',source=main_sources[-2])
-			figs[2].scatter(x="x",y="y",color='colo',source=main_sources[-3])
+			figs[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
+			figs[1].scatter(x="x",y="y",color='colo',source=main_source_list[-2])
+			figs[2].scatter(x="x",y="y",color='colo',source=main_source_list[-3])
 
 			callback_0=CustomJS(	args=dict(
 										S_all=all_source,
-										S_main=main_sources[-1],
-										S_fill=main_sources[-3],
-										S_save=save_sources[-1],
+										S_main=main_source_list[-1],
+										S_fill=main_source_list[-3],
+										S_save=save_source_list[-1],
 										mainy=figs[0].y_range,
 										main_laby=figs[0].yaxis[0],
 										fill_lab=figs[2].yaxis[0],
@@ -761,9 +801,9 @@ for panel_key in bok_struct:
 
 			callback_1=CustomJS(	args=dict(
 										S_all=all_source,
-										S_main=main_sources[-2],
-										S_fill=main_sources[-3],
-										S_save=save_sources[-1],
+										S_main=main_source_list[-2],
+										S_fill=main_source_list[-3],
+										S_save=save_source_list[-1],
 										mainy=figs[1].y_range,
 										main_laby=figs[1].yaxis[0],
 										fill_lab=figs[2].xaxis[0],
@@ -771,16 +811,26 @@ for panel_key in bok_struct:
 								code=dropdown_code)
 
 			menu = [(plot_var,plot_var) for plot_var in var_list]
-			dropdown_0 = Dropdown(label="Figure 1", menu=menu, callback=callback_0)
-			dropdown_1 = Dropdown(label="Figure 2", menu=menu, callback=callback_1)
+			dropdown_0 = Dropdown(label="Figure 1", menu=menu, callback=callback_0,width=200)
+			dropdown_1 = Dropdown(label="Figure 2", menu=menu, callback=callback_1,width=200)
 
-		grid = gridplot([[dropdown_0,dropdown_1],[figs[0]],[figs[1]],[figs[2],None]],toolbar_location='left',tools=TOOLS)	
+		dum = Div(text='',width=250)
+		dum2 = Div(text='',width=50)
+
+		notes = Div(text='<font size=4><b>Notes:</b></font><font size=2></br></br>Use the dropdown buttons to select the variable to display in Figure 1 and Figure 2</br></br>Data in grey has a flag != 0</br></br>If the axis labels do not update, use the "Reset" tool</br></br><img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Warning_icon.svg" height="20" width="20"> The "Save" tool from the toolbar will save each figure to a different .png</font>',width=600)
+
+		figrid = gridplot([[figs[0]],[figs[1]],[figs[2],notes]],toolbar_location='left')
+
+		grid = gridplot([[dum,dropdown_0,dum2,dropdown_1],[figrid]],toolbar_location=None)	
 
 	tabs.append( Panel(child=grid,title=panel_key) )
 
-final=Tabs(tabs=tabs)
+if len(tabs) == 1:
+	final = tabs[0].child
+else:
+	final=Tabs(tabs=tabs)
 
-outfile=open(os.path.join(save_path,'test.html'),'w') # you can modify the name of the html file generated here, make sure it finishes with '.html'
-outfile.write(file_html(final,CDN,'TCCON')) # you can modify 'TCCON' to something else, this appears in the internet tab when you open the page
+print('\nWritting',save_name,'...')
+outfile=open(os.path.join(save_path,save_name),'w')
+outfile.write(file_html(final,CDN,tab_name))
 outfile.close()
-
