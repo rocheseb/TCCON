@@ -81,7 +81,7 @@ from math import ceil
 
 # html plots
 from bokeh.plotting import figure
-from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Dropdown, Div, BoxSelectTool, DataTable, TableColumn
+from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Div, BoxSelectTool, DataTable, TableColumn, AutocompleteInput
 from bokeh.layouts import gridplot, widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -524,12 +524,12 @@ if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("gre
 S_main.change.emit();
 """
 
-dropdown_code= """
-all = S_all.data;
-main = S_main.data;
-fill = S_fill.data;
-varlist = S_save.data["varlist"];
-colors = S_save.data["colors"][0];
+input_code= """
+var all = S_all.data;
+var main = S_main.data;
+var fill = S_fill.data;
+var varlist = S_save.data["varlist"];
+var colors = S_save.data["colors"][0];
 
 var vartoplot = cb_obj.value;
 
@@ -555,10 +555,10 @@ main["y"] = [];
 main["colo"] = [];
 
 fill["colo"] = [];
-if (cb_obj.label.includes("1")) {
+if (cb_obj.title.includes("1")) {
 fill["y"]=[];
 }
-if (cb_obj.label.includes("2")) {
+if (cb_obj.title.includes("2")) {
 fill["x"]=[];
 }
 
@@ -567,8 +567,8 @@ main["y"].push(all[vartoplot][i]);
 
 if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push(colo);} else {main["colo"].push("grey");fill["colo"].push("grey");}
 
-if (cb_obj.label.includes("1")) {fill["y"].push(all[vartoplot][i]);}
-if (cb_obj.label.includes("2")) {fill["x"].push(all[vartoplot][i]);}
+if (cb_obj.title.includes("1")) {fill["y"].push(all[vartoplot][i]);}
+if (cb_obj.title.includes("2")) {fill["x"].push(all[vartoplot][i]);}
 	
 }
 
@@ -651,7 +651,8 @@ txt.change.emit();
 key_notes = """
 <font size=4><b>Notes:</b></font><font size=2></br>
 </br>
-Use the dropdown buttons to select the variable to display in Figure 1 and Figure 2</br>
+Type in the input widgets on the right to select the variable to display in Figure 1 and Figure 2</br>
+The input widgets use auto completion to suggest available variables, you can double click on suggestions to fill in the entry faster</br>
 </br>
 Use the "Box Select" tool to select data in Figure 1, number of points (N) and correlations (R) will be shown in the table</br>
 </br>
@@ -871,8 +872,8 @@ for panel_key in bok_struct:
 
 		# widgets
 		menu = [(plot_var,plot_var) for plot_var in var_list]
-		dropdown_0 = Dropdown(label="Figure 1", menu=menu,width=200)
-		dropdown_1 = Dropdown(label="Figure 2", menu=menu,width=200)
+		input_0 = AutocompleteInput(title="Figure 1:", value=None,completions=sorted(all_source.data.keys()),width=200)
+		input_1 = AutocompleteInput(title="Figure 2:", value=None,completions=sorted(all_source.data.keys()),width=200)		
 		data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
 		select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
 		notes = Div(text=key_notes,width=600)
@@ -884,7 +885,7 @@ for panel_key in bok_struct:
 
 		fig_list[0].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
 
-		dropdown_0.callback=CustomJS(	args=dict(
+		input_0.callback=CustomJS(	args=dict(
 									S_all=all_source,
 									S_main=main_source_list[-1],
 									S_fill=main_source_list[-3],
@@ -893,9 +894,9 @@ for panel_key in bok_struct:
 									main_laby=fig_list[0].yaxis[0],
 									fill_lab=fig_list[2].yaxis[0],
 									),  
-							code=dropdown_code)
+							code=input_code)
 
-		dropdown_1.callback=CustomJS(	args=dict(
+		input_1.callback=CustomJS(	args=dict(
 									S_all=all_source,
 									S_main=main_source_list[-2],
 									S_fill=main_source_list[-3],
@@ -904,12 +905,12 @@ for panel_key in bok_struct:
 									main_laby=fig_list[1].yaxis[0],
 									fill_lab=fig_list[2].xaxis[0],
 									),  
-							code=dropdown_code)
+							code=input_code)
 
 		# layout the final grid
 		notebox = widgetbox(select_text,data_table,notes,width=650)
-		dropbox_0 = widgetbox(dum,dropdown_0,width=210) # I use the dummy div widget to have the dropdown button ~aligned with the center of the figure 
-		dropbox_1 = widgetbox(dum2,dropdown_1,width=210)
+		dropbox_0 = widgetbox(dum,input_0,width=210) # I use the dummy div widget to have the input button ~aligned with the center of the figure 
+		dropbox_1 = widgetbox(dum2,input_1,width=210)
 
 		grid = gridplot([[fig_list[0],dropbox_0],[fig_list[1],dropbox_1],[fig_list[2],notebox]],toolbar_location='left')
 
