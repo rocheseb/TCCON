@@ -270,7 +270,18 @@ bok_struct = OrderedDict([
 
 def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
 	'''
-	reads 
+	reads TCCON data from several files in a given path
+	files must be of the same type (either .nc, .eof, .eof.csv)
+	merge the data from the different files in one dictionary
+	
+	Input:
+		path :		path to the folder containing the TCCON files
+		diag_var :	list of full variable names to be read from the files
+		diag_key :	list of keywords; all variables that include a keyword will be read
+		flag     :	if flag = 'all', data with any flag will be read, otherwise only data with the specified flag will be read
+	
+	Output:
+		dictionary of the merged data
 	'''
 
 	file_list=sorted([i for i in os.listdir(path) if '.' in i]) # list of file_list in the given path
