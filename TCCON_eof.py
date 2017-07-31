@@ -81,7 +81,7 @@ from math import ceil
 
 # html plots
 from bokeh.plotting import figure
-from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Div, BoxSelectTool, DataTable, TableColumn, AutocompleteInput
+from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Div, BoxSelectTool, DataTable, TableColumn, AutocompleteInput, Select
 from bokeh.layouts import gridplot, widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -135,7 +135,7 @@ colors_dict = {
 bok_struct = OrderedDict([
 			('Key_co2',OrderedDict([
 					('custom',{
-								'lines':('co2','sza','air',),
+								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out'),
 								'plot_height':250,
 								'plot_width':800,
 								}),	
@@ -268,9 +268,49 @@ bok_struct = OrderedDict([
 # Functions #
 #############
 
+def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
+	'''
+	reads 
+	'''
+
+	file_list=sorted([i for i in os.listdir(path) if '.' in i]) # list of file_list in the given path
+
+	# determine the file type for the read_tccon function
+	if '.nc' in file_list[0]:
+		mode = 'netcdf'
+	if '.eof' in file_list[0]:
+		mode = 'eof'
+	if ('.nc' not in file_list[0]) and ('.netcdf' not in file_list[0]) and ('.eof' not in file_list[0]):
+		print('You need netCDF or .eof tccon file_list to run this program')
+		sys.exit()
+
+	# loop over file_list and merge all the data in a dictionary, this will skip any data that is not properly time sorted
+	print('\nGetting data:')
+	all_files_data = {}
+	for tccon_file in file_list:
+
+		print('\t-',tccon_file)
+
+		file_path = os.path.join(path,tccon_file)
+
+		file_data = read_tccon(file_path,mode=mode,variables=diag_var,key_variables=diag_key,flag=flag)
+
+		if len(all_files_data.keys())==0:
+			for key,value in file_data.iteritems():
+				all_files_data[key] = np.array(value)
+		else:
+			for key in ['xtime']+[i for i in file_data if i!='xtime']:
+				for time_id,new_time in enumerate(file_data['xtime']):
+					if new_time>all_files_data['xtime'][len(file_data)+time_id-1]:
+						all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id])
+					else:
+						print('Time overlap:',new_time,'<',all_files_data['xtime'][-1])
+
+	return {key:value for key,value in all_files_data.iteritems()}
+
 def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 	'''
-	 can read tccon .eof, .eof.csv, or .nc files with specified variables of two types:
+	 can read tccon .eof, .eof.csv, or .nc file_list with specified variables of two types:
 	 "variables" is a list of exact variables names to be read
 	 "key_variables" is a list of keywords, every variable that includes one of the keywords in their name will be read
 	 if those lists are not specified all variables (>1200) will be read
@@ -407,7 +447,7 @@ while os.path.isdir(path)==False:
 		path = argu[1]
 	else:
 		print('\n\nPut in a folder all the .eof files you want to process, give the path to that folder')
-		path=raw_input('Give the path to your folder /YOUR/PATH/TO/FILES  :\n')
+		path=raw_input('Give the path to your folder /YOUR/PATH/TO/FOLDER  :\n')
 	if os.path.isdir(path)==False:
 		print('/!\\ You gave a wrong path /!\\\n')
 		if len(argu)>1:
@@ -530,6 +570,7 @@ var main = S_main.data;
 var fill = S_fill.data;
 var varlist = S_save.data["varlist"];
 var colors = S_save.data["colors"][0];
+var colo = '';
 
 var vartoplot = cb_obj.value;
 
@@ -540,8 +581,8 @@ fill_lab.axis_label = vartoplot;
 
 for (var key in colors) {
 if(vartoplot.includes(key)){
-var colo = colors[key]
-}
+colo = colors[key]
+} else {colo = 'red'}
 }
 
 var y = all[vartoplot];
@@ -565,7 +606,7 @@ fill["x"]=[];
 for (i=0;i<y.length;i++) {
 main["y"].push(all[vartoplot][i]);
 
-if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push(colo);} else {main["colo"].push("grey");fill["colo"].push("grey");}
+if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push("red");} else {main["colo"].push("grey");fill["colo"].push("grey");}
 
 if (cb_obj.title.includes("1")) {fill["y"].push(all[vartoplot][i]);}
 if (cb_obj.title.includes("2")) {fill["x"].push(all[vartoplot][i]);}
@@ -584,12 +625,12 @@ var inds = cb_obj.selected['1d'].indices;
 var d1 = cb_obj.data;
 var d2 = s2.data;
 var tab = dt.source.data;
-var dcor = scor.data;
+var dcor = S_fill.data;
 
 s2.selected['1d'].indices = inds;
-scor.selected['1d'].indices = inds;
+S_fill.selected['1d'].indices = inds;
 
-scor.change.emit();
+S_fill.change.emit();
 s2.change.emit();
 
 var ym1 = 0;
@@ -684,50 +725,13 @@ for var in all_key:
 	if var not in diag_key:
 		diag_key.append(var)
 
-files=sorted([i for i in os.listdir(path) if '.' in i]) # list of files in the given path
-
-# determine the file type for the read_tccon function
-if '.nc' in files[0]:
-	mode = 'netcdf'
-if '.eof' in files[0]:
-	mode = 'eof'
-if ('.nc' not in files[0]) and ('.netcdf' not in files[0]) and ('.eof' not in files[0]):
-	print('You need netCDF or .eof tccon files to run this program')
-	sys.exit()
-
 diag_var += ['year','day','hour','flag'] # append some default variables to be read. So we can create datetime objects, and also the quality flags
 
 # tools for the plotting
 TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
-# loop over files and merge all the data in a dictionary, this will skip any data that is not properly time sorted
-print('\nGetting data:')
-all_files_data = {}
-for tccon_file in files:
-
-	print('\t-',tccon_file)
-
-	file_path = os.path.join(path,tccon_file)
-
-	file_data = read_tccon(file_path,mode=mode,variables=diag_var,key_variables=diag_key,flag=flag)
-
-	if len(all_files_data.keys())==0:
-		for key,value in file_data.iteritems():
-			all_files_data[key] = np.array(value)
-	else:
-		for key in ['xtime']+[i for i in file_data if i!='xtime']:
-			for time_id,new_time in enumerate(file_data['xtime']):
-				if new_time>all_files_data['xtime'][len(file_data)+time_id-1]:
-					all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id])
-				else:
-					print('Time overlap:',new_time,'<',all_files_data['xtime'][-1])
-
-# this is a special dictionary for bokeh plots. The HTML file will contain this
-all_source = ColumnDataSource(data={key:value for key,value in all_files_data.iteritems()}, id='all_source')
-
-# file_data and all_files_data can potentially grow very large, and they are in all_source, so I explicitly remove them to save some memory
-del file_data
-del all_files_data
+# special bokh object to store data inside the HTML page
+all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,flag=flag), id='all_source')
 
 main_source_list = [] # this source will be empty and filled from all_source via callbacks
 err_source_list = [] # this source will be empty and filled from all_source via callbacks
@@ -849,6 +853,7 @@ for panel_key in bok_struct:
 		fig_key = [i for i in bok_struct[panel_key]][0] # there is only one key in "Key" panels
 		key_list = bok_struct[panel_key][fig_key]['lines']
 		var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
+		key_tools = "box_zoom,wheel_zoom,box_select,pan,undo,redo,reset,save"
 
 		# sources
 		main_source_list.append( ColumnDataSource(data={"x":np.array([]),"y":np.array([]),"colo":[]}) )
@@ -860,9 +865,10 @@ for panel_key in bok_struct:
 		# figures
 		width = bok_struct[panel_key][fig_key]['plot_width']
 		height = bok_struct[panel_key][fig_key]['plot_height']
-		fig_list.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools="pan,wheel_zoom,box_zoom,box_select,undo,redo,reset,save") )
-		fig_list[0].select_one(BoxSelectTool).dimensions = 'width'
-		fig_list.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=fig_list[0].x_range,tools=TOOLS) )
+		fig_list.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=key_tools) )
+		fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
+		fig_list.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=fig_list[0].x_range,tools=key_tools) )
+		fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
 		fig_list.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
 
 		# glyphrenderers
@@ -872,40 +878,48 @@ for panel_key in bok_struct:
 
 		# widgets
 		menu = [(plot_var,plot_var) for plot_var in var_list]
-		input_0 = AutocompleteInput(title="Figure 1:", value=None,completions=sorted(all_source.data.keys()),width=200)
-		input_1 = AutocompleteInput(title="Figure 2:", value=None,completions=sorted(all_source.data.keys()),width=200)		
+		#input_0 = AutocompleteInput(title="Figure 1:", value=None,completions=sorted(all_source.data.keys()),width=200)
+		#input_1 = AutocompleteInput(title="Figure 2:", value=None,completions=sorted(all_source.data.keys()),width=200)
+		input_0 = Select(title="Figure 1:", value=None,options=sorted(all_source.data.keys()),width=200)
+		input_1 = Select(title="Figure 2:", value=None,options=sorted(all_source.data.keys()),width=200)			
 		data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
 		select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
 		notes = Div(text=key_notes,width=600)
-		dum = Div(text='',height=100) # dummy div widget for widget spacing in the layout
-		dum2 = Div(text='',height=100) # dummy div widget for widget spacing in the layout
+		dum = Div(text='',height=70) # dummy div widget for widget spacing in the layout
+		dum2 = Div(text='',height=70) # dummy div widget for widget spacing in the layout
 
 		# callbacks
-		main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,scor=main_source_list[-3]), code=key_source_code)
+		main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
+		main_source_list[-2].callback = CustomJS(args = dict(s2=main_source_list[-1],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
 
 		fig_list[0].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
+		fig_list[1].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
 
 		input_0.callback=CustomJS(	args=dict(
 									S_all=all_source,
 									S_main=main_source_list[-1],
+									s2=main_source_list[-2],
 									S_fill=main_source_list[-3],
 									S_save=save_source_list[-1],
 									mainy=fig_list[0].y_range,
 									main_laby=fig_list[0].yaxis[0],
 									fill_lab=fig_list[2].yaxis[0],
+									dt = data_table,
 									),  
-							code=input_code)
+							code=input_code+key_source_code.replace('cb_obj','S_main'))
 
 		input_1.callback=CustomJS(	args=dict(
 									S_all=all_source,
 									S_main=main_source_list[-2],
+									s2=main_source_list[-1],
 									S_fill=main_source_list[-3],
 									S_save=save_source_list[-1],
 									mainy=fig_list[1].y_range,
 									main_laby=fig_list[1].yaxis[0],
 									fill_lab=fig_list[2].xaxis[0],
+									dt = data_table,
 									),  
-							code=input_code)
+							code=input_code+key_source_code.replace('cb_obj','S_main'))
 
 		# layout the final grid
 		notebox = widgetbox(select_text,data_table,notes,width=650)
