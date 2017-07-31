@@ -591,10 +591,12 @@ main_laby.axis_label = vartoplot;
 fill_lab.axis_label = vartoplot;
 
 for (var key in colors) {
-if(vartoplot.includes(key)){
-colo = colors[key]
-} else {colo = 'red'}
+if (vartoplot.includes(key)) {colo = colors[key]}
 }
+
+if (colo=='') { colo = 'red'}
+
+console.log(colo);
 
 var y = all[vartoplot];
 var min = Math.min.apply(null,y);
@@ -623,9 +625,6 @@ if (cb_obj.title.includes("1")) {fill["y"].push(all[vartoplot][i]);}
 if (cb_obj.title.includes("2")) {fill["x"].push(all[vartoplot][i]);}
 	
 }
-
-console.log(fill["y"]);
-console.log(fill["x"]);
 
 S_main.change.emit();
 S_fill.change.emit();
