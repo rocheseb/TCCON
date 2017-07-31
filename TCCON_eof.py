@@ -105,6 +105,7 @@ save_name = 'test.html'
 tab_name = 'TCCON'
 
 # associate a keyword with a color. Variables including the keyword will be plotted with that color. (be careful with co, co2 and o2 ! )
+# red is the default color for variables that do not include any of the keywords in colors_dict
 # note: if you use 'all' for the flag, only flag 0 data will use the colors, flag != 0 data will be grey
 colors_dict = {
 				'co2':'red',
@@ -120,7 +121,7 @@ colors_dict = {
 				'sza':'fuchsia',
 				}
 
-# dictionary with a structure that will define the final plot layout.
+# bok_struct is a dictionary with a structure that will define the final plot layout.
 '''
 -> first key => Panel
 	-> subkey 1 => figure in panel
@@ -128,21 +129,20 @@ colors_dict = {
 '''
 			# this indent is for panels
 					# this indent is for figures under a panel (the key will be used as figure title)
-								# this indent if for lines in a figure, given in a list named 'lines' (the keys will be used as Y axis label and must be exact variable names from the EOF file header or from the .nc file)
-
-# to add an error plot below regular plots, set the 'errlines' parameter to True.
-# this only works for variables that have a '_error' extension (e.g. xco2_ppm, xco2_ppm_error)								
+								# this indent if for lines in a figure, given in a list named 'lines' (the keys will be used as Y axis label and must be exact variable names from the EOF file header or from the .nc file)							
 bok_struct = OrderedDict([
-			('Key_co2',OrderedDict([
+			('Key_panel',OrderedDict([
 					('custom',{
-								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out'),
+								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out'), # add keywords in thise tuple to increase the variables to be read.
 								'plot_height':250,
 								'plot_width':800,
 								}),	
-					])), # end of 'Key_co2_6220' panel
+					])), # end of 'Key_panel' panel
 			])
 # below is an example of a more complex bok_struct object containing different kinds of tabs
 """
+# to add an error plot below regular plots, set the 'errlines' parameter to True.
+# this only works for variables that have a '_error' extension (e.g. xco2_ppm, xco2_ppm_error)	
 bok_struct = OrderedDict([
 			('xgas',OrderedDict([	
 					('xair',{
@@ -262,7 +262,7 @@ bok_struct = OrderedDict([
 								'errlines':False,
 								}),	
 					])), # end of 'other' panel
-			])
+			]) # end of bok_struct
 """
 #############
 # Functions #
