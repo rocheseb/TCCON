@@ -268,7 +268,7 @@ bok_struct = OrderedDict([
 # Functions #
 #############
 
-def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
+def merged_tccon_data(path,diag_var=[],diag_key=[],skip_list=[],flag=''):
 	'''
 	reads TCCON data from several files in a given path
 	files must be of the same type (either .nc, .eof, .eof.csv)
@@ -304,7 +304,7 @@ def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
 
 		file_path = os.path.join(path,tccon_file)
 
-		file_data = read_tccon(file_path,mode=mode,variables=diag_var,key_variables=diag_key,flag=flag)
+		file_data = read_tccon(file_path,mode=mode,variables=diag_var,key_variables=diag_key,skip_list=skip_list,flag=flag)
 
 		if len(all_files_data.keys())==0:
 			for key,value in file_data.iteritems():
@@ -321,12 +321,13 @@ def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
 
 	return {key:value for key,value in all_files_data.iteritems()}
 
-def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
+def read_tccon(path,mode='eof',variables=[],key_variables=[],skip_list=[],flag='all'):
 	'''
 	 can read tccon .eof, .eof.csv, or .nc file_list with specified variables of two types:
 	 "variables" is a list of exact variables names to be read
 	 "key_variables" is a list of keywords, every variable that includes one of the keywords in their name will be read
 	 if those lists are not specified all variables (>1200) will be read
+	 skip_list is a list of keywords, any variable that include those keywords will not be read in 'key' panels even if they are also in the 'lines' attribute of the bok_struct object
 	 flag is "all" by default and data with any flag will be read, you can give the appropriate integer if you want to only read data with a specific flag
 	 the mode can be set to 'eof', 'csv', or 'netcdf'
 	'''
@@ -358,6 +359,8 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 			for var in add_var:
 				if var not in variables:
 					variables.append(var)
+
+		variables = [var for var in variables if True not in [key in var for key in skip_list]]
 
 		if flag == 'all':
 			if 'csv' in path:
@@ -396,12 +399,15 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 				if var not in variables:
 					variables.append(var)
 
+		variables = [var for var in variables if True not in [key in var for key in skip_list]]
+
 		for var in variables:
 			try:
 				if flag == 'all':
 					DATA[var] = np.array( f.variables[var][:], dtype=np.float )
 				else:
-					DATA[var] = np.array( [f.variables[var][ID] for ID,elem in enumerate(list(f.variables['flag'][:])) if int(elem)==int(flag)] ,dtype=np.float ) # this is kind of slow ...
+					#DATA[var] = np.array( [f.variables[var][ID] for ID,elem in enumerate(list(f.variables['flag'][:])) if int(elem)==int(flag)] ,dtype=np.float ) # this is kind of slow ...
+					DATA[var] = f.variables[var][:][f.variables['flag'][:]==float(flag)].astype(np.float) # much faster !!
 			except ValueError:
 				print('Skipping string variable:',var)
 
@@ -743,7 +749,7 @@ diag_var += ['year','day','hour','flag'] # append some default variables to be r
 TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
 # special bokh object to store data inside the HTML page
-all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,flag=flag), id='all_source')
+all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['ada'],flag=flag), id='all_source')
 
 main_source_list = [] # this source will be empty and filled from all_source via callbacks
 err_source_list = [] # this source will be empty and filled from all_source via callbacks
