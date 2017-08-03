@@ -28,7 +28,7 @@ from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool
 from bokeh.layouts import gridplot, widgetbox, LayoutDOM
 
-tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
+tccon_path = os.path.join(os.getcwd(),'full_archive') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
 # dictonnary with the full names of TCCON sites
 T_FULL = {
@@ -109,7 +109,8 @@ for key in T_FULL:
 	else:
 		T_site[key] += '_'.join(T_FULL[key].split())
 
-tccon_file_list = os.listdir(tccon_path) # list of the files in the 'TCCON' folder
+tccon_file_list = [i for i in os.listdir(tccon_path) if '.nc' in i] # list of the files in the 'TCCON' folder
+prefix_list = list(set([i[:2] for i in tccon_file_list])) # list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
 
 # determine if the files are from the public or private archive
 public = True
@@ -126,7 +127,7 @@ fig.xaxis.axis_label = 'Time'
 
 fig.scatter(x='x',y='y',color='colo',alpha=0.7,source=source) # this is the plot, it will read data from the 'source' object
 
-site_input = Select(title='Site:',options = sorted(T_FULL.values()),width=220) # dropdown widget to select the TCCON site
+site_input = Select(title='Site:',options = sorted([T_FULL[i] for i in prefix_list]),width=220) # dropdown widget to select the TCCON site
 var_input = Select(title='Variable to plot:',width=220) # dropdown widget to select the variable to plot 
 date_input = TextInput(title='start-end yyyymmdd:') # text input widget to specify dates between which data should be fetched
 
@@ -172,6 +173,7 @@ dum_button.callback = CustomJS(args={'load_div':load_div},code=dum_button_code) 
 
 dum_text = TextInput() # dummy text input widget; it will be used to trigger the dummy button callback when the dropdown widgets are used.
 dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
+dum_alert = Div(text='<b>OOPS !</b> the widgets below are not supposed to be visible. Try refreshing the page',width=700) # if the 'timeout' callback is set too early, the dummy widgets won't be hidden
 
 def set_site(attr,old,new):
 	'''
@@ -181,7 +183,7 @@ def set_site(attr,old,new):
 	'''
 	site = site_input.value # the selected TCCON site
 	prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-	site_file_list = [i for i in tccon_file_list if ((prefix in i) and ('.nc' in i))] # a list of the associated netcdf files
+	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated netcdf files
 	fig.yaxis.axis_label = var_input.value 
 	fig.title.text = T_FULL[prefix]+', '+T_LOC[prefix] # site name + site location
 	notes_div.text = notes.replace("a></font>","a></font>, <a href='"+T_site[prefix]+"'>"+site+"</a>") # updated the information widget with a link to the site's webpage
@@ -230,7 +232,7 @@ def set_site(attr,old,new):
 			if filenum==0:
 				all_file_min = site_file_list[0][2:10]		# minimum YYYYMMDD of all files
 				all_file_max = site_file_list[-1][11:19]	# maximum YYYYMMDD of all files
-				all_file_min_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
+				all_file_min_date = calendar.timegm(datetime(int(all_file_min[:4]),int(all_file_min[4:6]),int(all_file_min[6:8])).timetuple())/24/3600
 				all_file_max_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
 				# break out of the for loop if min or max dates from the file names are not compatible with the date input
 				if (mindate>all_file_max_date) or (maxdate<all_file_min_date):
@@ -314,7 +316,7 @@ def read_nc(attr,old,new):
 	try: # attempt to get a variable
 		site = site_input.value # the selected TCCON site
 		prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-		site_file_list = [i for i in tccon_file_list if ((prefix in i) and ('.nc' in i))] # a list of the associated netcdf files
+		site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated netcdf files
 	except: 
 		pass # do nothing if an exception occurs (not sure if there can even be one here; maybe an empty 'site_input')
 	else: # if no exception occured ...
@@ -355,7 +357,7 @@ def read_nc(attr,old,new):
 			if filenum==0:
 				all_file_min = site_file_list[0][2:10]		# minimum YYYYMMDD of all files
 				all_file_max = site_file_list[-1][11:19]	# maximum YYYYMMDD of all files
-				all_file_min_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
+				all_file_min_date = calendar.timegm(datetime(int(all_file_min[:4]),int(all_file_min[4:6]),int(all_file_min[6:8])).timetuple())/24/3600
 				all_file_max_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
 				# break out of the for loop if min or max dates from the file names are not compatible with the date input
 				if (mindate>all_file_max_date) or (maxdate<all_file_min_date):
@@ -486,12 +488,12 @@ if public:
 	# callback of the dummy 'dum_text' TextInput widget to trigger a button click on the dummy button 'dum_button'
 	dum_text.js_on_change('value',CustomJS(args={},code="document.getElementsByTagName('button')[0].click();"))
 	# put the figure and all the widget in a single grid layout object
-	grid = gridplot([[figrid,widgetbox(site_input,var_input,dumdiv,date_input,load_div,notes_div,width=600)],[widgetbox(dum_button,dum_text,dum_hide,width=0,height=0)]], toolbar_location = None)
+	grid = gridplot([[figrid,widgetbox(site_input,var_input,dumdiv,date_input,load_div,notes_div,width=600)],[widgetbox(dum_alert,dum_button,dum_text,dum_hide,width=0,height=0)]], toolbar_location = None)
 
 else: # for the 'private mode' only the index of the html divs containing the dummy widgets changes because of the addtion of the 'center_button' in the layout
 	dum_hide.js_on_change('value',CustomJS(code="""document.getElementsByClassName("bk-widget-box")[2].style.display="none";"""))
 	dum_text.js_on_change('value',CustomJS(args={},code="document.getElementsByTagName('button')[1].click();"))
-	grid = gridplot([[figrid,widgetbox(site_input,var_input,dumdiv,date_input,load_div,notes_div,width=600)],[center_button],[widgetbox(dum_button,dum_text,dum_hide,width=0,height=0)]], toolbar_location = None)
+	grid = gridplot([[figrid,widgetbox(site_input,var_input,dumdiv,date_input,load_div,notes_div,width=600)],[center_button],[widgetbox(dum_alert,dum_button,dum_text,dum_hide,width=0,height=0)]], toolbar_location = None)
 
 figrid.children[0].merge_tools = False # need to do that due to a bug in bokeh 0.12.6 that prevent gridplot to display the HoverTool in the toolbar
 
