@@ -133,7 +133,7 @@ colors_dict = {
 bok_struct = OrderedDict([
 			('Key_panel',OrderedDict([
 					('custom',{
-								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out'), # add keywords in thise tuple to increase the variables to be read.
+								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out','hour',), # add keywords in thise tuple to increase the variables to be read.
 								'plot_height':250,
 								'plot_width':800,
 								}),	
@@ -313,7 +313,9 @@ def merged_tccon_data(path,diag_var=[],diag_key=[],flag=''):
 			for key in ['xtime']+[i for i in file_data if i!='xtime']:
 				for time_id,new_time in enumerate(file_data['xtime']):
 					if new_time>all_files_data['xtime'][len(file_data)+time_id-1]:
-						all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id])
+						#all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id])
+						all_files_data[key] = np.append(all_files_data[key],file_data[key][time_id:])
+						break
 					else:
 						print('Time overlap:',new_time,'<',all_files_data['xtime'][-1])
 
@@ -401,7 +403,7 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],flag='all'):
 				else:
 					DATA[var] = np.array( [f.variables[var][ID] for ID,elem in enumerate(list(f.variables['flag'][:])) if int(elem)==int(flag)] ,dtype=np.float ) # this is kind of slow ...
 			except ValueError:
-				'Skipping string variable:',var
+				print('Skipping string variable:',var)
 
 		f.close()
 
@@ -702,8 +704,8 @@ txt.change.emit();
 key_notes = """
 <font size=4><b>Notes:</b></font><font size=2></br>
 </br>
-Type in the input widgets on the right to select the variable to display in Figure 1 and Figure 2</br>
-The input widgets use auto completion to suggest available variables, you can double click on suggestions to fill in the entry faster</br>
+Use the dropdown buttons to display time series of variables in Figure 1 and Figure 2</br>
+The last figure will display the selected variable from Figure 1 (y axis) and Figure 2 (x axis)</br>
 </br>
 Use the "Box Select" tool to select data in Figure 1, number of points (N) and correlations (R) will be shown in the table</br>
 </br>
