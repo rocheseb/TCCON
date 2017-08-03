@@ -5,6 +5,7 @@
 This code will produce an interactive plots reading into TCCON netcdf files to display time series of the data.
 
 In the same directory as this code, make a 'TCCON' folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08)
+You can also edit the 'tccon_path' variable if you already have tccon files in a different location.
 
 This code needs to be run by a bokeh server like this:
 
@@ -27,7 +28,7 @@ from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool
 from bokeh.layouts import gridplot, widgetbox, LayoutDOM
 
-tccon_path = os.path.join(os.getcwd(),'full_archive') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
+tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
 # dictonnary with the full names of TCCON sites
 T_FULL = {
