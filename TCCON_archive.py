@@ -28,7 +28,7 @@ from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool
 from bokeh.layouts import gridplot, widgetbox, LayoutDOM
 
-tccon_path = os.path.join(os.getcwd(),'full_archive') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
+tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
 # dictonnary with the full names of TCCON sites
 T_FULL = {
