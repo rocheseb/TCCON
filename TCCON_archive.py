@@ -248,7 +248,7 @@ def set_site(attr,old,new):
 			# for each file, fastforward to next iteration of the for loop if the dates in the file name are not compatible with the date input
 			file_min = site_file[2:10]
 			file_max = site_file[11:19]
-			file_min_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
+			file_min_date = calendar.timegm(datetime(int(file_min[:4]),int(file_min[4:6]),int(file_min[6:8])).timetuple())/24/3600
 			file_max_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
 			if (mindate>file_max_date) or (maxdate<file_min_date):
 				f.close() # close the netcdf reader
@@ -373,7 +373,7 @@ def read_nc(attr,old,new):
 			# for each file, fastforward to next iteration of the for loop if the dates in the file name are not compatible with the date input
 			file_min = site_file[2:10]
 			file_max = site_file[11:19]
-			file_min_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
+			file_min_date = calendar.timegm(datetime(int(file_min[:4]),int(file_min[4:6]),int(file_min[6:8])).timetuple())/24/3600
 			file_max_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
 			if (mindate>file_max_date) or (maxdate<file_min_date):
 				f.close() # close the netcdf reader
