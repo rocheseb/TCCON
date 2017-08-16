@@ -477,7 +477,7 @@ def center():
 		load_div.text = 'Variable is constant'
 
 
-center_button = Button(label='Scale without extremas',name='test',width=220) # button to 'center' the plot on the 'good' data
+center_button = Button(label='Scale without extrema',name='test',width=220) # button to 'center' the plot on the 'good' data
 center_button.on_click(center) # assign the callback function to the button
 
 figrid = gridplot([[fig]] , toolbar_location = 'above') # put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
