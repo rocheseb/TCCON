@@ -4,8 +4,14 @@
 """
 This code will produce an interactive plots reading into TCCON netcdf files to display time series of the data.
 
-In the same directory as this code, make a 'TCCON' folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08)
+In the same directory as this code, make a 'TCCON' folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08).
 You can also edit the 'tccon_path' variable if you already have tccon files in a different location.
+
+You can also use .eof.csv files, but not together with netcdf files; only one type of files should be in the 'TCCON' folder.
+It is much slower to read from the .eof.csv files than it is to read from the netcdf files !
+And unlike the netcdf files, using the date input widget won't make loading of data subsets faster with the .eof.csv files.
+
+All the file names must start with the format xxYYYYMMDD_YYYYMMDD , xx is the two letters site abbreviation
 
 This code needs to be run by a bokeh server like this:
 
@@ -17,16 +23,17 @@ If the selected site's data is in different files it will take longer to load ne
 import sys
 import os
 import netCDF4
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import calendar
 import numpy as np
+import pandas as pd
 from functools import partial
 
-from bokeh.io import show,curdoc,save
+from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool
-from bokeh.layouts import gridplot, widgetbox, LayoutDOM
+from bokeh.layouts import gridplot, widgetbox
 
 tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
@@ -102,22 +109,31 @@ T_LOC =  {
 			'we':'Germany',
 		 }
 
-T_site = {key:'https://tccon-wiki.caltech.edu/Sites/' for key in T_FULL} # dictionary mapping each site prefixe to its webpage
+T_site = {key:'https://tccon-wiki.caltech.edu/Sites/' for key in T_FULL} # dictionary mapping each site prefix to its webpage
 for key in T_FULL:
 	if any(char.isdigit() for char in T_FULL[key]):
 		T_site[key] += '_'.join(T_FULL[key].split()[:-1])
 	else:
 		T_site[key] += '_'.join(T_FULL[key].split())
 
+netcdf = True
 tccon_file_list = [i for i in os.listdir(tccon_path) if '.nc' in i] # list of the files in the 'TCCON' folder
-prefix_list = list(set([i[:2] for i in tccon_file_list])) # list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
+if len(tccon_file_list) == 0:
+	netcdf = False
+	tccon_file_list = [i for i in os.listdir(tccon_path) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
+
+# list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
+prefix_list = list(set([i[:2] for i in tccon_file_list])) 
 
 # determine if the files are from the public or private archive
 public = True
-f = netCDF4.Dataset(os.path.join(tccon_path,tccon_file_list[0]),'r')
-if 'flag' in [v for v in f.variables]:
+if netcdf:
+	f = netCDF4.Dataset(os.path.join(tccon_path,tccon_file_list[0]),'r')
+	if 'flag' in [var for var in f.variables]:
+		public = False
+	f.close()
+else:
 	public = False
-f.close()
 
 source = ColumnDataSource(data={'x':[],'y':[],'colo':[]}) # this is the object that stores the data to be plotted; it will be filled during callbacks
 
@@ -127,7 +143,10 @@ fig.xaxis.axis_label = 'Time'
 
 fig.scatter(x='x',y='y',color='colo',alpha=0.7,source=source) # this is the plot, it will read data from the 'source' object
 
-site_input = Select(title='Site:',options = sorted([T_FULL[i] for i in prefix_list]),width=220) # dropdown widget to select the TCCON site
+# list of sites that will be available in the site_input selection widget; I add an empty string at the beginning so that the first site can be selected right away
+ordered_site_list = ['']+sorted([T_FULL[i] for i in prefix_list]) 
+
+site_input = Select(title='Site:',options = ordered_site_list,width=220) # dropdown widget to select the TCCON site
 var_input = Select(title='Variable to plot:',width=220) # dropdown widget to select the variable to plot 
 date_input = TextInput(title='start-end yyyymmdd:') # text input widget to specify dates between which data should be fetched
 
@@ -148,7 +167,7 @@ If axis labels do not update, use the "Reset" tool</br>
 Links: <a href='https://tccon-wiki.caltech.edu'>TCCON</a></font>
 """
 
-notes_div = Div(text=notes,width=600)
+notes_div = Div(text=notes,width=600) # this will display the 'notes' above
 load_div = Div(text='Select a site',width=400) # the text of this widget will be updated with information on the state of callbacks
 
 dumdiv = Div(text='',height=10) # dummy empty Div widget for spacing
@@ -173,7 +192,10 @@ dum_button.callback = CustomJS(args={'load_div':load_div},code=dum_button_code) 
 
 dum_text = TextInput() # dummy text input widget; it will be used to trigger the dummy button callback when the dropdown widgets are used.
 dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
-dum_alert = Div(text='<b>OOPS !</b> the widgets below are not supposed to be visible. Try refreshing the page',width=700) # if the 'timeout' callback is set too early, the dummy widgets won't be hidden
+
+# if the 'timeout' callback is set too early, the dummy widgets won't be hidden.
+# but if it is set too late, the user will have time to see the dummy widgets before they disappear.
+dum_alert = Div(text='<b>OOPS !</b> the widgets below are not supposed to be visible. Try refreshing the page',width=700) 
 
 def set_site(attr,old,new):
 	'''
@@ -183,7 +205,7 @@ def set_site(attr,old,new):
 	'''
 	site = site_input.value # the selected TCCON site
 	prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated netcdf files
+	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated files
 	fig.yaxis.axis_label = var_input.value 
 	fig.title.text = T_FULL[prefix]+', '+T_LOC[prefix] # site name + site location
 	notes_div.text = notes.replace("a></font>","a></font>, <a href='"+T_site[prefix]+"'>"+site+"</a>") # updated the information widget with a link to the site's webpage
@@ -196,14 +218,19 @@ def set_site(attr,old,new):
 		load_div.text = 'Select a variable'
 	
 	# loop over the TCCON files for the selected site
-	data_check = False
-	broken = False
+	data_check = False # boolean check that will be set to True if there is data within the requested time range
+	broken = False # boolean check that will be set to True before breaking out of the loop below
 	for filenum,site_file in enumerate(site_file_list):
-		f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
+		if netcdf:
+			f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
+			all_var = f.variables
+		else:
+			df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
+			all_var = list(df)
 
 		# setup some initializations if it is the first file
 		if filenum==0:
-			var_input.options = sorted([v for v in f.variables if True not in [elem in v for elem in skip_list]]) # fill the 'var_input' dropdown with options
+			var_input.options = sorted([var for var in all_var if True not in [elem in var for elem in skip_list]]) # fill the 'var_input' dropdown with options
 			# configure the source and HoverTool based on the type of file
 			if public:
 				source.data.update({'x':[],'y':[],'colo':[]})
@@ -213,7 +240,11 @@ def set_site(attr,old,new):
 				fig.select_one(HoverTool).tooltips = [('value','@y'),('spectrum','@spectrum'),('flag','@flag')]
 
 		if var_input.value != '':	# only tries to read variables if a'var_input' option has been selected 
-			nctime =  f.variables['time'][:] # fractional days since 1970
+			if netcdf:
+				nctime =  f.variables['time'][:] # fractional days since 1970
+			else:			
+				# for .eof.csv files convert year,day,hour in fractional days since 1970
+				nctime = np.array([(datetime(int(df.year[i]),1,1)+timedelta(days=df.day[i]-1)-datetime(1970,1,1)).days+df.hour[i]/24 for i in range(len(df))])
 
 			# use the value of the 'date_input' widget to determine the range of dates over which data should be fetched
 			try: # for the minimum of the range
@@ -242,7 +273,8 @@ def set_site(attr,old,new):
 					broken_text = 'Wrong date input'
 					broken = True
 				if broken:
-					f.close() # close the netcdf reader
+					if netcdf:
+						f.close() # close the netcdf reader
 					break
 
 			# for each file, fastforward to next iteration of the for loop if the dates in the file name are not compatible with the date input
@@ -251,7 +283,8 @@ def set_site(attr,old,new):
 			file_min_date = calendar.timegm(datetime(int(file_min[:4]),int(file_min[4:6]),int(file_min[6:8])).timetuple())/24/3600
 			file_max_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
 			if (mindate>file_max_date) or (maxdate<file_min_date):
-				f.close() # close the netcdf reader
+				if netcdf:
+					f.close() # close the netcdf reader
 				continue
 
 			newtime = nctime[(nctime>=mindate) & (nctime<maxdate)] # list of times that satisfy the 'date_input' value (still fractional days since 1970)
@@ -267,13 +300,21 @@ def set_site(attr,old,new):
 
 			try: # attempt to fetch data using start_id and end_id
 				add_x = np.array([datetime(*time.gmtime(i*24*3600)[:6]) for i in newtime])
-				add_y = f.variables[var_input.value][start_id:end_id]
+				if netcdf:
+					add_y = f.variables[var_input.value][start_id:end_id]
+				else:
+					add_y = np.array(df[var_input.value][start_id:end_id])
 				if public:
 					add_colo = np.array(['red']*len(add_x))
 				else:
-					add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
-					add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]] # name of spectra for the HoverTool
-					add_flag = f.variables['flag'][start_id:end_id] # flags for the HoverTool
+					if netcdf:
+						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
+						add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]] # name of spectra for the HoverTool
+						add_flag = f.variables['flag'][start_id:end_id] # flags for the HoverTool
+					else:
+						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in df['flag'][start_id:end_id]])
+						add_spectrum = [elem for elem in df['spectrum'][start_id:end_id]]
+						add_flag = np.array(df['flag'][start_id:end_id])
 			except:
 				pass # do nothing if any exception is raised (potentially index errors if the files have columns of inconsistent lengths)
 			else: # if the try didnt raise any exceptions, update the 'source' of the plots with new data
@@ -290,7 +331,8 @@ def set_site(attr,old,new):
 		else: # if 'var_input' is empty
 			data_check = True
 
-		f.close() # close the netcdf reader
+		if netcdf:
+			f.close() # close the netcdf reader
 	else: # else clause of the for loop, this will execute if no 'break' was encountered		
 		if data_check is not True: # no data
 			date_val = date_input.value # can be of the form 'firstdate'-'lastdate' or just 'firstdate'
@@ -316,7 +358,7 @@ def read_nc(attr,old,new):
 	try: # attempt to get a variable
 		site = site_input.value # the selected TCCON site
 		prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-		site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated netcdf files
+		site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated files
 	except: 
 		pass # do nothing if an exception occurs (not sure if there can even be one here; maybe an empty 'site_input')
 	else: # if no exception occured ...
@@ -324,21 +366,27 @@ def read_nc(attr,old,new):
 		dum_text.value = str(time.time())	# click the timer button to start the loading countdown
 		
 		# loop over the TCCON files for the selected site
-		data_check = False
-		broken = False
+		data_check = False # boolean check that will be set to True if there is data within the requested time range
+		broken = False # boolean check that will be set to True before breaking out of the loop below
 		for filenum,site_file in enumerate(site_file_list):
-			f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
-
+			if netcdf:
+				f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
+			else:
+				df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
+					
 			if filenum==0: # if it is the first file, configure the source and HoverTool based on the type of file
 				if public:
 					source.data.update({'x':[],'y':[],'colo':[]})
 					fig.select_one(HoverTool).tooltips = [('value','@y')]
-				else:
+				else:					
+					source.data.update({'x':[],'y':[],'colo':[],'flag':[],'spectrum':[]})
 					fig.select_one(HoverTool).tooltips = [('value','@y'),('spectrum','@spectrum'),('flag','@flag')]
 
-					source.data.update({'x':[],'y':[],'colo':[],'flag':[],'spectrum':[]})
-
-			nctime =  f.variables['time'][:] # fractional days since 1970
+			if netcdf:
+				nctime =  f.variables['time'][:] # fractional days since 1970
+			else:			
+				# for .eof.csv files convert year,day,hour in fractional days since 1970
+				nctime = np.array([(datetime(int(df.year[i]),1,1)+timedelta(days=df.day[i]-1)-datetime(1970,1,1)).days+df.hour[i]/24 for i in range(len(df))])
 
 			# use the value of the 'date_input' widget to determine the range of dates over which data should be fetched
 			try: # for the minimum of the range
@@ -367,7 +415,8 @@ def read_nc(attr,old,new):
 					broken_text = 'Wrong date input'
 					broken = True
 				if broken:
-					f.close() # close the netcdf reader
+					if netcdf:
+						f.close() # close the netcdf reader
 					break
 
 			# for each file, fastforward to next iteration of the for loop if the dates in the file name are not compatible with the date input
@@ -376,7 +425,8 @@ def read_nc(attr,old,new):
 			file_min_date = calendar.timegm(datetime(int(file_min[:4]),int(file_min[4:6]),int(file_min[6:8])).timetuple())/24/3600
 			file_max_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
 			if (mindate>file_max_date) or (maxdate<file_min_date):
-				f.close() # close the netcdf reader
+				if netcdf:
+					f.close() # close the netcdf reader
 				continue
 
 			newtime = nctime[(nctime>=mindate) & (nctime<maxdate)]  # list of times that satisfy the 'date_input' value (still fractional days since 1970)
@@ -392,13 +442,21 @@ def read_nc(attr,old,new):
 
 			try: # attempt to fetch data using start_id and end_id
 				add_x = np.array([datetime(*time.gmtime(i*24*3600)[:6]) for i in newtime])
-				add_y = f.variables[var_input.value][start_id:end_id]
+				if netcdf:
+					add_y = f.variables[var_input.value][start_id:end_id]
+				else:
+					add_y = np.array(df[var_input.value][start_id:end_id])
 				if public:
 					add_colo = np.array(['red']*len(add_x))
 				else:
-					add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
-					add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]]# name of spectra for the HoverTool
-					add_flag = f.variables['flag'][start_id:end_id]# flags for the HoverTool
+					if netcdf:
+						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
+						add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]]# name of spectra for the HoverTool
+						add_flag = f.variables['flag'][start_id:end_id] # flags for the HoverTool
+					else:
+						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in df['flag'][start_id:end_id]])
+						add_spectrum = [elem for elem in df['spectrum'][start_id:end_id]]
+						add_flag = np.array(df['flag'][start_id:end_id])
 			except:
 				pass # do nothing if any exception is raised (potentially index errors if the files have columns of inconsistent lengths)
 			else: # if the try didnt raise any exceptions, update the 'source' of the plots with new data
@@ -412,8 +470,8 @@ def read_nc(attr,old,new):
 											'colo' : np.append(source.data['colo'],add_colo),
 											'flag' : np.append(source.data['flag'],add_flag),
 											'spectrum':np.append(source.data['spectrum'],add_spectrum),})
-			
-			f.close() # close the netcdf reader		
+			if netcdf:
+				f.close() # close the netcdf reader		
 		else: # else clause of the for loop, this will execute if no 'break' was encountered		
 			if data_check is not True: # no data
 				date_val = date_input.value # can be of the form 'firstdate'-'lastdate' or just 'firstdate'
@@ -506,4 +564,4 @@ def hide_dummy():
 
 curdoc().title='TCCON' # this changes the title of the internet tab in which the document will be displayed
 curdoc().add_root(grid) # this add the grid layout to the document
-curdoc().add_timeout_callback(hide_dummy,1000) # this schedules the 'hide_dummy' callback to be triggered 1 second after page load
+curdoc().add_timeout_callback(hide_dummy,1000) # this schedules the 'hide_dummy' callback to be triggered 1000 milliseconds after page load; if this fails to trigger too often, increase the number
