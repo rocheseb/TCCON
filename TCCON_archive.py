@@ -223,7 +223,7 @@ def set_site(attr,old,new):
 	for filenum,site_file in enumerate(site_file_list):
 		if netcdf:
 			f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
-			all_var = f.variables
+			all_var = [var for var in f.variables]
 		else:
 			df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
 			all_var = list(df)
@@ -310,11 +310,11 @@ def set_site(attr,old,new):
 					if netcdf:
 						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
 						add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]] # name of spectra for the HoverTool
-						add_flag = f.variables['flag'][start_id:end_id] # flags for the HoverTool
+						add_flag = f.variables['flag'][start_id:end_id].astype(int) # flags for the HoverTool
 					else:
 						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in df['flag'][start_id:end_id]])
 						add_spectrum = [elem for elem in df['spectrum'][start_id:end_id]]
-						add_flag = np.array(df['flag'][start_id:end_id])
+						add_flag = np.array([' '.join([str(flag),all_var[flag],'=',str(df[all_var[flag]][start_id:end_id][ID])]) for ID,flag in enumerate(df['flag'][start_id:end_id])])
 			except:
 				pass # do nothing if any exception is raised (potentially index errors if the files have columns of inconsistent lengths)
 			else: # if the try didnt raise any exceptions, update the 'source' of the plots with new data
@@ -373,6 +373,7 @@ def read_nc(attr,old,new):
 				f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
 			else:
 				df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
+				all_var = list(df)
 					
 			if filenum==0: # if it is the first file, configure the source and HoverTool based on the type of file
 				if public:
@@ -452,11 +453,11 @@ def read_nc(attr,old,new):
 					if netcdf:
 						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
 						add_spectrum = [''.join(elem) for elem in f.variables['spectrum'][start_id:end_id]]# name of spectra for the HoverTool
-						add_flag = f.variables['flag'][start_id:end_id] # flags for the HoverTool
+						add_flag = f.variables['flag'][start_id:end_id].astype(int) # flags for the HoverTool
 					else:
 						add_colo = np.array(['red' if int(elem)==0 else 'grey' for elem in df['flag'][start_id:end_id]])
 						add_spectrum = [elem for elem in df['spectrum'][start_id:end_id]]
-						add_flag = np.array(df['flag'][start_id:end_id])
+						add_flag = np.array([' '.join([str(flag),all_var[flag],'=',str(df[all_var[flag]][start_id:end_id][ID])]) for ID,flag in enumerate(df['flag'][start_id:end_id])])
 			except:
 				pass # do nothing if any exception is raised (potentially index errors if the files have columns of inconsistent lengths)
 			else: # if the try didnt raise any exceptions, update the 'source' of the plots with new data
