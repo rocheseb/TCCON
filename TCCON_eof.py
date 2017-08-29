@@ -133,7 +133,7 @@ colors_dict = {
 bok_struct = OrderedDict([
 			('Key_panel',OrderedDict([
 					('custom',{
-								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out','hour',), # add keywords in thise tuple to increase the variables to be read.
+								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out','hour','CL','CT','FS','S-G','RMS','Zpres','AM',), # add keywords in this tuple to increase the variables to be read.
 								'plot_height':250,
 								'plot_width':800,
 								}),	
@@ -749,7 +749,7 @@ diag_var += ['year','day','hour','flag'] # append some default variables to be r
 TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
 # special bokh object to store data inside the HTML page
-all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['ada'],flag=flag), id='all_source')
+all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['_Version','ak_','prio','checksum','graw','spectrum','year','ada'],flag=flag), id='all_source')
 
 main_source_list = [] # this source will be empty and filled from all_source via callbacks
 err_source_list = [] # this source will be empty and filled from all_source via callbacks
