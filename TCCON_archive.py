@@ -64,7 +64,7 @@ tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may
 cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 
 # if you modify the plotting colors, you will need to remove your cache_dic.npy file
-main_color = 'goldenrod' # this will be the color used for the flag=0 data
+main_color = '#9ACD32' # this will be the color used for the flag=0 data
 flagged_color = 'grey' # this will be the color used for the flag!=0 data
 hover_color = 'red' # this will be the color used for data hovered by the mouse
 
@@ -479,7 +479,7 @@ def initialize(all_var):
 	Also sets up the hovertool tooltips according to the file type and mode
 	'''
 	if len(var_input.options)==0:
-		var_list = sorted([var for var in all_var if True not in [elem in var for elem in skip_list]])
+		var_list = ['']+sorted([var for var in all_var if True not in [elem in var for elem in skip_list]])
 		var_input.options = var_list # fill the 'var_input' dropdown with options
 		if mode == 'comp':
 			var_input2.options = var_list # fill the 'var_input2' dropdown with options
@@ -487,20 +487,28 @@ def initialize(all_var):
 	# configure the source and HoverTool based on the type of file
 	if public and mode=='simple':
 		source.data.update({'x':[],'y1':[],'colo':[]})
-		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1')]
+		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1'),('date','@x{%F %T}')]
+		fig.select_one(HoverTool).formatters = {'x':'datetime'}
 	elif not public and mode=='simple':
 		source.data.update({'x':[],'y1':[],'colo':[],'flag':[],'spectrum':[]})
-		fig.select_one(HoverTool).tooltips = [('value','@y1'),('spectrum','@spectrum'),('flag','@flag')]
+		fig.select_one(HoverTool).tooltips = [('value','@y1'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
+		fig.select_one(HoverTool).formatters = {'x':'datetime'}
 	elif public and mode=='comp':
 		source.data.update({'x':[],'y1':[],'y2':[],'colo':[]})
-		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1'),(fig2.yaxis[0].axis_label,'@y2')]
-		fig2.select_one(HoverTool).tooltips = [(fig2.yaxis[0].axis_label,'@y2'),(fig.yaxis[0].axis_label,'@y1')]	
-		fig3.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2')]
+		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1'),(fig2.yaxis[0].axis_label,'@y2'),('date','@x{%F %T}')]
+		fig.select_one(HoverTool).formatters = {'x':'datetime'}
+		fig2.select_one(HoverTool).tooltips = [(fig2.yaxis[0].axis_label,'@y2'),(fig.yaxis[0].axis_label,'@y1'),('date','@x{%F %T}')]
+		fig2.select_one(HoverTool).formatters = {'x':'datetime'}	
+		fig3.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('date','@x{%F %T}')]
+		fig3.select_one(HoverTool).formatters = {'x':'datetime'}
 	elif not public and mode=='comp':
 		source.data.update({'x':[],'y1':[],'y2':[],'colo':[],'flag':[],'spectrum':[]})
-		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1'),('spectrum','@spectrum'),('flag','@flag'),(fig2.yaxis[0].axis_label,'@y2')]
-		fig2.select_one(HoverTool).tooltips = [(fig2.yaxis[0].axis_label,'@y2'),('spectrum','@spectrum'),('flag','@flag'),(fig.yaxis[0].axis_label,'@y1')]	
-		fig3.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('spectrum','@spectrum'),('flag','@flag')]
+		fig.select_one(HoverTool).tooltips = [(fig.yaxis[0].axis_label,'@y1'),('spectrum','@spectrum'),('flag','@flag'),(fig2.yaxis[0].axis_label,'@y2'),('date','@x{%F %T}')]
+		fig.select_one(HoverTool).formatters = {'x':'datetime'}
+		fig2.select_one(HoverTool).tooltips = [(fig2.yaxis[0].axis_label,'@y2'),('spectrum','@spectrum'),('flag','@flag'),(fig.yaxis[0].axis_label,'@y1'),('date','@x{%F %T}')]
+		fig2.select_one(HoverTool).formatters = {'x':'datetime'}	
+		fig3.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
+		fig3.select_one(HoverTool).formatters = {'x':'datetime'}
 ## END OF INITIALIZE FUNCTION
 #########################################################################################################################################################################
 ## LOAD_VAR FUNCTION
@@ -540,7 +548,19 @@ def load_var(site_file_list,site):
 			if filenum==0:
 				initialize(all_var) # fills variable inputs with options,resets the data source, and setup hovertool tooltips
 
-			if var_input.value != '':	# only tries to read variables if a 'var_input' option has been selected
+				filled_var_input = False
+				if mode == 'simple':
+					if var_input.value!='':
+						filled_var_input = True
+				elif mode == 'comp':
+					if '' not in [var_input.value,var_input2.value]:
+						filled_var_input = True
+
+			if not filled_var_input:
+				broken=True
+				broken_text='Empty variable input'
+				break		
+			elif filled_var_input:	# only tries to read variables if a 'var_input' option has been selected
 				if netcdf:
 					nctime =  f.variables['time'][:] # fractional days since 1970
 				else:			
@@ -608,7 +628,7 @@ def load_var(site_file_list,site):
 						if mode == 'comp':
 							add_y2 = np.array(df[var_input2.value][start_id:end_id])
 					if public:
-						add_colo = np.array([main_color]*len(add_x))
+						add_colo = np.array([main_color]*len(add_x)) # use the same color for all the data for public files
 					else:
 						if netcdf:
 							add_colo = np.array([main_color if int(elem)==0 else flagged_color for elem in f.variables['flag'][start_id:end_id]]) # data with flag=0 is red; data with flag!=0 is grey
@@ -618,8 +638,8 @@ def load_var(site_file_list,site):
 							add_colo = np.array([main_color if int(elem)==0 else flagged_color for elem in df['flag'][start_id:end_id]])
 							add_spectrum = np.array([elem for elem in df['spectrum'][start_id:end_id]])
 							add_flag = np.array([' '.join([str(flag),all_var[flag],'=',str(df[all_var[flag]][start_id:end_id][ID])]) for ID,flag in enumerate(df['flag'][start_id:end_id])])
-				except:
-					pass # do nothing if any exception is raised (potentially index errors if the files have columns of inconsistent lengths)
+				except KeyError:
+					pass
 				else: # if the try didnt raise any exceptions, update the 'source' of the plots with new data
 					if public and mode=='simple':
 						source.data.update({	'x' : np.append(source.data['x'],add_x),
@@ -648,21 +668,23 @@ def load_var(site_file_list,site):
 				f.close() # close the netcdf reader		
 		else: # else clause of the for loop, this will execute if no 'break' was encountered
 			if len(source.data['x'])==0: # no data
+				dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
 				if date_val=='': # date_val empty mean the whole time range of the site has been evaluated
 					load_div.text = site+' has no data' # if you see this one then there is a problem with the netcdf file ...
-					if mode == 'comp':
-						load_div.text = 'Select a variable for Figure 2'
 				elif len(date_val)==8: # if only 'firstdate' is given
 					load_div.text = site+' has no data after '+date_val
 				elif len(date_val)>8: # if 'firstdate-lastdate' is given
 					load_div.text = site+' has no data for '+date_val
+		
 		if broken:
+			dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
 			load_div.text = broken_text
 
 		if len(source.data['y1'])!=0:
 			add_cache(date_val,site,source.data)
 	
-	else: #else clause of 'if no_cached_data'
+	else: #else clause of 'if no_cached_data', this will execute if there is cached data corresponding to the inputs
+		broken = False
 		initialize(all_var) # fills variable inputs with options,resets the data source, and setup hovertool tooltips
 		print 'Using cached data for',date_val,site
 		source.data.update({	'x' : cache_dic[date_val][site]['x'],
@@ -671,9 +693,11 @@ def load_var(site_file_list,site):
 								'colo' : cache_dic[date_val][site]['colo']['value'],
 								'flag' : cache_dic[date_val][site]['flag']['value'],
 								'spectrum': cache_dic[date_val][site]['spectrum']['value'],})
-	dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
-	load_div.text = 'Data loaded'
-	print 'load_var() DONE: if all the data is not showing quickly, you should use the date_input widget to select a smaller subset of data'
+	
+	if not broken and len(source.data['x'])!=0:
+		dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
+		load_div.text = 'Data loaded'
+		print 'load_var() DONE: if all the data is not showing quickly, you should use the date_input widget to select a smaller subset of data'
 ## END OF LOAD_VAR FUNCTION
 #########################################################################################################################################################################
 ## SET_SITE FUNCTION
@@ -697,15 +721,7 @@ def set_site(attr,old,new):
 	fig.title.text = T_FULL[prefix]+', '+T_LOC[prefix] # site name + site location
 	notes_div.text = notes.replace("a></font>","a></font>, <a href='"+T_site[prefix]+"'>"+site+"</a>") # updated the information widget with a link to the site's webpage
 
-	# now check if there are options in the 'var_input' widget
-	no_select_var = False
-	if len(var_input.options)==0:
-		no_select_var = True
-
 	load_var(site_file_list,site)
-
-	if no_select_var:
-		load_div.text = 'Select a variable for Figure 1'
 ## END OF SET_SITE FUNCTION
 #########################################################################################################################################################################
 ## SET_VAR FUNCTION
@@ -860,6 +876,11 @@ if(toolbar_list.length>1){
 		if(toolbar_list[i].textContent.includes("Hover")){toolbar_list[i].style.display="none"}
 	}
 }
+
+var css = document.createElement("style");
+css.type = "text/css";
+css.innerHTML = ".bk-tooltip>div:not(:first-child) { display: none }";
+document.body.appendChild(css);
 """
 dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
 dum_hide.js_on_change('value',CustomJS(code=dum_hide_code))
