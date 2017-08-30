@@ -4,7 +4,7 @@ https://bitbucket.org/rocheseb/tccon
 
 Various python codes to plot data from TCCON files.
 
-All codes are written to run with Python 2.7
+All codes are written to run with Python 2.7 and bokeh 0.12.7
 
 libraries:
 
@@ -14,7 +14,6 @@ libraries:
 	
 	- NumPy: http://www.numpy.org/
 
-Codes have been tested with Bokeh 0.12.6
 
 ### What is this repository for? ###
 
