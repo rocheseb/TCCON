@@ -763,7 +763,7 @@ if mode == 'comp':
 	
 	# widgets specific to the comparison mode
 	table_source = ColumnDataSource( data = {'N':[0],'R':[0]} ) # the data source of the table
-	data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
+	data_table = DataTable(source=table_source, reorderable=False, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
 	select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
 	
 	# assign JS callbacks to the source and box selection tool
