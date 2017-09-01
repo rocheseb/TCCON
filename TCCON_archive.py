@@ -2,7 +2,7 @@
 # Code description #
 ####################
 """
-This code will produce an interactive plots reading into TCCON netcdf files to display time series of the data.
+This code will produce interactive plots  that will read into TCCON netcdf files to display time series of the data.
 
 In the same directory as this code, make a 'TCCON' folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08).
 You can also edit the 'tccon_path' variable if you already have tccon files in a different location.
@@ -33,6 +33,10 @@ e.g.	Reading a new variable in 'comp' mode for Lamont for the entire time series
 		For Lamont in 'comp' mode, a set of two variables (+time,flag,color, and spectrum arrays) is ~ 50 MB for the full time series
 """
 
+#############
+# Libraries #
+#############
+
 import sys
 import os
 import netCDF4
@@ -47,11 +51,14 @@ import bokeh
 from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool, BoxSelectTool, DataTable, TableColumn, LinearAxis, DataRange1d
-from bokeh.layouts import gridplot, widgetbox, row, column
+from bokeh.layouts import gridplot, widgetbox
 
 # to ignore warnings
 import warnings
 warnings.filterwarnings('ignore')
+
+#############
+#############
 
 layout_mode = sys.argv[1]
 if layout_mode not in ['simple','comp']:
@@ -59,6 +66,7 @@ if layout_mode not in ['simple','comp']:
 	print 'A is either "simple" or "comp"'
 	sys.exit()
 
+#########################################################################################################################################################################
 ## MODIFIABLE SECTION
 tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
@@ -198,7 +206,7 @@ ordered_site_list = ['']+sorted([T_FULL[i] for i in prefix_list])
 ## FIGURES SETUP
 
 site_input = Select(title='Site:',options = ordered_site_list,width=220) # dropdown widget to select the TCCON site
-date_input = TextInput(title='start-end yyyymmdd:',width=220) # text input widget to specify dates between which data should be fetched
+date_input = TextInput(title='start-end (yyyymmdd):',width=220) # text input widget to specify dates between which data should be fetched
 flag_input = TextInput(title='Flag (an integer):',value='',width=220) # text input widget to specify the flag of the data to show
 
 TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset" # the tools that will be available in the figure's toolbar
@@ -264,7 +272,6 @@ if layout_mode == 'comp':
 	fig.scatter(x='x',y='y1',color='colo',hover_color=hover_color,alpha=0.7,y_range_name='first_var',source=source2) # this is plotted in the first figure, it will read data from the 'source2' object	
 
 fig.select_one(BoxSelectTool).dimensions = boxselecttool_dimensions
-
 
 ## END FIGURES SETUP
 #################################################################################
@@ -514,6 +521,36 @@ else:
 
 ## END OF SETUP SECTION
 #########################################################################################################################################################################
+## ADD_DATA FUNCTION
+def add_data(data,x=None,y1=None,y2=None,colo=None,flag=None,spectrum=None):
+	'''
+	function to update a data dictionary based on the layout mode and data type
+	'''
+
+	if public and layout_mode=='simple':
+		return {'x' : np.append(data['x'],x),
+				'y1' : np.append(data['y1'],y1),
+				'colo' : np.append(data['colo'],colo),}
+	elif not public and layout_mode=='simple':
+		return {'x' : np.append(data['x'],x),
+				'y1' : np.append(data['y1'],y1),
+				'colo' : np.append(data['colo'],colo),
+				'flag' : np.append(data['flag'],flag),
+				'spectrum': np.append(data['spectrum'],spectrum),}
+	elif public and layout_mode=='comp':
+		return {'x' : np.append(data['x'],x),
+				'y1' : np.append(data['y1'],y1),
+				'y2' : np.append(data['y2'],y2),
+				'colo' : np.append(data['colo'],colo),}
+	elif not public and layout_mode=='comp':
+		return {'x' : np.append(data['x'],x),
+				'y1' : np.append(data['y1'],y1),
+				'y2' : np.append(data['y2'],y2),
+				'colo' : np.append(data['colo'],colo),
+				'flag' : np.append(data['flag'],flag),
+				'spectrum': np.append(data['spectrum'],spectrum),}
+## END OF ADD_DATA FUNCTION
+#########################################################################################################################################################################
 ## ADD_CACHE FUNCTION
 def add_cache(date_val,site,source_data,max_size=cache_max_size,first_var='',second_var=''):
 	'''
@@ -653,36 +690,6 @@ def initialize(var_list,site_source,site_ID):
 
 	dum_hide.value = str(time.time()) # update the css of labels
 ## END OF INITIALIZE FUNCTION
-#########################################################################################################################################################################
-## ADD_DATA FUNCTION
-def add_data(data,x=None,y1=None,y2=None,colo=None,flag=None,spectrum=None):
-	'''
-	function to update a data dictionary based on the layout mode and data type
-	'''
-
-	if public and layout_mode=='simple':
-		return {'x' : np.append(data['x'],x),
-				'y1' : np.append(data['y1'],y1),
-				'colo' : np.append(data['colo'],colo),}
-	elif not public and layout_mode=='simple':
-		return {'x' : np.append(data['x'],x),
-				'y1' : np.append(data['y1'],y1),
-				'colo' : np.append(data['colo'],colo),
-				'flag' : np.append(data['flag'],flag),
-				'spectrum': np.append(data['spectrum'],spectrum),}
-	elif public and layout_mode=='comp':
-		return {'x' : np.append(data['x'],x),
-				'y1' : np.append(data['y1'],y1),
-				'y2' : np.append(data['y2'],y2),
-				'colo' : np.append(data['colo'],colo),}
-	elif not public and layout_mode=='comp':
-		return {'x' : np.append(data['x'],x),
-				'y1' : np.append(data['y1'],y1),
-				'y2' : np.append(data['y2'],y2),
-				'colo' : np.append(data['colo'],colo),
-				'flag' : np.append(data['flag'],flag),
-				'spectrum': np.append(data['spectrum'],spectrum),}
-## END OF ADD_DATA FUNCTION
 #########################################################################################################################################################################
 ## SET_SITE FUNCTION
 def set_site(site='',site_ID=0):
@@ -1029,8 +1036,6 @@ def load_var(site_file_list,site,site_source,site_ID):
 			else:
 				inds = [True for elem in cache_dic[date_val][site]['flag']['value']]
 
-			print inds[:10]
-
 			add_x = cache_dic[date_val][site]['x'][inds]
 			add_y1 = cache_dic[date_val][site][first_var]['value'][inds]
 			add_colo = new_colo[inds]
@@ -1055,7 +1060,7 @@ def load_var(site_file_list,site,site_source,site_ID):
 		site_source.data.update(add_data(site_source.data,x=add_x,y1=add_y1,y2=add_y2,colo=add_colo,flag=add_flag,spectrum=add_spectrum))
 
 	if len(site_source.data['x'])!=0:
-		dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
+		dum_text.value = str(time.time()+6) # click the timer button again to end the loading countdown
 		print 'If all the data is not showing quickly, you should use the date_input widget to select a smaller subset of data'
 	print 'load_var() DONE'
 ## END OF LOAD_VAR FUNCTION
@@ -1123,7 +1128,6 @@ def center():
 		var_list = [i.value for i in [var_input,var_input2,var_input3,var_input4]]
 	elif layout_mode =='simple':
 		var_list = [var_input.value]
-
 
 	# get all the data sources in a list
 	if not public:
@@ -1225,6 +1229,8 @@ def center():
 				status_div.text = var_list[ID]+' is constant: {:3.2E}'.format(current_data[0])
 		except IndexError:
 			status_div.text = 'Cannot scale: missing data'
+
+		dum_hide.value = str(time.time()) # update the css of labels
 ## END OF CENTER FUNCTION
 #########################################################################################################################################################################
 ## LAYOUT PLOT ELEMENTS
@@ -1250,7 +1256,6 @@ if layout_mode == 'comp':
 		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[status_div],[linediv2],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
 	else:
 		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[status_div],[linediv2],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
-
 
 	figroup = gridplot([[figrid],[figrid2]],toolbar_location='left')
 elif layout_mode == 'simple':
