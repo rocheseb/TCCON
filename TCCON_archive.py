@@ -73,11 +73,11 @@ tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may
 cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 
 # if you modify the plotting colors, you will need to remove your cache_dic.npy file
-main_color = '#9ACD32' # this will be the color used for the flag=0 data
+main_color = '#9ACD32' # this will be the color used for the flag=0 data; I use css 'YellowGreen' (#9ACD32) by default
 flag_color = 'grey' # this will be the color used for the flag!=0 data
 hover_color = 'red' # this will be the color used for data hovered by the mouse
 
-main_color2 = '#DDA0DD' # the main color for data from the second site in 'comp' mode
+main_color2 = '#DDA0DD' # the main color for data from the second site in 'comp' mode; I use css 'Plum' (#DDA0DD) by default
 
 # this is the mode of the hovertool for the Figure 1 and Figure 2 in 'comp' mode
 # 'width' to have all y data select over a x range (you can only pan the box selection left-right)
@@ -85,7 +85,7 @@ main_color2 = '#DDA0DD' # the main color for data from the second site in 'comp'
 # 'both' you can select a specific rectangle of data
 boxselecttool_dimensions = 'both'
 
-skip_list = ['_Version','ak_','prio','checksum','graw','spectrum','year','ada'] # variables including those keywords won't be shown in the 'var_input' dropdowns
+skip_list = ['_Version','ak_','prio','checksum','graw','spectrum','year','ada','aicf','adcf','time'] # variables including those keywords won't be shown in the 'var_input' dropdowns
 
 # dictonnary with the full names of TCCON sites
 T_FULL = {
@@ -228,8 +228,6 @@ if layout_mode == 'comp':
 
 	# second figure to display time series of another variable
 	fig2 = figure(output_backend="webgl",plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',x_range=fig.x_range,tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 2
-	fig2.min_border_left = 90
-	fig2.min_border_right = 80
 	fig2.xaxis[0].axis_label = 'Time'
 	fig2.scatter(x='x',y='y2',color='colo',hover_color=hover_color,alpha=0.7,source=source) # this is plotted in the second figure, it will read data from the 'source' object
 	
@@ -241,15 +239,14 @@ if layout_mode == 'comp':
 	fig2.select_one(BoxSelectTool).dimensions = boxselecttool_dimensions
 
 	# Figure 3, will plot y axis of Figure 1 vs y axis of Figure 2 using data from 'source' (the first site)
-	fig3 = figure(output_backend="webgl",plot_width=300,plot_height=300,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
-	#fig3.min_border_left = 90
-	#fig3.min_border_bottom = 90
+	fig3 = figure(output_backend="webgl",plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
+	fig3.min_border_right = 80
+	fig3.min_border_bottom = 170
 	fig3.scatter(x='y2',y='y1',color='colo',hover_color=hover_color,alpha=0.7,source=source)
 
 	# Figure 4, will plot y axis of Figure 1 vs y axis of Figure 2 using data from 'source2' (the second site)
-	fig4 = figure(output_backend="webgl",plot_width=300,plot_height=300,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
-	#fig4.min_border_left = 90
-	#fig4.min_border_bottom = 90
+	fig4 = figure(output_backend="webgl",plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
+	fig4.min_border_left = 90
 	fig4.scatter(x='y2',y='y1',color='colo',hover_color=hover_color,alpha=0.7,source=source2)
 
 	# input widgets
@@ -526,7 +523,6 @@ def add_data(data,x=None,y1=None,y2=None,colo=None,flag=None,spectrum=None):
 	'''
 	function to update a data dictionary based on the layout mode and data type
 	'''
-
 	if public and layout_mode=='simple':
 		return {'x' : np.append(data['x'],x),
 				'y1' : np.append(data['y1'],y1),
@@ -561,9 +557,18 @@ def add_cache(date_val,site,source_data,max_size=cache_max_size,first_var='',sec
 
 	global cache_dic
 
+	try:
+		cache_dic = np.load(cache_file).item()
+	except IOError:
+		print cache_file+' not found'
+		print 'Creating new empty '+cache_file
+		cache_dic = {}
+		np.save(cache_file,cache_dic)
+
 	stamp = datetime.now()
 
 	keep_loop = True
+	rewritten = False
 	it = 1
 	while keep_loop:
 		if os.path.getsize(cache_file)<max_size:
@@ -603,25 +608,29 @@ def add_cache(date_val,site,source_data,max_size=cache_max_size,first_var='',sec
 						cache_dic[date_val][site][nice_var]['stamp'] = stamp
 						cache_dic[date_val][site][nice_var]['value'] = source_data[var]
 		else:
-			print 
-			while os.path.getsize(cache_dic)>max_size:
+			rewritten = True
+			while os.path.getsize(cache_file)>max_size:
+				site_list = list(set([[site for site in cache_dic[date_val] if site!='stamp'] for date_val in cache_dic][0])) # list(set()) removes duplicates
+				var_list = list(set([[[var for var in cache_dic[date_val][site] if var not in ['x','flag','spectrum','colo','stamp']] for site in cache_dic[date_val] if site!='stamp'] for date_val in cache_dic][0][0]))
+
 				# if there are more than 5 date_val, remove the oldest date_val
-				if len(cache_dic)>5:
-					del_date = min([(cache_dic[date_val]['stamp'],date_val) for date_val in cache_dic])[1]
+				if len(cache_dic)>3:
+					del_date = min([(cache_dic[date_val]['stamp'],date_val) for date_val in cache_dic if date_val!=''])[1]
 					del cache_dic[del_date]
 					print 'Removing',del_date,'from cache'
 				# if there are more than 5 sites, remove the oldest site
-				site_list = list(set([[site for site in cache_dic[date_val] if site!='stamp'] for date_val in cache_dic][0])) # list(set()) removes duplicates
-				if len(site_list)>5:
+				elif len(site_list)>2:
 					del_site = min([[(cache_dic[date_val][site]['stamp'],(date_val,site)) for site in cache_dic[date_val] if site!='stamp'] for date_val in cache_dic][0])[1]
 					del cache_dic[del_site[0]][del_site[1]]
 					print 'Removing',del_site[0],del_site[1],'from cache'
 				# if there are more than 20 variables, remove the oldest variable (except for times, flags, colors, and spectrum names; those will only be removed when a site or date_val is removed)
-				var_list = list(set([[[var for var in cache_dic[date_val][site] if var not in ['x','flag','spectrum','colo','stamp']] for site in cache_dic[date_val] if site!='stamp'] for date_val in cache_dic][0][0]))
-				if len(var_list)>20:
+				elif len(var_list)>10:
 					del_var = min([[[(cache_dic[date_val][site][var]['stamp'],(date_val,site,cache_dic[date_val][site][var]['value'])) for var in cache_dic[date_val][site] if var not in ['x','flag','spectrum','colo','stamp']] for site in cache_dic[date_val] if site !='stamp'] for date_val in cache_dic][0][0])
 					del cache_dic[del_var[0]][del_var[1]][del_var[2]]
 					print 'Removing',del_var[0],del_var[1],del_var[2],'from cache'
+				print 'Saving new cache file ...'
+				np.save(cache_file,cache_dic)
+				print cache_file,'size:',os.path.getsize(cache_file)/1E6,'MB'
 
 		if os.path.getsize(cache_file)<max_size:
 			keep_loop = False
@@ -629,9 +638,10 @@ def add_cache(date_val,site,source_data,max_size=cache_max_size,first_var='',sec
 			print 'Cache is over',max_size/1E6,'MB after caching iteration',it
 			print 'If this does not stop iterating it means that the current selection alone is over the max_size'
 			it+=1
-	print 'Saving new cache file ...'
-	np.save(cache_file,cache_dic)
-	print cache_file,'size:',os.path.getsize(cache_file)/1E6,'MB'
+	if not rewritten:
+		print 'Saving new cache file ...'
+		np.save(cache_file,cache_dic)
+		print cache_file,'size:',os.path.getsize(cache_file)/1E6,'MB'
 ## END OF ADD_CACHE FUNCTION
 #########################################################################################################################################################################
 ## INITIALIZE FUNCTION
@@ -859,6 +869,7 @@ def load_var(site_file_list,site,site_source,site_ID):
 			if filenum==0:
 				initialize(all_var,site_source,site_ID) # fills variable inputs with options,resets the data source, and setup hovertool tooltips
 				save_data = {key:[] for key in site_source.data}
+				new_data = {key:[] for key in site_source.data}
 				if not filled_site_inputs:
 					dum_text.value = str(time.time()+1) # click the timer button to start the loading countdown in the 'status_div' widget
 					status_div.text = site+' still has an empty variable input'
@@ -977,14 +988,17 @@ def load_var(site_file_list,site,site_source,site_ID):
 					add_colo = np.array([no_flag_color]*len(add_x))
 					save_data = add_data(save_data,x=add_x,y1=add_y1,y2=add_y2,colo=add_colo,flag=add_flag,spectrum=add_spectrum)
 
-				site_source.data.update(add_data(site_source.data,x=add_x,y1=add_y1,y2=add_y2,colo=add_colo,flag=add_flag,spectrum=add_spectrum))
+				new_data = add_data(new_data,x=add_x,y1=add_y1,y2=add_y2,colo=add_colo,flag=add_flag,spectrum=add_spectrum)					
 
 				if filenum == 0:
 					print 'load_var() ...'
-				print site_file,'data streamed'
+				print site_file,'data read:',len(add_x),'new values'
 			if netcdf:
 				f.close() # close the netcdf reader		
 		else: # else clause of the for loop, this will execute if no 'break' was encountered
+			print 'Updating',site,'data source ...'
+			site_source.data.update(new_data)
+			del new_data			
 			if len(site_source.data['x'])==0: # no data
 				add_flag_message = ''
 				if flag_mode != '':
@@ -997,7 +1011,7 @@ def load_var(site_file_list,site,site_source,site_ID):
 				elif len(date_val)>8: # if 'firstdate-lastdate' is given
 					status_div.text = site+' has no data'+add_flag_message+' for '+date_val
 				return
-
+			print site,'data source updated:',len(site_source.data['x']),'values'
 		if len(site_source.data['y1'])!=0:
 			if layout_mode == 'simple':
 				add_cache(date_val,site,save_data,first_var=first_var)
@@ -1047,13 +1061,13 @@ def load_var(site_file_list,site,site_source,site_ID):
 		
 		elif public:
 			add_x = cache_dic[date_val][site]['x']
-			add_y1 = cache_dic[date_val][site][first_var]
+			add_y1 = cache_dic[date_val][site][first_var]['value']
 			add_colo = np.array([no_flag_color]*len(cache_dic[date_val][site]['x']))
 			add_flag = ''
 			add_spectrum = ''
 			add_y2 = ''
 			if layout_mode == 'comp':
-				add_y2 = cache_dic[date_val][site][second_var]
+				add_y2 = cache_dic[date_val][site][second_var]['value']
 
 		print 'load_var() ...'
 		print 'Using cached data for',date_val,site
@@ -1179,12 +1193,17 @@ def center():
 
 		negatives = current_data[current_data<0] # negative values in the data
 		positives = current_data[current_data>0] # positives values in the data
+		zeroes = current_data[current_data==0]
 
 		mean_current_data = np.mean(current_data)
 
 		try:
 			# I tried to define some rules to obtain a good scaling in different situations
-			if len(negatives)==0:
+			if len(zeroes)==len(current_data): # if all the data is exactly 0; the constant variable exception will handle it
+ 				pass
+ 			elif len(zeroes)>0.1*len(current_data): # if more than 10% of the data is exactly 0, it might be a dummy value, so I don't include those
+ 				current_data = current_data[current_data!=0]
+			elif len(negatives)==0:
 				current_data = current_data[(current_data<1.5*mean_current_data) & (current_data>0.5*mean_current_data)] # resample the data to get within +/- 50% of the mean
 			elif len(positives)==0:
 				current_data = current_data[(current_data>1.5*mean_current_data) & (current_data<0.5*mean_current_data)] # resample the data to get within +/- 50% of the mean
@@ -1242,9 +1261,7 @@ linediv2 = Div(text='<hr width="100%" color="lightblue">',width=440)
 # put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
 if layout_mode == 'comp':
 	figrid = gridplot([[fig],[fig2]], toolbar_location = 'left')
-
-	dumdiv3 = Div(text='',width=100) # I use that to avoid weird resizing for the correlation plots ...
-	figrid2 = gridplot([[fig3,fig4,dumdiv3]], toolbar_location = 'left')
+	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'left')
 
 	for curgrid in [figrid,figrid2]:
 		curgrid.children[0].logo = None
