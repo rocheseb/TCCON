@@ -207,7 +207,8 @@ ordered_site_list = ['']+sorted([T_FULL[i] for i in prefix_list])
 
 site_input = Select(title='Site:',options = ordered_site_list,width=220) # dropdown widget to select the TCCON site
 date_input = TextInput(title='start-end (yyyymmdd):',width=220) # text input widget to specify dates between which data should be fetched
-flag_input = TextInput(title='Flag (an integer):',value='',width=220) # text input widget to specify the flag of the data to show
+flag_input = TextInput(title='Flag (an integer):',value='',width=130) # text input widget to specify the flag of the data to show
+load_button = Button(label='Load Data',width=100) # this button will be used to start updating the plots according to the user inputs
 
 TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset" # the tools that will be available in the figure's toolbar
 
@@ -645,7 +646,7 @@ def add_cache(date_val,site,source_data,max_size=cache_max_size,first_var='',sec
 ## END OF ADD_CACHE FUNCTION
 #########################################################################################################################################################################
 ## INITIALIZE FUNCTION
-def initialize(var_list,site_source,site_ID):
+def initialize(var_list,site_source,site_ID,reset=True):
 	'''
 	Function that fills the var_input widgets with options and resets the data source
 	Also sets up the hovertool tooltips according to the file type and mode
@@ -675,28 +676,29 @@ def initialize(var_list,site_source,site_ID):
 			site_var_input2.value = ''
 
 	# configure the source and HoverTool based on the type of file
-	if public and layout_mode=='simple':
-		site_source.data.update({'x':[],'y1':[],'colo':[]})
-		fig.select_one(HoverTool).tooltips = [('y','@y1'),('date','@x{%F %T}')]
-		fig.select_one(HoverTool).formatters = {'x':'datetime'}
-	elif not public and layout_mode=='simple':
-		site_source.data.update({'x':[],'y1':[],'colo':[],'flag':[],'spectrum':[]})
-		fig.select_one(HoverTool).tooltips = [('value','@y1'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
-		fig.select_one(HoverTool).formatters = {'x':'datetime'}
-	elif public and layout_mode=='comp':
-		site_source.data.update({'x':[],'y1':[],'y2':[],'colo':[]})
-		fig.select_one(HoverTool).tooltips = [('y','@y1'),('Fig2 y','@y2'),('date','@x{%F %T}')]
-		fig2.select_one(HoverTool).tooltips = [('y','@y2'),('Fig1 y','@y1'),('date','@x{%F %T}')]
-		corfig.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('date','@x{%F %T}')]
-	elif not public and layout_mode=='comp':
-		site_source.data.update({'x':[],'y1':[],'y2':[],'colo':[],'flag':[],'spectrum':[]})
-		fig.select_one(HoverTool).tooltips = [('y','@y1'),('spectrum','@spectrum'),('flag','@flag'),('Fig2 y','@y2'),('date','@x{%F %T}')]
-		fig2.select_one(HoverTool).tooltips = [('y','@y2'),('spectrum','@spectrum'),('flag','@flag'),('Fig1 y','@y1'),('date','@x{%F %T}')]
-		corfig.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
+	if reset:
+		if public and layout_mode=='simple':
+			site_source.data.update({'x':[],'y1':[],'colo':[]})
+			fig.select_one(HoverTool).tooltips = [('y','@y1'),('date','@x{%F %T}')]
+			fig.select_one(HoverTool).formatters = {'x':'datetime'}
+		elif not public and layout_mode=='simple':
+			site_source.data.update({'x':[],'y1':[],'colo':[],'flag':[],'spectrum':[]})
+			fig.select_one(HoverTool).tooltips = [('value','@y1'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
+			fig.select_one(HoverTool).formatters = {'x':'datetime'}
+		elif public and layout_mode=='comp':
+			site_source.data.update({'x':[],'y1':[],'y2':[],'colo':[]})
+			fig.select_one(HoverTool).tooltips = [('y','@y1'),('Fig2 y','@y2'),('date','@x{%F %T}')]
+			fig2.select_one(HoverTool).tooltips = [('y','@y2'),('Fig1 y','@y1'),('date','@x{%F %T}')]
+			corfig.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('date','@x{%F %T}')]
+		elif not public and layout_mode=='comp':
+			site_source.data.update({'x':[],'y1':[],'y2':[],'colo':[],'flag':[],'spectrum':[]})
+			fig.select_one(HoverTool).tooltips = [('y','@y1'),('spectrum','@spectrum'),('flag','@flag'),('Fig2 y','@y2'),('date','@x{%F %T}')]
+			fig2.select_one(HoverTool).tooltips = [('y','@y2'),('spectrum','@spectrum'),('flag','@flag'),('Fig1 y','@y1'),('date','@x{%F %T}')]
+			corfig.select_one(HoverTool).tooltips = [('y','@y1'),('x','@y2'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
 
-	if layout_mode == 'comp':
-		for curfig in [fig,fig2,corfig]:
-			curfig.select_one(HoverTool).formatters = {'x':'datetime'}
+		if layout_mode == 'comp':
+			for curfig in [fig,fig2,corfig]:
+				curfig.select_one(HoverTool).formatters = {'x':'datetime'}
 
 	dum_hide.value = str(time.time()) # update the css of labels
 ## END OF INITIALIZE FUNCTION
@@ -705,8 +707,7 @@ def initialize(var_list,site_source,site_ID):
 def set_site(site='',site_ID=0):
 	'''
 	callback for the 'site_input' dropdown widget.
-	If no variable has been selected before, this only fills the 'var_input' dropdown widget with options.
-	Otherwise it reads and displays data based on the values of all the input widgets
+	This will only fill the 'var_input' dropdown widgets with options.
 	'''
 
 	dum_hide.value = str(time.time()) # update the css of site_input label
@@ -718,8 +719,23 @@ def set_site(site='',site_ID=0):
 
 	if site == '':
 		initialize([],site_source,site_ID)
+		if layout_mode == 'simple':
+			status_div.text = 'Select a site'
+		elif layout_mode =='comp':
+			if site_input.value==site_input2.value=='':
+				status_div.text = 'Select a site'
+			elif site_input.value==''!=site_input2.value:
+				if '' in [var_input3.value,var_input4.value]:
+					status_div.text = site_input2.value+' still has an empty variable input'
+				else:
+					status_div.text = 'Data ready to load'
+			elif site_input2.value==''!=site_input.value:
+				if '' in [var_input.value,var_input2.value]:
+					status_div.text = site_input.value+' still has an empty variable input'
+				else:
+					status_div.text = 'Data ready to load'
 		return
-
+	
 	prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
 	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated files
 
@@ -727,9 +743,9 @@ def set_site(site='',site_ID=0):
 		corfig = fig3
 	elif site_ID==2:
 		corfig = fig4
-
+	
+	# update titles, labels, and notes
 	fig.yaxis[0].axis_label = var_input.value
-	fig.title.text = ''
 	if layout_mode == 'comp':
 		fig.yaxis[1].axis_label = var_input3.value
 		fig2.yaxis[0].axis_label = var_input2.value
@@ -766,14 +782,13 @@ def set_site(site='',site_ID=0):
 
 		notes_div.text = notes.replace("a></font>","a></font>, <a href='"+T_site[prefix]+"'>"+site+"</a>") # updated the information widget with a link to the site's webpage
 
-	load_var(site_file_list,site,site_source,site_ID)
+	load_var(site_file_list,site,site_source,site_ID,mode="set_site")
 ## END OF SET_SITE FUNCTION
 #########################################################################################################################################################################
 ## SET_VAR FUNCTION
 def set_var(site='',site_ID=0):
 	'''
-	callback for the 'var_input' dropdown widget.
-	It reads and displays data based on the values of all the input widgets
+	This function reads and displays data based on the values of the input widgets of a given site
 	'''
 
 	if site_ID==1:
@@ -805,11 +820,58 @@ def set_var(site='',site_ID=0):
 			fig4.yaxis[0].axis_label = var_input3.value
 			fig4.xaxis[0].axis_label = var_input4.value
 	
-	load_var(site_file_list,site,site_source,site_ID)
+	load_var(site_file_list,site,site_source,site_ID,mode="set_var")
 ## END OF SET_VAR FUNCTION
 #########################################################################################################################################################################
+## LOAD_DATA FUNCTION
+if layout_mode == 'simple':
+	save_inputs = ['']*5
+elif layout_mode =='comp':
+	save_inputs = ['']*8
+
+def load_data():
+	'''
+	callback for the load_button, it will load data based on the values of the input widgets for both sites
+	'''
+	global save_inputs
+
+	if layout_mode=='simple' and site_input.value=='':
+		status_div.text = 'Select a site'
+		return	
+	elif layout_mode=='comp':
+		if site_input.value==site_input2.value=='':
+			status_div.text = 'Select a site'
+			return
+
+	if layout_mode == 'simple':
+		current_inputs = [site_input.value,var_input.value,var_input2.value,date_input.value,flag_input.value]
+	elif layout_mode == 'comp':
+		current_inputs = [site_input.value,site_input2.value,var_input.value,var_input2.value,var_input3.value,var_input4.value,date_input.value,flag_input.value]
+
+	no_new_inputs = save_inputs==current_inputs
+	save_inputs = current_inputs
+	
+	if '' not in [site_input.value,var_input.value,var_input2.value]:
+		if no_new_inputs:
+			status_div.text = 'Data already loaded'
+		else:
+			set_var(site=site_input.value,site_ID=1)
+	elif site_input.value!='' and ('' in [var_input.value,var_input2.value]):
+		status_div.text = site_input.value+' still has an empty variable input'
+		return
+		
+	if layout_mode == 'comp':
+		if '' not in [site_input2.value,var_input3.value,var_input4.value]:
+			if no_new_inputs:
+				status_div.text = 'Data already loaded'
+			else:
+				set_var(site=site_input2.value,site_ID=2)
+		elif site_input2.value!='' and ('' in [var_input3.value,var_input4.value]):
+			status_div.text = site_input2.value+' still has an empty variable input'
+## END OF LOAD_DATA FUNCTION
+#########################################################################################################################################################################
 ## LOAD_VAR FUNCTION
-def load_var(site_file_list,site,site_source,site_ID):
+def load_var(site_file_list,site,site_source,site_ID,mode=""):
 	'''
 	Function called by set_site() and set_var() to load the variables matching site,variable, and date inputs
 	'''
@@ -852,28 +914,38 @@ def load_var(site_file_list,site,site_source,site_ID):
 		if flag_mode != '':
 			if not float(flag_mode).is_integer():
 				dum_text.value = str(time.time()+2) # click the timer button to start the loading countdown in the 'status_div' widget
+				time.sleep(0.1)
 				status_div.text = "The flag should be an integer"
 				return
 
-	if no_cached_data:
+	if no_cached_data or mode=='set_site':
 		# loop over the TCCON files for the selected site
 		for filenum,site_file in enumerate(site_file_list):
 			if netcdf:
 				f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
-				all_var = [var for var in f.variables]
+				all_var = [var for var in f.variables if 'run' not in var]
 			else:
 				df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
-				all_var = list(df)
+				all_var = [var for var in list(df) if 'run' not in var]
 
 			# setup some initializations if it is the first file
-			if filenum==0:
-				initialize(all_var,site_source,site_ID) # fills variable inputs with options,resets the data source, and setup hovertool tooltips
-				save_data = {key:[] for key in site_source.data}
-				new_data = {key:[] for key in site_source.data}
+			if filenum==0:		
 				if not filled_site_inputs:
-					dum_text.value = str(time.time()+1) # click the timer button to start the loading countdown in the 'status_div' widget
+					initialize(all_var,site_source,site_ID,reset=False) # fills variable inputs with options, does not reset the data source
+					dum_text.value = str(time.time()+3) # click the timer button again to stop the loading countdown in the 'status_div' widget
+					time.sleep(0.1)
 					status_div.text = site+' still has an empty variable input'
 					return
+				if mode == 'set_site':
+					initialize(all_var,site_source,site_ID,reset=False) # fills variable inputs with options, does not reset the data source
+					dum_text.value = str(time.time()+7) # click the timer button again to stop the loading countdown in the 'status_div' widget
+					time.sleep(0.1)
+					status_div.text = 'Data ready to load'
+					return
+				
+				initialize(all_var,site_source,site_ID) # fills variable inputs with options,resets the data source, and setup hovertool tooltips
+				save_data = {key:[] for key in site_source.data}
+				new_data = {key:[] for key in site_source.data}					
 	
 			if netcdf:
 				nctime =  f.variables['time'][:] # fractional days since 1970
@@ -903,12 +975,14 @@ def load_var(site_file_list,site,site_source,site_ID):
 				# break out of the for loop if min or max dates from the file names are not compatible with the date input
 				if (mindate>all_file_max_date) or (maxdate<all_file_min_date):
 					dum_text.value = str(time.time()+3) # click the timer button to start the loading countdown in the 'status_div' widget
+					time.sleep(0.1)
 					status_div.text = site +' date range: '+all_file_min+'-'+all_file_max
 					if netcdf:
 						f.close() # close the netcdf reader
 					return
 				if mindate>maxdate:
 					dum_text.value = str(time.time()+3) # click the timer button to start the loading countdown in the 'status_div' widget
+					time.sleep(0.1)
 					status_div.text = 'Wrong date input'
 					if netcdf:
 						f.close() # close the netcdf reader
@@ -1003,7 +1077,8 @@ def load_var(site_file_list,site,site_source,site_ID):
 				add_flag_message = ''
 				if flag_mode != '':
 					add_flag_message = ' with flag='+flag_mode
-				dum_text.value = str(time.time()) # click the timer button again to end the loading countdown
+				dum_text.value = str(time.time()+8) # click the timer button again to end the loading countdown
+				time.sleep(0.1)
 				if date_val=='': # date_val empty mean the whole time range of the site has been evaluated
 					status_div.text = site+' has no data'+add_flag_message # if you see this one then there is a problem with the netcdf file ...
 				elif len(date_val)==8: # if only 'firstdate' is given
@@ -1022,6 +1097,7 @@ def load_var(site_file_list,site,site_source,site_ID):
 		initialize(all_var,site_source,site_ID) # fills variable inputs with options,resets the data site_source, and setup hovertool tooltips
 		if not filled_site_inputs:
 			dum_text.value = str(time.time()+1) # click the timer button to start the loading countdown in the 'status_div' widget
+			time.sleep(0.1)
 			status_div.text = site+' still has an empty variable input'
 			return
 
@@ -1039,6 +1115,7 @@ def load_var(site_file_list,site,site_source,site_ID):
 
 				if True not in inds:
 					dum_text.value = str(time.time()+5) # click the timer button again to end the loading countdown
+					time.sleep(0.1)
 					add_flag_message = ' with flag='+flag_mode
 					if date_val=='': # date_val empty mean the whole time range of the site has been evaluated
 						status_div.text = site+' has no data'+add_flag_message # if you see this one then there is a problem with the netcdf file ...
@@ -1082,32 +1159,15 @@ def load_var(site_file_list,site,site_source,site_ID):
 ## INPUT WIDGETS CALLBACKS SECTION
 # assign the python callbacks to the input widgets
 site_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
+var_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
+var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 
-var_input.on_change('value',lambda attr,old,new: set_var(site=site_input.value,site_ID=1))
-def set_date():
-	'''
-	This just runs set_var for both sites
-	'''
-	set_var(site=site_input.value,site_ID=1)
-	if layout_mode == 'comp':
-		set_var(site=site_input2.value,site_ID=2)
-date_input.on_change('value',lambda attr,old,new: set_date())
-
-def set_flag():
-	'''
-	This just runs set_var for both sites
-	'''
-	set_var(site=site_input.value,site_ID=1)
-	if layout_mode == 'comp':
-		set_var(site=site_input2.value,site_ID=2)
-flag_input.on_change('value',lambda attr,old,new: set_flag())
+load_button.on_click(load_data)
 
 if layout_mode == 'comp':
 	site_input2.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
-
-	var_input2.on_change('value',lambda attr,old,new: set_var(site=site_input.value,site_ID=1))
-	var_input3.on_change('value',lambda attr,old,new: set_var(site=site_input2.value,site_ID=2))
-	var_input4.on_change('value',lambda attr,old,new: set_var(site=site_input2.value,site_ID=2))
+	var_input3.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
+	var_input4.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	
 	# widgets specific to the comparison layout_mode
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
@@ -1123,6 +1183,7 @@ if layout_mode == 'comp':
 	fig2.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_text},code = box_select_code)
 	fig3.select_one(BoxSelectTool).callback = CustomJS(code = corfig_box_select_code)
 	fig4.select_one(BoxSelectTool).callback = CustomJS(code = corfig_box_select_code)
+
 ## END OF INPUT WIDGETS CALLBACKS SECTION
 #########################################################################################################################################################################
 ## CENTER FUNCTION
@@ -1256,32 +1317,34 @@ def center():
 center_button = Button(label='Scale without extrema',name='test',width=160) # button to 'center' the plot on the 'good' data
 center_button.on_click(center) # assign the callback function to the button
 
-linediv = Div(text='<hr width="100%" color="lightblue">',width=440)
-linediv2 = Div(text='<hr width="100%" color="lightblue">',width=440)
+# some blue lines that will be used to visually separate groups of widgets
+linediv = Div(text='<hr width="100%" color="lightblue">',width=430)
+linediv2 = Div(text='<hr width="100%" color="lightblue">',width=430)
+linediv3 = Div(text='<hr width="100%" color="lightblue">',width=430)
+
 # put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
 if layout_mode == 'comp':
-	figrid = gridplot([[fig],[fig2]], toolbar_location = 'left')
-	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'left')
+	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above')
+	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above')
 
 	for curgrid in [figrid,figrid2]:
-		curgrid.children[0].logo = None
 		curgrid.children[0].merge_tools = False # need to do that due to a bug in bokeh 0.12.6 that prevent gridplot to display the HoverTool in the toolbar
 		curgrid.children[0].tools = [i for i in curgrid.children[0].tools if type(i)==bokeh.models.tools.HoverTool]
 
 	dumdiv2 = Div(text='',width=50) # dummy div for spacing
 	if not public:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[status_div],[linediv2],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[status_div],[linediv2],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[linediv2],[load_button],[status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
 
 	figroup = gridplot([[figrid],[figrid2]],toolbar_location='left')
 elif layout_mode == 'simple':
-	figroup = gridplot([[fig]], toolbar_location = 'above')
+	figroup = gridplot([[fig]], toolbar_location = 'left')
 	figroup.children[0].merge_tools = False
 	if not public:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[status_div],[linediv2],[center_button],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_div],[linediv3],[center_button],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[status_div],[linediv2],[center_button],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_div],[linediv3],[center_button],[notes_div]],toolbar_location=None)
 
 # final layout
 grid = gridplot([[figroup,side_box],[dum_box]], toolbar_location = None)
