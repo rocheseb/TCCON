@@ -68,7 +68,7 @@ if layout_mode not in ['simple','comp']:
 
 #########################################################################################################################################################################
 ## MODIFIABLE SECTION
-tccon_path = os.path.join(os.getcwd(),'full_archive') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
+tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
 cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 
@@ -516,7 +516,7 @@ if (document.getElementById('mystyle')===null){
 		setTimeout(function(){
 			var textinputs = document.getElementsByClassName('bk-widget-form-group bk-layout-fixed');
 			for(i=0;i<textinputs.length;i++){
-				if(textinputs[i].textContent==='start-end (yyyymmdd):'){textinputs[i].children[1].style.width='120px'}
+				if(textinputs[i].textContent==='start-end (yyyymmdd):'){textinputs[i].children[1].style.width='160px'}
 				if(textinputs[i].textContent==='Flag (an integer):'){textinputs[i].children[1].style.width='20px'}
 			}
 		}, 10)
@@ -1020,6 +1020,7 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 				all_file_max = site_file_list[-1][11:19]	# maximum YYYYMMDD of all files
 				all_file_min_date = calendar.timegm(datetime(int(all_file_min[:4]),int(all_file_min[4:6]),int(all_file_min[6:8])).timetuple())/24/3600
 				all_file_max_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
+
 				# break out of the for loop if min or max dates from the file names are not compatible with the date input
 				if (mindate>all_file_max_date) or (maxdate<all_file_min_date):
 					dum_text.value = str(time.time()+3) # click the timer button to start the loading countdown in the 'status_div' widget
