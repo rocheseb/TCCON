@@ -50,7 +50,7 @@ from functools import partial
 import bokeh
 from bokeh.io import curdoc
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool, BoxSelectTool, DataTable, TableColumn, LinearAxis, DataRange1d
+from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool, BoxSelectTool, DataTable, TableColumn, LinearAxis, DataRange1d, Tool
 from bokeh.layouts import gridplot, widgetbox
 
 # to ignore warnings
@@ -68,7 +68,7 @@ if layout_mode not in ['simple','comp']:
 
 #########################################################################################################################################################################
 ## MODIFIABLE SECTION
-tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
+tccon_path = os.path.join(os.getcwd(),'full_archive') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
 
 cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 
@@ -210,7 +210,7 @@ date_input = TextInput(title='start-end (yyyymmdd):',width=220) # text input wid
 flag_input = TextInput(title='Flag (an integer):',value='',width=130) # text input widget to specify the flag of the data to show
 load_button = Button(label='Load Data',width=100) # this button will be used to start updating the plots according to the user inputs
 
-TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset" # the tools that will be available in the figure's toolbar
+TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover" # the tools that will be available in the figure's toolbar
 
 plot_width = 700
 if layout_mode == 'simple':
@@ -398,14 +398,14 @@ cb_obj.button_type = 'success';
 cb_obj.label= 'Enable hover tools';
 }
 
-toolbar_list = document.getElementsByClassName("bk-toolbar-box");
+var toolbar_list = document.getElementsByClassName("bk-toolbar-box");
 if(toolbar_list.length>1){
 	for(i=0;i<toolbar_list.length;i++){
 		if(toolbar_list[i].textContent.includes("Hover")){}
 	}
 }
 
-toolbar_button_list = document.getElementsByClassName("bk-toolbar-button");
+var toolbar_button_list = document.getElementsByClassName("bk-toolbar-button");
 if(toolbar_button_list.length>1){
 	for(i=0;i<toolbar_button_list.length;i++){
 		if(toolbar_button_list[i].textContent.includes("Hover")){toolbar_button_list[i].click()}
@@ -414,6 +414,33 @@ if(toolbar_button_list.length>1){
 """
 hover_button = Button(label='Enable hover',button_type='success',width=140)
 hover_button.callback = CustomJS(code=hover_button_code)
+
+#
+reset_tool_code = """
+import * as p from "core/properties"
+import {ResetTool,ResetToolView} from "models/tools/actions/reset_tool"
+
+export class NewResetToolView extends ResetToolView
+	
+	NewResetToolView::doit = ->
+	  @plot_view.clear_state()
+	  @plot_view.reset_range()
+	  @plot_view.reset_selection()
+	  custom_event()
+	  if @model.reset_size
+	    return @plot_view.reset_dimensions()
+	  return
+
+export class NewResetTool extends ResetTool
+
+	default_view : NewResetToolView
+	type : "NewResetTool"
+	tool_name : "NewReset"
+	icon : "bk-tool-icon-reset"
+"""
+
+class NewResetTool(Tool):
+	__implementation__ = reset_tool_code
 
 ## END OF TOOLS SETUP
 #################################################################################
@@ -450,34 +477,55 @@ dum_text.js_on_change('value',CustomJS(code=dum_text_code))
 # also changes the css of the 'site_input' widgets to display them in bold and with the apprioriate color
 # this callback will also be triggered at the start of the set_site function (otherwise the css goes back to the default css when an option is selected)
 dum_hide_code = """
+console.log('DUM_HIDE_CODE');
 if (document.getElementById('mystyle')===null){
-	widgetbox_list = document.getElementsByClassName("bk-widget-box");
+	var widgetbox_list = document.getElementsByClassName("bk-widget-box");
 
 	for(i=0;i<widgetbox_list.length;i++){
 		if(widgetbox_list[i].textContent.includes('hidden')){widgetbox_list[i].style.display="none"}
 	}
 
-	toolbar_list = document.getElementsByClassName("bk-toolbar-box");
+	var toolbar_list = document.getElementsByClassName("bk-toolbar-box");
 	if(toolbar_list.length>1){
 		for(i=0;i<toolbar_list.length;i++){
 			if(toolbar_list[i].textContent.includes("Hover")){toolbar_list[i].style.display="none"}
 		}
 	}
 
-	var css = document.createElement("style");
-	css.id = 'mystyle'
-	css.type = "text/css";
-	css.innerHTML = ".bk-tooltip>div:not(:first-child) { display: none }";
-	document.body.appendChild(css);
+	var custom_css = document.createElement("style");
+	custom_css.id = 'mystyle';
+	custom_css.type = "text/css";
+	custom_css.innerHTML = ".bk-tooltip>div:not(:first-child) { display: none }";
+	document.body.appendChild(custom_css);
+
+	var custom_script = document.createElement("script");
+	custom_script.id = 'myscript';
+	custom_script.type = "text/javascript";
+	custom_script.innerHTML = `	function custom_event(){
+		// make the background color of the site_input widgets correspond to the color of data in the plot
+		setTimeout( function(){
+			var first_site = document.getElementsByTagName('label')[0];
+			var second_site = document.getElementsByTagName('label')[1];
+			first_site.style["font-weight"] = "bold";
+			second_site.style["font-weight"] = "bold";
+			first_site.style["color"] = "%s";
+			second_site.style["color"] = "%s";
+		}, 10)
+
+		// make the TextInput widgets smaller
+		setTimeout(function(){
+			var textinputs = document.getElementsByClassName('bk-widget-form-group bk-layout-fixed');
+			for(i=0;i<textinputs.length;i++){
+				if(textinputs[i].textContent==='start-end (yyyymmdd):'){textinputs[i].children[1].style.width='120px'}
+				if(textinputs[i].textContent==='Flag (an integer):'){textinputs[i].children[1].style.width='20px'}
+			}
+		}, 10)
+	}`;
+	document.body.appendChild(custom_script);
 }
 
-// make the background color of the site_input widgets correspond to the color of data in the plot
-var first_site = document.getElementsByTagName('label')[0];
-var second_site = document.getElementsByTagName('label')[1];
-first_site.style["font-weight"] = "bold";
-second_site.style["font-weight"] = "bold";
-first_site.style["color"] = "%s";
-second_site.style["color"] = "%s";
+custom_event();
+
 """ % (main_color,main_color2)
 
 dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
@@ -1161,6 +1209,7 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 site_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 var_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
+date_input.js_on_change('value',CustomJS(code=dum_hide_code)) # conserve the size of the input widget after using it
 
 load_button.on_click(load_data)
 
@@ -1168,6 +1217,8 @@ if layout_mode == 'comp':
 	site_input2.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input3.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input4.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
+
+	flag_input.js_on_change('value',CustomJS(code=dum_hide_code)) # conserve the size of the input widget after using it
 	
 	# widgets specific to the comparison layout_mode
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
@@ -1322,8 +1373,16 @@ linediv = Div(text='<hr width="100%" color="lightblue">',width=430)
 linediv2 = Div(text='<hr width="100%" color="lightblue">',width=430)
 linediv3 = Div(text='<hr width="100%" color="lightblue">',width=430)
 
+fig.toolbar.tools += [NewResetTool()]
+
 # put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
 if layout_mode == 'comp':
+
+	# add the custom reset tool to figures
+	fig2.toolbar.tools += [NewResetTool()]
+	fig3.toolbar.tools += [NewResetTool()]
+	fig4.toolbar.tools += [NewResetTool()]
+
 	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above')
 	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above')
 
@@ -1354,4 +1413,4 @@ grid = gridplot([[figroup,side_box],[dum_box]], toolbar_location = None)
 	
 curdoc().title='TCCON' # this changes the title of the internet tab in which the document will be displayed
 curdoc().add_root(grid) # this add the grid layout to the document
-curdoc().add_timeout_callback(hide_dummy,1000) # this schedules the 'hide_dummy' callback to be triggered 1000 milliseconds after page load; if this fails to trigger too often, increase the number
+curdoc().add_timeout_callback(hide_dummy,2000) # this schedules the 'hide_dummy' callback to be triggered 1000 milliseconds after page load; if this fails to trigger too often, increase the number
