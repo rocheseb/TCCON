@@ -4,10 +4,9 @@
 """
 This code will produce interactive plots  that will read into TCCON netcdf files to display time series of the data.
 
-In the same directory as this code, make a 'TCCON' folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08).
-You can also edit the 'tccon_path' variable if you already have tccon files in a different location.
+Create a new folder with netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08).
 
-You can also use .eof.csv files, but not together with netcdf files; only one type of files should be in the 'TCCON' folder.
+You can also use .eof.csv files, but not together with netcdf files; only one type of files should be in the data folder.
 It is much slower to read from the .eof.csv files than it is to read from the netcdf files !
 And unlike the netcdf files, using the date input widget won't make loading of data subsets faster with the .eof.csv files.
 
@@ -15,22 +14,23 @@ All the file names must start with the format xxYYYYMMDD_YYYYMMDD , xx is the tw
 
 This code needs to be run by a bokeh server like this:
 
-bokeh serve --show TCCON_archive.py --args A
+bokeh serve --show TCCON_archive.py --args /path/to/data A
 
+/path/to/data is the complete path to the folder containing the data files (and ONLY the data files).
 Where A is an argument that should be equal to 'simple' or 'comp' (without quotes), this will produce a specific layout for each:
 
 - 'simple': There will be just one plot to display time series of any variables
 - 'comp' : there will be four plots, two figures for time series, and two 'correlation' figures that will plot the y axis of the time series figures against each other
 	 	   In the time series figures, the left axis is for the first site variable while the right axis is for the second site variable
 
-If the selected site's data is in different files it will take longer to load new variables.
+If the selected site's data is in different files it will take longer to load new variables than if all the data is in one file.
 
 The program will create a cache_dic.npy file in which it will save full time series of variables that correspond to previous inputs.
 The size of this cache file will be kept under 200 MB. If you like you can increase that size by changing the 'cache_max_size' value (in bytes)
 
 e.g.	Reading a new variable in 'comp' mode for Lamont for the entire time series can take several minutes when done for the first time.
 		The same data read from the cache file will load in 20-50 seconds.
-		For Lamont in 'comp' mode, a set of two variables (+time,flag,color, and spectrum arrays) is ~ 50 MB for the full time series
+		For Lamont in 'comp' mode, a set of two variables (+time,flag,color, and spectrum name arrays) is ~ 50 MB for the full time series
 """
 
 #############
@@ -59,8 +59,16 @@ warnings.filterwarnings('ignore')
 
 #############
 #############
+if len(sys.argv)!=3:
+	print "Missing arguments; the bokeh server must be run with 2 arguments e.g.:"
+	print "bokeh serve --show TCCON_archive.py --args /path/to/data comp"
 
-layout_mode = sys.argv[1]
+data_path = sys.argv[1]
+if not os.path.isdir(data_path):
+	print data_path,"is not a valid path"
+	sys.exit()
+
+layout_mode = sys.argv[2]
 if layout_mode not in ['simple','comp']:
 	print 'bokeh serve --show TCCON_archive.py --args A'
 	print 'A is either "simple" or "comp"'
@@ -68,16 +76,14 @@ if layout_mode not in ['simple','comp']:
 
 #########################################################################################################################################################################
 ## MODIFIABLE SECTION
-tccon_path = os.path.join(os.getcwd(),'TCCON') ## this is the only line that may need editing; full path to the folder containing the tccon netcdf files
-
 cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 
 # if you modify the plotting colors, you will need to remove your cache_dic.npy file
-main_color = '#9ACD32' # this will be the color used for the flag=0 data; I use css 'YellowGreen' (#9ACD32) by default
+main_color = 'yellowgreen' # this will be the color used for the flag=0 data; I use css 'YellowGreen' (#9ACD32) by default
 flag_color = 'grey' # this will be the color used for the flag!=0 data
 hover_color = 'red' # this will be the color used for data hovered by the mouse
 
-main_color2 = '#DDA0DD' # the main color for data from the second site in 'comp' mode; I use css 'Plum' (#DDA0DD) by default
+main_color2 = 'plum' # the main color for data from the second site in 'comp' mode; I use css 'Plum' (#DDA0DD) by default
 
 # this is the mode of the hovertool for the Figure 1 and Figure 2 in 'comp' mode
 # 'width' to have all y data select over a x range (you can only pan the box selection left-right)
@@ -85,7 +91,9 @@ main_color2 = '#DDA0DD' # the main color for data from the second site in 'comp'
 # 'both' you can select a specific rectangle of data
 boxselecttool_dimensions = 'both'
 
-skip_list = ['_Version','ak_','prio','checksum','graw','spectrum','year','ada','aicf','adcf','time'] # variables including those keywords won't be shown in the 'var_input' dropdowns
+# variables including the keywords in 'skip_list' won't be shown in the variable input dropdowns
+skip_list = [	'_Version','ak_','prio','checksum','graw','spectrum','year','ada','aicf','adcf','time',
+				'_OVC_','_VSF_','_AM_','_ZO','_Zpres','opd_cm','_S_G','RMS','Nit','CL','CT','CC','FS',] 
 
 # dictonnary with the full names of TCCON sites
 T_FULL = {
@@ -181,10 +189,10 @@ for key in T_FULL:
 		T_site[key] += '_'.join(T_FULL[key].split())
 
 netcdf = True
-tccon_file_list = [i for i in os.listdir(tccon_path) if '.nc' in i] # list of the files in the 'TCCON' folder
+tccon_file_list = [i for i in os.listdir(data_path) if '.nc' in i] # list of the files in the 'TCCON' folder
 if len(tccon_file_list) == 0:
 	netcdf = False
-	tccon_file_list = [i for i in os.listdir(tccon_path) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
+	tccon_file_list = [i for i in os.listdir(data_path) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
 
 # list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
 prefix_list = list(set([i[:2] for i in tccon_file_list])) 
@@ -192,7 +200,7 @@ prefix_list = list(set([i[:2] for i in tccon_file_list]))
 # determine if the files are from the public or private archive
 public = True
 if netcdf:
-	f = netCDF4.Dataset(os.path.join(tccon_path,tccon_file_list[0]),'r')
+	f = netCDF4.Dataset(os.path.join(data_path,tccon_file_list[0]),'r')
 	if 'flag' in [var for var in f.variables]:
 		public = False
 	f.close()
@@ -415,7 +423,7 @@ if(toolbar_button_list.length>1){
 hover_button = Button(label='Enable hover',button_type='success',width=140)
 hover_button.callback = CustomJS(code=hover_button_code)
 
-#
+# custom reset tool that will also trigger the 'custom_event()' function defined in the 'DumClass' code in order to preserve the custom css of widgets
 reset_tool_code = """
 import * as p from "core/properties"
 import {ResetTool,ResetToolView} from "models/tools/actions/reset_tool"
@@ -459,90 +467,100 @@ status_div.text='Data loaded';
 cb_obj.button_type = 'success';
 }
 """
-dum_button = Button(label='dummy',button_type='success',width=200) # the dummy button itself
+dum_button = Button(label='dummy_button',button_type='success',width=200) # the dummy button itself
 dum_button.callback = CustomJS(args={'status_div':status_div},code=dum_button_code) # the callback of the button
 
 dum_text = TextInput() # dummy text input widget; it will be used to trigger the dummy button callback when the dropdown widgets are used.
-# callback of the dummy 'dum_text' TextInput widget to trigger a button click on the dummy button 'dum_button'
-dum_text_code = """
-button_list = document.getElementsByTagName('button');
+dum_text.js_on_change('value',CustomJS(code="click_dummy_button()")) # callback of the dummy 'dum_text' TextInput widget to trigger a button click on the dummy button 'dum_button'
 
-for(i=0;i<button_list.length;i++){
-	if(button_list[i].textContent.includes("dummy")){button_list[i].click()}
-}
-"""
-dum_text.js_on_change('value',CustomJS(code=dum_text_code))
-
-# callback to hide the dummy widget box after the timeout callback
+# callback to hide the dummy widget box after the document is loaded
 # also changes the css of the 'site_input' widgets to display them in bold and with the apprioriate color
 # this callback will also be triggered at the start of the set_site function (otherwise the css goes back to the default css when an option is selected)
 dum_hide_code = """
-console.log('DUM_HIDE_CODE');
-if (document.getElementById('mystyle')===null){
-	var widgetbox_list = document.getElementsByClassName("bk-widget-box");
+import {TextInput,TextInputView} from "models/widgets/text_input"
 
-	for(i=0;i<widgetbox_list.length;i++){
-		if(widgetbox_list[i].textContent.includes('hidden')){widgetbox_list[i].style.display="none"}
-	}
+document.addEventListener 'DOMContentLoaded', (->
+	setTimeout (->
+		console.log document # this seems to help ensuring that all the bokeh objects have finished rendering before starting the following code
+		widgetbox_list = document.getElementsByClassName('bk-widget-box')
+		i = 0
+		while i < widgetbox_list.length
+			if widgetbox_list[i].textContent.includes('hidden')
+				widgetbox_list[i].style.display = 'none'
+			i++
 
-	var toolbar_list = document.getElementsByClassName("bk-toolbar-box");
-	if(toolbar_list.length>1){
-		for(i=0;i<toolbar_list.length;i++){
-			if(toolbar_list[i].textContent.includes("Hover")){toolbar_list[i].style.display="none"}
+		toolbar_list = document.getElementsByClassName('bk-toolbar-box')
+		if toolbar_list.length > 1
+			i = 0
+			while i < toolbar_list.length
+				if toolbar_list[i].textContent.includes('Hover')
+					toolbar_list[i].style.display = 'none'
+				i++
+
+		custom_css = document.createElement('style')
+		custom_css.id = 'mystyle'
+		custom_css.type = 'text/css'
+		custom_css.innerHTML = '.bk-tooltip>div:not(:first-child) { display: none }'
+		document.body.appendChild custom_css
+
+		custom_script = document.createElement('script')
+		custom_script.id = 'myscript'
+		custom_script.type = 'text/javascript'
+		custom_script.innerHTML = '''
+		function custom_event(){
+			// make the background color of the site_input widgets correspond to the color of data in the plot
+			setTimeout( function(){
+				var first_site = document.getElementsByTagName("label")[0];
+				var second_site = document.getElementsByTagName("label")[1];
+				first_site.style["font-weight"] = "bold";
+				second_site.style["font-weight"] = "bold";
+				first_site.style["color"] = "%s";
+				second_site.style["color"] = "%s";
+			}, 10)
+
+			// make the TextInput widgets smaller
+			setTimeout(function(){
+				var textinputs = document.getElementsByClassName("bk-widget-form-group bk-layout-fixed");
+				for(var i=0;i<textinputs.length;i++){
+					if(textinputs[i].textContent==="start-end (yyyymmdd):"){textinputs[i].children[1].style.width="160px"}
+					if(textinputs[i].textContent==="Flag (an integer):"){textinputs[i].children[1].style.width="20px"}
+				}
+			}, 10)
 		}
-	}
 
-	var custom_css = document.createElement("style");
-	custom_css.id = 'mystyle';
-	custom_css.type = "text/css";
-	custom_css.innerHTML = ".bk-tooltip>div:not(:first-child) { display: none }";
-	document.body.appendChild(custom_css);
+		// click a dummy button to start or stop a loading message in the status_div widget
+		function click_dummy_button(){
+			var button_list = document.getElementsByTagName('button');
 
-	var custom_script = document.createElement("script");
-	custom_script.id = 'myscript';
-	custom_script.type = "text/javascript";
-	custom_script.innerHTML = `	function custom_event(){
-		// make the background color of the site_input widgets correspond to the color of data in the plot
-		setTimeout( function(){
-			var first_site = document.getElementsByTagName('label')[0];
-			var second_site = document.getElementsByTagName('label')[1];
-			first_site.style["font-weight"] = "bold";
-			second_site.style["font-weight"] = "bold";
-			first_site.style["color"] = "%s";
-			second_site.style["color"] = "%s";
-		}, 10)
+			for(var i=0;i<button_list.length;i++){
+				if(button_list[i].textContent==="dummy_button"){button_list[i].click()}
+			}			
+		}
 
-		// make the TextInput widgets smaller
-		setTimeout(function(){
-			var textinputs = document.getElementsByClassName('bk-widget-form-group bk-layout-fixed');
-			for(i=0;i<textinputs.length;i++){
-				if(textinputs[i].textContent==='start-end (yyyymmdd):'){textinputs[i].children[1].style.width='160px'}
-				if(textinputs[i].textContent==='Flag (an integer):'){textinputs[i].children[1].style.width='20px'}
-			}
-		}, 10)
-	}`;
-	document.body.appendChild(custom_script);
-}
+		custom_event()
+		'''
+		document.body.appendChild custom_script
+		return
+	), 2000
+	return
+), false
 
-custom_event();
+export class DumClassView extends TextInputView	
 
+export class DumClass extends TextInput
 """ % (main_color,main_color2)
 
-dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
-dum_hide.js_on_change('value',CustomJS(code=dum_hide_code))
+class DumClass(TextInput):
+	__implementation__ = dum_hide_code
 
-# if the 'timeout' callback is set too early, the dummy widgets won't be hidden.
-# but if it is set too late, the user will have time to see the dummy widgets before they disappear.
+dum_hide = TextInput() # dummy text input widget; it will be used in a 'timeout' callback after the page load in order to make the dummy widgets invisible
+dum_hide.js_on_change('value',CustomJS(code="custom_event()"))
+
+# if the 'timeout' event is set too early, the dummy widgets won't be hidden. If it is set too late, the user will have time to see the dummy widgets before they disappear.
 dum_alert = Div(text='<b>OOPS !</b> the widgets below are supposed to be hidden. Try refreshing the page',width=700)
 
 dum_box = widgetbox(dum_alert,dum_button,dum_text,dum_hide,width=600,name='dummy box')
 
-def hide_dummy():
-	'''
-	timeout callback that will be executed 1 second after the page is open.
-	changes the value of the 'dum_hide' dummy TextInput widget, this triggers the widget's javascript callback that makes all the 'dum_box' invisible
-	'''
-	dum_hide.value = 'hide'
 ## END OF DUMMY WIDGETS SETUP
 #################################################################################
 ## CACHE SETUP
@@ -970,10 +988,10 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 		# loop over the TCCON files for the selected site
 		for filenum,site_file in enumerate(site_file_list):
 			if netcdf:
-				f = netCDF4.Dataset(os.path.join(tccon_path,site_file),'r') # netcdf file reader
+				f = netCDF4.Dataset(os.path.join(data_path,site_file),'r') # netcdf file reader
 				all_var = [var for var in f.variables if 'run' not in var]
 			else:
-				df = pd.read_csv(os.path.join(tccon_path,site_file),header=2) # read the .eof.csv file
+				df = pd.read_csv(os.path.join(data_path,site_file),header=2) # read the .eof.csv file
 				all_var = [var for var in list(df) if 'run' not in var]
 
 			# setup some initializations if it is the first file
@@ -1210,7 +1228,7 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 site_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 var_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
-date_input.js_on_change('value',CustomJS(code=dum_hide_code)) # conserve the size of the input widget after using it
+date_input.js_on_change('value',CustomJS(code="custom_event()")) # conserve the size of the input widget after using it
 
 load_button.on_click(load_data)
 
@@ -1219,7 +1237,7 @@ if layout_mode == 'comp':
 	var_input3.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input4.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 
-	flag_input.js_on_change('value',CustomJS(code=dum_hide_code)) # conserve the size of the input widget after using it
+	flag_input.js_on_change('value',CustomJS(code="custom_event()")) # conserve the size of the input widget after using it
 	
 	# widgets specific to the comparison layout_mode
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
@@ -1414,4 +1432,3 @@ grid = gridplot([[figroup,side_box],[dum_box]], toolbar_location = None)
 	
 curdoc().title='TCCON' # this changes the title of the internet tab in which the document will be displayed
 curdoc().add_root(grid) # this add the grid layout to the document
-curdoc().add_timeout_callback(hide_dummy,2000) # this schedules the 'hide_dummy' callback to be triggered 1000 milliseconds after page load; if this fails to trigger too often, increase the number
