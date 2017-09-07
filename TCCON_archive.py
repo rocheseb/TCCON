@@ -218,7 +218,10 @@ date_input = TextInput(title='start-end (yyyymmdd):',width=220) # text input wid
 flag_input = TextInput(title='Flag (an integer):',value='',width=130) # text input widget to specify the flag of the data to show
 load_button = Button(label='Load Data',width=100) # this button will be used to start updating the plots according to the user inputs
 
-TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover" # the tools that will be available in the figure's toolbar
+if layout_mode == 'comp':
+	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover" # the tools that will be available in the figure's toolbar
+elif layout_mode == 'simple':
+	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover" # no box_select tool in simple mode
 
 plot_width = 700
 if layout_mode == 'simple':
@@ -277,7 +280,7 @@ if layout_mode == 'comp':
 	fig.add_layout(new_fig_axis,'right')
 	fig.scatter(x='x',y='y1',color='colo',hover_color=hover_color,alpha=0.7,y_range_name='first_var',source=source2) # this is plotted in the first figure, it will read data from the 'source2' object	
 
-fig.select_one(BoxSelectTool).dimensions = boxselecttool_dimensions
+	fig.select_one(BoxSelectTool).dimensions = boxselecttool_dimensions
 
 ## END FIGURES SETUP
 #################################################################################
@@ -745,11 +748,11 @@ def initialize(var_list,site_source,site_ID,reset=True):
 	if reset:
 		if public and layout_mode=='simple':
 			site_source.data.update({'x':[],'y1':[],'colo':[]})
-			fig.select_one(HoverTool).tooltips = [('y','@y1'),('date','@x{%F %T}')]
+			fig.select_one(HoverTool).tooltips = [(var_input.value,'@y1'),('date','@x{%F %T}')]
 			fig.select_one(HoverTool).formatters = {'x':'datetime'}
 		elif not public and layout_mode=='simple':
 			site_source.data.update({'x':[],'y1':[],'colo':[],'flag':[],'spectrum':[]})
-			fig.select_one(HoverTool).tooltips = [('value','@y1'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
+			fig.select_one(HoverTool).tooltips = [(var_input.value,'@y1'),('spectrum','@spectrum'),('flag','@flag'),('date','@x{%F %T}')]
 			fig.select_one(HoverTool).formatters = {'x':'datetime'}
 		elif public and layout_mode=='comp':
 			site_source.data.update({'x':[],'y1':[],'y2':[],'colo':[]})
@@ -910,19 +913,21 @@ def load_data():
 			return
 
 	if layout_mode == 'simple':
-		current_inputs = [site_input.value,var_input.value,var_input2.value,date_input.value,flag_input.value]
+		current_inputs = [site_input.value,var_input.value,date_input.value,flag_input.value]
+		first_site_mode_inputs = [site_input.value,var_input.value]
 	elif layout_mode == 'comp':
+		first_site_mode_inputs = [site_input.value,var_input.value,var_input2.value]
 		current_inputs = [site_input.value,site_input2.value,var_input.value,var_input2.value,var_input3.value,var_input4.value,date_input.value,flag_input.value]
 
 	no_new_inputs = save_inputs==current_inputs
 	save_inputs = current_inputs
 	
-	if '' not in [site_input.value,var_input.value,var_input2.value]:
+	if '' not in first_site_mode_inputs:
 		if no_new_inputs:
 			status_div.text = 'Data already loaded'
 		else:
 			set_var(site=site_input.value,site_ID=1)
-	elif site_input.value!='' and ('' in [var_input.value,var_input2.value]):
+	elif site_input.value!='' and ('' in first_site_mode_inputs):
 		status_div.text = site_input.value+' still has an empty variable input'
 		return
 		
@@ -1227,17 +1232,17 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 # assign the python callbacks to the input widgets
 site_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 var_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
-var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 date_input.js_on_change('value',CustomJS(code="custom_event()")) # conserve the size of the input widget after using it
+flag_input.js_on_change('value',CustomJS(code="custom_event()")) # conserve the size of the input widget after using it
 
 load_button.on_click(load_data)
 
 if layout_mode == 'comp':
+	var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
+
 	site_input2.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input3.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input4.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
-
-	flag_input.js_on_change('value',CustomJS(code="custom_event()")) # conserve the size of the input widget after using it
 	
 	# widgets specific to the comparison layout_mode
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
