@@ -99,7 +99,7 @@ warnings.filterwarnings('ignore')
 ###############
 
 # the name of the html file that this code produces, make sure it finishes with '.html'
-save_name = 'test.html'
+save_name = 'tccon_series.html'
 
 # tab_name will appear in the internet tab when you open the page
 tab_name = 'TCCON'
@@ -133,7 +133,7 @@ colors_dict = {
 bok_struct = OrderedDict([
 			('Key_panel',OrderedDict([
 					('custom',{
-								'lines':('x','vsf','sza','column','S_G','fvsi','p_out','h_out','t_out','hour','CL','CT','FS','S-G','RMS','Zpres','AM',), # add keywords in this tuple to increase the variables to be read.
+								'lines':('x','vsf','sza','column','fvsi','p_out','h_out','t_out','hour','CL','CT','FS','S-G','RMS','Zpres','AM',), # add keywords in this tuple to read more variables
 								'plot_height':250,
 								'plot_width':800,
 								}),	
@@ -376,11 +376,13 @@ def read_tccon(path,mode='eof',variables=[],key_variables=[],skip_list=[],flag='
 		for var in variables:
 			if var not in header:
 				print('in function read_tccon(): wrong variable input:',var,'not in',path)
-				return {}				
+				return {}
+
 			try:
 				DATA[var] = np.array( content_T[header.index(var)], dtype=np.float )
 			except ValueError:
 				print('Skipping string variable:',var)
+
 				
 	if mode.lower() == 'netcdf':
 		f = netCDF4.Dataset(path,'r')
@@ -448,512 +450,513 @@ def flatten(obj,keep=[]):
 			else:
 				yield item
 
-#########
-# Setup #
-#########
+if __name__ == "__main__":
+	#########
+	# Setup #
+	#########
 
-######## /!\ important time handling to make sure times don't get shifted from UTC due to computer environment variables when using datetime objects ###########
-os.environ['TZ'] = 'UTC'
-time.tzset()
-# This will not change your system timezone settings
-################################################################################################################################################################
+	######## /!\ important time handling to make sure times don't get shifted from UTC due to computer environment variables when using datetime objects ###########
+	os.environ['TZ'] = 'UTC'
+	time.tzset()
+	# This will not change your system timezone settings
+	################################################################################################################################################################
 
-argu = sys.argv
+	argu = sys.argv
 
-path='1'
-while os.path.isdir(path)==False:
-	if len(argu)>1:
-		path = argu[1]
-	else:
-		print('\n\nPut in a folder all the .eof files you want to process, give the path to that folder')
-		path=raw_input('Give the path to your folder /YOUR/PATH/TO/FOLDER  :\n')
-	if os.path.isdir(path)==False:
-		print('/!\\ You gave a wrong path /!\\\n')
+	path='1'
+	while os.path.isdir(path)==False:
 		if len(argu)>1:
-			sys.exit()
-
-save_path=os.path.join(path,'SAVE')
-if not os.path.isdir(save_path):
-	os.makedirs(save_path)
-
-print('\nPlots will be saved in',save_path,'\n')
-
-flag_check = True
-while flag_check:
-	flag = 'all'
-	if len(argu)>2:
-		flag = argu[2]
-	else:
-		flag = raw_input('Select data flag to be used (type "all" to use all data)\n')
-	if flag != 'all':
-		try:
-			test = int(flag)
-			flag_check = False
-		except ValueError:
-			print('The flag must be a number (or blank "")')
-			flag_check = True
-			if len(argu)>2:
+			path = argu[1]
+		else:
+			print('\n\nPut in a folder all the .eof files you want to process, give the path to that folder')
+			path=raw_input('Give the path to your folder /YOUR/PATH/TO/FOLDER  :\n')
+		if os.path.isdir(path)==False:
+			print('/!\\ You gave a wrong path /!\\\n')
+			if len(argu)>1:
 				sys.exit()
-	else:
-		flag_check = False
 
-# callback javascript codes
-err_code = """
-all = S_all.data;
-main = S_main.data;
-err = S_err.data;
-varlist = S_save.data["varlist"];
-colors = S_save.data["colors"][0];
+	save_path=os.path.join(path,'SAVE')
+	if not os.path.isdir(save_path):
+		os.makedirs(save_path)
 
-var val = cb_obj.active;
-var vartoplot = varlist[val];
+	print('\nPlots will be saved in',save_path,'\n')
 
-main_laby.axis_label = vartoplot;
+	flag_check = True
+	while flag_check:
+		flag = 'all'
+		if len(argu)>2:
+			flag = argu[2]
+		else:
+			flag = raw_input('Select data flag to be used (type "all" to use all data)\n')
+		if flag != 'all':
+			try:
+				test = int(flag)
+				flag_check = False
+			except ValueError:
+				print('The flag must be a number (or blank "")')
+				flag_check = True
+				if len(argu)>2:
+					sys.exit()
+		else:
+			flag_check = False
 
-for (var key in colors) {
-if(vartoplot.includes(key)){
-var colo = colors[key]
-}
-}
+	# callback javascript codes
+	err_code = """
+	all = S_all.data;
+	main = S_main.data;
+	err = S_err.data;
+	varlist = S_save.data["varlist"];
+	colors = S_save.data["colors"][0];
 
-var y = all[vartoplot];
-var min = Math.min.apply(null,y);
-var max = Math.max.apply(null,y);
-var ampli = max - min;
-mainy.start = min - 0.1*ampli;
-mainy.end = max + 0.1*ampli;
+	var val = cb_obj.active;
+	var vartoplot = varlist[val];
 
-var yer = all[varlist[val]+'_error'];
-var min = Math.min.apply(null,yer);
-var max = Math.max.apply(null,yer);
-var ampli = max - min;
-erry.start = min - 0.1*ampli;
-erry.end = max + 0.1*ampli;
+	main_laby.axis_label = vartoplot;
 
-main["y"] = [];
-main["colo"] = [];
-err["y"] = [];
+	for (var key in colors) {
+	if(vartoplot.includes(key)){
+	var colo = colors[key]
+	}
+	}
 
-for (i=0;i<y.length;i++) {
-main["y"].push(all[varlist[val]][i]);
-err["y"].push(all[varlist[val]+'_error'][i]);
+	var y = all[vartoplot];
+	var min = Math.min.apply(null,y);
+	var max = Math.max.apply(null,y);
+	var ampli = max - min;
+	mainy.start = min - 0.1*ampli;
+	mainy.end = max + 0.1*ampli;
 
-if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("grey");}
-	
-}
+	var yer = all[varlist[val]+'_error'];
+	var min = Math.min.apply(null,yer);
+	var max = Math.max.apply(null,yer);
+	var ampli = max - min;
+	erry.start = min - 0.1*ampli;
+	erry.end = max + 0.1*ampli;
 
-S_main.change.emit();
-S_err.change.emit();
-"""
+	main["y"] = [];
+	main["colo"] = [];
+	err["y"] = [];
 
-code = """
-all = S_all.data;
-main = S_main.data;
-varlist = S_save.data["varlist"];
-colors = S_save.data["colors"][0];
+	for (i=0;i<y.length;i++) {
+	main["y"].push(all[varlist[val]][i]);
+	err["y"].push(all[varlist[val]+'_error'][i]);
 
-var val = cb_obj.active;
-var vartoplot = varlist[val];
+	if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("grey");}
+		
+	}
 
-main_laby.axis_label = vartoplot;
+	S_main.change.emit();
+	S_err.change.emit();
+	"""
 
-for (var key in colors) {
-if(vartoplot.includes(key)){
-var colo = colors[key]
-}
-}
+	code = """
+	all = S_all.data;
+	main = S_main.data;
+	varlist = S_save.data["varlist"];
+	colors = S_save.data["colors"][0];
 
-var y = all[vartoplot];
-var min = Math.min.apply(null,y);
-var max = Math.max.apply(null,y);
-var ampli = max - min;
-mainy.start = min - 0.1*ampli;
-mainy.end = max + 0.1*ampli;
+	var val = cb_obj.active;
+	var vartoplot = varlist[val];
 
-main["y"] = [];
-main["colo"] = [];
+	main_laby.axis_label = vartoplot;
 
-for (i=0;i<y.length;i++) {
-main["y"].push(all[vartoplot][i]);
+	for (var key in colors) {
+	if(vartoplot.includes(key)){
+	var colo = colors[key]
+	}
+	}
 
-if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("grey");}
-	
-}
+	var y = all[vartoplot];
+	var min = Math.min.apply(null,y);
+	var max = Math.max.apply(null,y);
+	var ampli = max - min;
+	mainy.start = min - 0.1*ampli;
+	mainy.end = max + 0.1*ampli;
 
-S_main.change.emit();
-"""
+	main["y"] = [];
+	main["colo"] = [];
 
-input_code= """
-var all = S_all.data;
-var main = S_main.data;
-var fill = S_fill.data;
-var varlist = S_save.data["varlist"];
-var colors = S_save.data["colors"][0];
-var colo = '';
+	for (i=0;i<y.length;i++) {
+	main["y"].push(all[vartoplot][i]);
 
-var vartoplot = cb_obj.value;
+	if (all["flag"][i]=="0") {main["colo"].push(colo);} else {main["colo"].push("grey");}
+		
+	}
 
-console.log(vartoplot);
+	S_main.change.emit();
+	"""
 
-main_laby.axis_label = vartoplot;
-fill_lab.axis_label = vartoplot;
+	input_code= """
+	var all = S_all.data;
+	var main = S_main.data;
+	var fill = S_fill.data;
+	var varlist = S_save.data["varlist"];
+	var colors = S_save.data["colors"][0];
+	var colo = '';
 
-for (var key in colors) {
-if (vartoplot.includes(key)) {colo = colors[key]}
-}
+	var vartoplot = cb_obj.value;
 
-if (colo=='') { colo = 'red'}
+	console.log(vartoplot);
 
-console.log(colo);
+	main_laby.axis_label = vartoplot;
+	fill_lab.axis_label = vartoplot;
 
-var y = all[vartoplot];
-var min = Math.min.apply(null,y);
-var max = Math.max.apply(null,y);
-var ampli = max - min;
-mainy.start = min - 0.1*ampli;
-mainy.end = max + 0.1*ampli;
+	for (var key in colors) {
+	if (vartoplot.includes(key)) {colo = colors[key]}
+	}
 
-main["y"] = [];
-main["colo"] = [];
+	if (colo=='') { colo = 'red'}
 
-fill["colo"] = [];
-if (cb_obj.title.includes("1")) {
-fill["y"]=[];
-}
-if (cb_obj.title.includes("2")) {
-fill["x"]=[];
-}
+	console.log(colo);
 
-for (i=0;i<y.length;i++) {
-main["y"].push(all[vartoplot][i]);
+	var y = all[vartoplot];
+	var min = Math.min.apply(null,y);
+	var max = Math.max.apply(null,y);
+	var ampli = max - min;
+	mainy.start = min - 0.1*ampli;
+	mainy.end = max + 0.1*ampli;
 
-if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push("red");} else {main["colo"].push("grey");fill["colo"].push("grey");}
+	main["y"] = [];
+	main["colo"] = [];
 
-if (cb_obj.title.includes("1")) {fill["y"].push(all[vartoplot][i]);}
-if (cb_obj.title.includes("2")) {fill["x"].push(all[vartoplot][i]);}
-	
-}
+	fill["colo"] = [];
+	if (cb_obj.title.includes("1")) {
+	fill["y"]=[];
+	}
+	if (cb_obj.title.includes("2")) {
+	fill["x"]=[];
+	}
 
-S_main.change.emit();
-S_fill.change.emit();
-"""
+	for (i=0;i<y.length;i++) {
+	main["y"].push(all[vartoplot][i]);
 
-key_source_code = """
-var inds = cb_obj.selected['1d'].indices;
-var d1 = cb_obj.data;
-var d2 = s2.data;
-var tab = dt.source.data;
-var dcor = S_fill.data;
+	if (all["flag"][i]=="0") {main["colo"].push(colo);fill["colo"].push("red");} else {main["colo"].push("grey");fill["colo"].push("grey");}
 
-s2.selected['1d'].indices = inds;
-S_fill.selected['1d'].indices = inds;
+	if (cb_obj.title.includes("1")) {fill["y"].push(all[vartoplot][i]);}
+	if (cb_obj.title.includes("2")) {fill["x"].push(all[vartoplot][i]);}
+		
+	}
 
-S_fill.change.emit();
-s2.change.emit();
+	S_main.change.emit();
+	S_fill.change.emit();
+	"""
 
-var ym1 = 0;
-var ym2 = 0;
+	key_source_code = """
+	var inds = cb_obj.selected['1d'].indices;
+	var d1 = cb_obj.data;
+	var d2 = s2.data;
+	var tab = dt.source.data;
+	var dcor = S_fill.data;
 
-var T1 = 0;
-var T2 = 0;
-var T3 = 0;
+	s2.selected['1d'].indices = inds;
+	S_fill.selected['1d'].indices = inds;
 
-tab['N'][0] = inds.length;
+	S_fill.change.emit();
+	s2.change.emit();
 
-if (inds.length == 0) {
-	tab['R'][0] = 0;
+	var ym1 = 0;
+	var ym2 = 0;
+
+	var T1 = 0;
+	var T2 = 0;
+	var T3 = 0;
+
+	tab['N'][0] = inds.length;
+
+	if (inds.length == 0) {
+		tab['R'][0] = 0;
+		dt.change.emit();
+		return;
+	}
+
+	for (i=0; i < inds.length; i++){
+		ym1 += d1['y'][inds[i]];
+		ym2 += d2['y'][inds[i]];
+	}
+
+	ym1 /= inds.length;
+	ym2 /= inds.length;
+
+	for (i=0; i < inds.length; i++){
+		T1 += (d1['y'][inds[i]] - ym1)*(d2['y'][inds[i]] - ym2);
+		T2 += Math.pow(d1['y'][inds[i]] - ym1,2);
+		T3 += Math.pow(d2['y'][inds[i]] - ym2,2);
+	}
+
+	tab['R'][0] = (T1/Math.sqrt(T2*T3)).toFixed(3);
+
 	dt.change.emit();
-	return;
-}
+	"""
 
-for (i=0; i < inds.length; i++){
-	ym1 += d1['y'][inds[i]];
-	ym2 += d2['y'][inds[i]];
-}
+	box_select_code = """
+	var sel = cb_data["geometry"];
 
-ym1 /= inds.length;
-ym2 /= inds.length;
+	var startsec = sel["x0"]/1000;
+	var start = new Date(0);
 
-for (i=0; i < inds.length; i++){
-	T1 += (d1['y'][inds[i]] - ym1)*(d2['y'][inds[i]] - ym2);
-	T2 += Math.pow(d1['y'][inds[i]] - ym1,2);
-	T3 += Math.pow(d2['y'][inds[i]] - ym2,2);
-}
+	start.setUTCSeconds(startsec)
 
-tab['R'][0] = (T1/Math.sqrt(T2*T3)).toFixed(3);
+	var startstring = ("0" + start.getUTCDate()).slice(-2) + "-" + ("0"+(start.getUTCMonth()+1)).slice(-2) + "-" +start.getUTCFullYear() + " " + ("0" + start.getUTCHours()).slice(-2) + ":" + ("0" + start.getUTCMinutes()).slice(-2);
 
-dt.change.emit();
-"""
+	var finishsec = sel["x1"]/1000;
+	var finish = new Date(0);
 
-box_select_code = """
-var sel = cb_data["geometry"];
+	finish.setUTCSeconds(finishsec)
 
-var startsec = sel["x0"]/1000;
-var start = new Date(0);
+	var finishstring = ("0" + finish.getUTCDate()).slice(-2) + "-" + ("0"+(finish.getUTCMonth()+1)).slice(-2) + "-" +finish.getUTCFullYear() + " " + ("0" + finish.getUTCHours()).slice(-2) + ":" + ("0" + finish.getUTCMinutes()).slice(-2);
 
-start.setUTCSeconds(startsec)
+	txt.text = 'Selection range from '+startstring + ' to ' + finishstring;
 
-var startstring = ("0" + start.getUTCDate()).slice(-2) + "-" + ("0"+(start.getUTCMonth()+1)).slice(-2) + "-" +start.getUTCFullYear() + " " + ("0" + start.getUTCHours()).slice(-2) + ":" + ("0" + start.getUTCMinutes()).slice(-2);
+	txt.change.emit(); 
+	"""
 
-var finishsec = sel["x1"]/1000;
-var finish = new Date(0);
+	key_notes = """
+	<font size=4><b>Notes:</b></font><font size=2></br>
+	</br>
+	Use the dropdown buttons to display time series of variables in Figure 1 and Figure 2</br>
+	The last figure will display the selected variable from Figure 1 (y axis) and Figure 2 (x axis)</br>
+	</br>
+	Use the "Box Select" tool to select data in Figure 1, number of points (N) and correlations (R) will be shown in the table</br>
+	</br>
+	Data in grey has a flag != 0</br></br>If the axis labels do not update, use the "Reset" tool</br>
+	</br>
+	<img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Warning_icon.svg" height="20" width="20"> The "Save" tool from the toolbar will save each figure to a different .png</font>
+	"""
 
-finish.setUTCSeconds(finishsec)
+	# flatten the bok_struct dictionary to get all the different variable names that should be read in the eof/netcdf files
+	bok_struct_values = list(descend_values(bok_struct))
+	all_var = list(flatten([i for i in bok_struct_values if type(i)==list])) # all the variables names that should be read
 
-var finishstring = ("0" + finish.getUTCDate()).slice(-2) + "-" + ("0"+(finish.getUTCMonth()+1)).slice(-2) + "-" +finish.getUTCFullYear() + " " + ("0" + finish.getUTCHours()).slice(-2) + ":" + ("0" + finish.getUTCMinutes()).slice(-2);
+	all_key = list(flatten([i for i in bok_struct_values if type(i)==tuple])) # all the variables key, if a key is 'co2', all variables including 'co2' in their name will be added
 
-txt.text = 'Selection range from '+startstring + ' to ' + finishstring;
+	# if a figure has 'errlines' set to true, get the corresponding error variables, this only work for variables that have and '_error' extension !
+	for val_id,val in enumerate(bok_struct_values):
+		if val is True:
+			all_var += [var+'_error' for var in bok_struct_values[val_id+1]]
 
-txt.change.emit(); 
-"""
+	# get rid of repeat variables
+	diag_var = []
+	for var in all_var:
+		if var not in diag_var:
+			diag_var.append(var)
 
-key_notes = """
-<font size=4><b>Notes:</b></font><font size=2></br>
-</br>
-Use the dropdown buttons to display time series of variables in Figure 1 and Figure 2</br>
-The last figure will display the selected variable from Figure 1 (y axis) and Figure 2 (x axis)</br>
-</br>
-Use the "Box Select" tool to select data in Figure 1, number of points (N) and correlations (R) will be shown in the table</br>
-</br>
-Data in grey has a flag != 0</br></br>If the axis labels do not update, use the "Reset" tool</br>
-</br>
-<img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Warning_icon.svg" height="20" width="20"> The "Save" tool from the toolbar will save each figure to a different .png</font>
-"""
+	# get rid of repeat keys
+	diag_key = []
+	for var in all_key:
+		if var not in diag_key:
+			diag_key.append(var)
 
-# flatten the bok_struct dictionary to get all the different variable names that should be read in the eof/netcdf files
-bok_struct_values = list(descend_values(bok_struct))
-all_var = list(flatten([i for i in bok_struct_values if type(i)==list])) # all the variables names that should be read
+	diag_var += ['year','day','hour','flag'] # append some default variables to be read. So we can create datetime objects, and also the quality flags
 
-all_key = list(flatten([i for i in bok_struct_values if type(i)==tuple])) # all the variables key, if a key is 'co2', all variables including 'co2' in their name will be added
+	# tools for the plotting
+	TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
-# if a figure has 'errlines' set to true, get the corresponding error variables, this only work for variables that have and '_error' extension !
-for val_id,val in enumerate(bok_struct_values):
-	if val is True:
-		all_var += [var+'_error' for var in bok_struct_values[val_id+1]]
+	# special bokh object to store data inside the HTML page
+	all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['_Version','ak_','prio','checksum','graw','spectrum','year','ada'],flag=flag), id='all_source')
 
-# get rid of repeat variables
-diag_var = []
-for var in all_var:
-	if var not in diag_var:
-		diag_var.append(var)
+	main_source_list = [] # this source will be empty and filled from all_source via callbacks
+	err_source_list = [] # this source will be empty and filled from all_source via callbacks
+	save_source_list = [] # this will just contain python objects I want to pass to the javascript callbacks
 
-# get rid of repeat keys
-diag_key = []
-for var in all_key:
-	if var not in diag_key:
-		diag_key.append(var)
+	#############
+	# Main code #
+	#############
 
-diag_var += ['year','day','hour','flag'] # append some default variables to be read. So we can create datetime objects, and also the quality flags
+	# making the plot based on the bok_struct dictionary
 
-# tools for the plotting
-TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
+	tabs = [] # the different panels in the final bokeh plot
+	for panel_key in bok_struct:
+		fig_list = [] # the different figures in the panel
+		if True not in [elem in panel_key for elem in ['Custom','Key','Diag']]: # general case
+			for fig_key in bok_struct[panel_key]:
 
-# special bokh object to store data inside the HTML page
-all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['_Version','ak_','prio','checksum','graw','spectrum','year','ada'],flag=flag), id='all_source')
-
-main_source_list = [] # this source will be empty and filled from all_source via callbacks
-err_source_list = [] # this source will be empty and filled from all_source via callbacks
-save_source_list = [] # this will just contain python objects I want to pass to the javascript callbacks
-
-#############
-# Main code #
-#############
-
-# making the plot based on the bok_struct dictionary
-
-tabs = [] # the different panels in the final bokeh plot
-for panel_key in bok_struct:
-	fig_list = [] # the different figures in the panel
-	if True not in [elem in panel_key for elem in ['Custom','Key','Diag']]: # general case
-		for fig_key in bok_struct[panel_key]:
-
-			width = bok_struct[panel_key][fig_key]['plot_width']
-			height = bok_struct[panel_key][fig_key]['plot_height']
-			
-			if panel_key==bok_struct.keys()[0] and len(fig_list)==0:
-				fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
-				save_fig = fig_list[0]
-			else: 
-				fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
-
-			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
-
-			for plot_var in bok_struct[panel_key][fig_key]['lines']:
-				colo = [colors_dict[key] for key in colors_dict if key in plot_var]
-
-				if bok_struct[panel_key][fig_key]['errlines'] is True:
-					if len(colo)==1:
-						colo = colo[0]
-						fig_list[-2].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
-					else:
-						fig_list[-2].scatter(x='xtime',y=plot_var,source=all_source)
+				width = bok_struct[panel_key][fig_key]['plot_width']
+				height = bok_struct[panel_key][fig_key]['plot_height']
 				
-					fig_list[-1].scatter(x='xtime',y=plot_var+'_error',color='black',source=all_source)
-					fig_list[-1].yaxis.axis_label = 'Error'
-
-					fig_list[-2].yaxis.axis_label = plot_var
-				else:
-					if len(colo)==1:
-						colo = colo[0]
-						fig_list[-1].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
-					else:
-						fig_list[-1].scatter(x='xtime',y=plot_var,source=all_source)
-
-					fig_list[-1].yaxis.axis_label = plot_var
-
-			grid = gridplot( [[fig] for fig in fig_list],toolbar_location='left',tools=TOOLS )
-
-	if 'Custom' in panel_key: # first special case, custom plots
-
-		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
-		if True in list(descend_values(bok_struct[panel_key])):
-			err_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[]}) )
-		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict]}) )
-
-		for fig_key in bok_struct[panel_key]:
-			width = bok_struct[panel_key][fig_key]['plot_width']
-			height = bok_struct[panel_key][fig_key]['plot_height']
-
-			# the figure in the custom panel is not linked to other panels figures
-
-			fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
-
-			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=fig_list[0].x_range,tools=TOOLS) )
-
-			var_list = bok_struct[panel_key][fig_key]['lines']
-
-			save_source_list[-1].data['varlist'] = var_list
-
-			for plot_var in var_list:
-
-				fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
+				if panel_key==bok_struct.keys()[0] and len(fig_list)==0:
+					fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS) )
+					save_fig = fig_list[0]
+				else: 
+					fig_list.append( figure(output_backend = "webgl", title=fig_key,plot_width=width,plot_height=height,x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS) ) 
 
 				if bok_struct[panel_key][fig_key]['errlines'] is True:
-					fig_list[1].scatter(x="x",y="y",color='black',source=err_source_list[-1])				
-					fig_list[1].yaxis.axis_label='Error'
+					fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/2),x_axis_type='datetime',x_range=save_fig.x_range,tools=TOOLS ) )
 
-			fig_list[0].xaxis.axis_label='Time'
-			fig_list[0].yaxis.axis_label='x_gas'
-			
-			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				callback=CustomJS(	args=dict(
-											S_all=all_source,
-											S_main=main_source_list[-1],
-											S_err=err_source_list[-1],
-											S_save=save_source_list[-1],
-											mainy=fig_list[0].y_range,
-											erry=fig_list[1].y_range,
-											main_laby=fig_list[0].yaxis[0],
-											),  
-									code=err_code)
-			else:
-				callback=CustomJS(	args=dict(
-											S_all=all_source,
-											S_main=main_source_list[-1],
-											S_save=save_source_list[-1],
-											mainy=fig_list[0].y_range,
-											main_laby=fig_list[0].yaxis[0],
-											),  
-									code=code)
+				for plot_var in bok_struct[panel_key][fig_key]['lines']:
+					colo = [colors_dict[key] for key in colors_dict if key in plot_var]
 
-			radiogroup = RadioGroup(labels=var_list,active=0,callback=callback)
-			radiobox = VBox(radiogroup,width=100)
+					if bok_struct[panel_key][fig_key]['errlines'] is True:
+						if len(colo)==1:
+							colo = colo[0]
+							fig_list[-2].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
+						else:
+							fig_list[-2].scatter(x='xtime',y=plot_var,source=all_source)
+					
+						fig_list[-1].scatter(x='xtime',y=plot_var+'_error',color='black',source=all_source)
+						fig_list[-1].yaxis.axis_label = 'Error'
 
-			if bok_struct[panel_key][fig_key]['errlines'] is True:
-				grid = gridplot([[fig_list[1]],[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
-			else:
-				grid = gridplot([[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
+						fig_list[-2].yaxis.axis_label = plot_var
+					else:
+						if len(colo)==1:
+							colo = colo[0]
+							fig_list[-1].scatter(x='xtime',y=plot_var,color=colo,source=all_source)
+						else:
+							fig_list[-1].scatter(x='xtime',y=plot_var,source=all_source)
 
-	if 'Key' in panel_key: # second special case, key plots
+						fig_list[-1].yaxis.axis_label = plot_var
 
-		fig_key = [i for i in bok_struct[panel_key]][0] # there is only one key in "Key" panels
-		key_list = bok_struct[panel_key][fig_key]['lines']
-		var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
-		key_tools = "box_zoom,wheel_zoom,box_select,pan,undo,redo,reset,save"
+				grid = gridplot( [[fig] for fig in fig_list],toolbar_location='left',tools=TOOLS )
 
-		# sources
-		main_source_list.append( ColumnDataSource(data={"x":np.array([]),"y":np.array([]),"colo":[]}) )
-		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
-		main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
-		save_source_list.append( ColumnDataSource(data={"colors":[colors_dict],"varlist":var_list}) )
-		table_source = ColumnDataSource( data = {'N':[0],'R':[0]} ) # the data source of the table
+		if 'Custom' in panel_key: # first special case, custom plots
 
-		# figures
-		width = bok_struct[panel_key][fig_key]['plot_width']
-		height = bok_struct[panel_key][fig_key]['plot_height']
-		fig_list.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=key_tools) )
-		fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
-		fig_list.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=fig_list[0].x_range,tools=key_tools) )
-		fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
-		fig_list.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
+			main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[],"colo":[]}) )
+			if True in list(descend_values(bok_struct[panel_key])):
+				err_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":[]}) )
+			save_source_list.append( ColumnDataSource(data={"colors":[colors_dict]}) )
 
-		# glyphrenderers
-		fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
-		fig_list[1].scatter(x="x",y="y",color='colo',source=main_source_list[-2])
-		fig_list[2].scatter(x="x",y="y",color='colo',source=main_source_list[-3])
+			for fig_key in bok_struct[panel_key]:
+				width = bok_struct[panel_key][fig_key]['plot_width']
+				height = bok_struct[panel_key][fig_key]['plot_height']
 
-		# widgets
-		menu = [(plot_var,plot_var) for plot_var in var_list]
-		#input_0 = AutocompleteInput(title="Figure 1:", value=None,completions=sorted(all_source.data.keys()),width=200)
-		#input_1 = AutocompleteInput(title="Figure 2:", value=None,completions=sorted(all_source.data.keys()),width=200)
-		input_0 = Select(title="Figure 1:", value=None,options=sorted(all_source.data.keys()),width=200)
-		input_1 = Select(title="Figure 2:", value=None,options=sorted(all_source.data.keys()),width=200)			
-		data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
-		select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
-		notes = Div(text=key_notes,width=600)
-		dum = Div(text='',height=70) # dummy div widget for widget spacing in the layout
-		dum2 = Div(text='',height=70) # dummy div widget for widget spacing in the layout
+				# the figure in the custom panel is not linked to other panels figures
 
-		# callbacks
-		main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
-		main_source_list[-2].callback = CustomJS(args = dict(s2=main_source_list[-1],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
+				fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=height,x_axis_type='datetime',tools=TOOLS,y_axis_label='x_gas') )
 
-		fig_list[0].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
-		fig_list[1].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
+				if bok_struct[panel_key][fig_key]['errlines'] is True:
+					fig_list.append( figure(output_backend = "webgl", plot_width=width,plot_height=int(height/5),x_axis_type='datetime',x_range=fig_list[0].x_range,tools=TOOLS) )
 
-		input_0.callback=CustomJS(	args=dict(
-									S_all=all_source,
-									S_main=main_source_list[-1],
-									s2=main_source_list[-2],
-									S_fill=main_source_list[-3],
-									S_save=save_source_list[-1],
-									mainy=fig_list[0].y_range,
-									main_laby=fig_list[0].yaxis[0],
-									fill_lab=fig_list[2].yaxis[0],
-									dt = data_table,
-									),  
-							code=input_code+key_source_code.replace('cb_obj','S_main'))
+				var_list = bok_struct[panel_key][fig_key]['lines']
 
-		input_1.callback=CustomJS(	args=dict(
-									S_all=all_source,
-									S_main=main_source_list[-2],
-									s2=main_source_list[-1],
-									S_fill=main_source_list[-3],
-									S_save=save_source_list[-1],
-									mainy=fig_list[1].y_range,
-									main_laby=fig_list[1].yaxis[0],
-									fill_lab=fig_list[2].xaxis[0],
-									dt = data_table,
-									),  
-							code=input_code+key_source_code.replace('cb_obj','S_main'))
+				save_source_list[-1].data['varlist'] = var_list
 
-		# layout the final grid
-		notebox = widgetbox(select_text,data_table,notes,width=650)
-		dropbox_0 = widgetbox(dum,input_0,width=210) # I use the dummy div widget to have the input button ~aligned with the center of the figure 
-		dropbox_1 = widgetbox(dum2,input_1,width=210)
+				for plot_var in var_list:
 
-		grid = gridplot([[fig_list[0],dropbox_0],[fig_list[1],dropbox_1],[fig_list[2],notebox]],toolbar_location='left')
+					fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
 
-	tabs.append( Panel(child=grid,title=panel_key) )
+					if bok_struct[panel_key][fig_key]['errlines'] is True:
+						fig_list[1].scatter(x="x",y="y",color='black',source=err_source_list[-1])				
+						fig_list[1].yaxis.axis_label='Error'
 
-if len(tabs) == 1:
-	final = tabs[0].child
-else:
-	final=Tabs(tabs=tabs)
+				fig_list[0].xaxis.axis_label='Time'
+				fig_list[0].yaxis.axis_label='x_gas'
+				
+				if bok_struct[panel_key][fig_key]['errlines'] is True:
+					callback=CustomJS(	args=dict(
+												S_all=all_source,
+												S_main=main_source_list[-1],
+												S_err=err_source_list[-1],
+												S_save=save_source_list[-1],
+												mainy=fig_list[0].y_range,
+												erry=fig_list[1].y_range,
+												main_laby=fig_list[0].yaxis[0],
+												),  
+										code=err_code)
+				else:
+					callback=CustomJS(	args=dict(
+												S_all=all_source,
+												S_main=main_source_list[-1],
+												S_save=save_source_list[-1],
+												mainy=fig_list[0].y_range,
+												main_laby=fig_list[0].yaxis[0],
+												),  
+										code=code)
 
-print('\nWritting',save_name,'...')
-outfile=open(os.path.join(save_path,save_name),'w')
-outfile.write(file_html(final,CDN,tab_name))
-outfile.close()
+				radiogroup = RadioGroup(labels=var_list,active=0,callback=callback)
+				radiobox = VBox(radiogroup,width=100)
+
+				if bok_struct[panel_key][fig_key]['errlines'] is True:
+					grid = gridplot([[fig_list[1]],[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
+				else:
+					grid = gridplot([[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
+
+		if 'Key' in panel_key: # second special case, key plots
+
+			fig_key = [i for i in bok_struct[panel_key]][0] # there is only one key in "Key" panels
+			key_list = bok_struct[panel_key][fig_key]['lines']
+			var_list = list(flatten([[var for var in sorted(all_source.data.keys()) if key in var] for key in key_list]))
+			key_tools = "box_zoom,wheel_zoom,box_select,pan,undo,redo,reset,save"
+
+			# sources
+			main_source_list.append( ColumnDataSource(data={"x":np.array([]),"y":np.array([]),"colo":[]}) )
+			main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
+			main_source_list.append( ColumnDataSource(data={"x":all_source.data['xtime'],"y":np.array([]),"colo":np.array([])}) )
+			save_source_list.append( ColumnDataSource(data={"colors":[colors_dict],"varlist":var_list}) )
+			table_source = ColumnDataSource( data = {'N':[0],'R':[0]} ) # the data source of the table
+
+			# figures
+			width = bok_struct[panel_key][fig_key]['plot_width']
+			height = bok_struct[panel_key][fig_key]['plot_height']
+			fig_list.append( figure(output_backend = "webgl", title='Figure 1',plot_width=width,plot_height=height,x_axis_type='datetime',tools=key_tools) )
+			fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
+			fig_list.append( figure(output_backend = "webgl", title='Figure 2',plot_width=width,plot_height=height,x_axis_type='datetime',x_range=fig_list[0].x_range,tools=key_tools) )
+			fig_list[-1].select_one(BoxSelectTool).dimensions = 'width'
+			fig_list.append( figure(output_backend = "webgl", title='Fig1 y VS Fig2 y',plot_width=400,plot_height=400) )
+
+			# glyphrenderers
+			fig_list[0].scatter(x="x",y="y",color='colo',source=main_source_list[-1])
+			fig_list[1].scatter(x="x",y="y",color='colo',source=main_source_list[-2])
+			fig_list[2].scatter(x="x",y="y",color='colo',source=main_source_list[-3])
+
+			# widgets
+			menu = [(plot_var,plot_var) for plot_var in var_list]
+			#input_0 = AutocompleteInput(title="Figure 1:", value=None,completions=sorted(all_source.data.keys()),width=200)
+			#input_1 = AutocompleteInput(title="Figure 2:", value=None,completions=sorted(all_source.data.keys()),width=200)
+			input_0 = Select(title="Figure 1:", value=None,options=sorted(all_source.data.keys()),width=200)
+			input_1 = Select(title="Figure 2:", value=None,options=sorted(all_source.data.keys()),width=200)			
+			data_table = DataTable(source=table_source, columns=[ TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=55)
+			select_text = Div(text='',width = 450) # text div that will be updated with the selected range of date within the BoxSelect tool
+			notes = Div(text=key_notes,width=600)
+			dum = Div(text='',height=70) # dummy div widget for widget spacing in the layout
+			dum2 = Div(text='',height=70) # dummy div widget for widget spacing in the layout
+
+			# callbacks
+			main_source_list[-1].callback = CustomJS(args = dict(s2=main_source_list[-2],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
+			main_source_list[-2].callback = CustomJS(args = dict(s2=main_source_list[-1],dt=data_table,S_fill=main_source_list[-3]), code=key_source_code) # update selection in other plots and fill the table after using the box_select tool
+
+			fig_list[0].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
+			fig_list[1].select_one(BoxSelectTool).callback = CustomJS(args=dict(txt=select_text),code=box_select_code) # make the BoxSelect tool update the 'txt' Div widget with the currently selected range of dates.
+
+			input_0.callback=CustomJS(	args=dict(
+										S_all=all_source,
+										S_main=main_source_list[-1],
+										s2=main_source_list[-2],
+										S_fill=main_source_list[-3],
+										S_save=save_source_list[-1],
+										mainy=fig_list[0].y_range,
+										main_laby=fig_list[0].yaxis[0],
+										fill_lab=fig_list[2].yaxis[0],
+										dt = data_table,
+										),  
+								code=input_code+key_source_code.replace('cb_obj','S_main'))
+
+			input_1.callback=CustomJS(	args=dict(
+										S_all=all_source,
+										S_main=main_source_list[-2],
+										s2=main_source_list[-1],
+										S_fill=main_source_list[-3],
+										S_save=save_source_list[-1],
+										mainy=fig_list[1].y_range,
+										main_laby=fig_list[1].yaxis[0],
+										fill_lab=fig_list[2].xaxis[0],
+										dt = data_table,
+										),  
+								code=input_code+key_source_code.replace('cb_obj','S_main'))
+
+			# layout the final grid
+			notebox = widgetbox(select_text,data_table,notes,width=650)
+			dropbox_0 = widgetbox(dum,input_0,width=210) # I use the dummy div widget to have the input button ~aligned with the center of the figure 
+			dropbox_1 = widgetbox(dum2,input_1,width=210)
+
+			grid = gridplot([[fig_list[0],dropbox_0],[fig_list[1],dropbox_1],[fig_list[2],notebox]],toolbar_location='left')
+
+		tabs.append( Panel(child=grid,title=panel_key) )
+
+	if len(tabs) == 1:
+		final = tabs[0].child
+	else:
+		final=Tabs(tabs=tabs)
+
+	print('\nWritting',save_name,'...')
+	outfile=open(os.path.join(save_path,save_name),'w')
+	outfile.write(file_html(final,CDN,tab_name))
+	outfile.close()
