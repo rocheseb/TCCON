@@ -52,6 +52,7 @@ from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool, BoxSelectTool, DataTable, TableColumn, LinearAxis, DataRange1d, Tool
 from bokeh.layouts import gridplot, widgetbox
+from bokeh.events import Reset
 
 # to ignore warnings
 import warnings
@@ -219,15 +220,15 @@ flag_input = TextInput(title='Flag (an integer):',value='',width=130) # text inp
 load_button = Button(label='Load Data',width=100) # this button will be used to start updating the plots according to the user inputs
 
 if layout_mode == 'comp':
-	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover" # the tools that will be available in the figure's toolbar
+	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset" # the tools that will be available in the figure's toolbar
 elif layout_mode == 'simple':
-	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover" # no box_select tool in simple mode
+	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover,reset" # no box_select tool in simple mode
 
 plot_width = 700
 if layout_mode == 'simple':
 	plot_height = 400
 elif layout_mode == 'comp':
-	plot_height = 200
+	plot_height = 180
 
 fig = figure(output_backend="webgl",plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 1
 fig.min_border_left = 90
@@ -240,24 +241,24 @@ if layout_mode == 'comp':
 
 	# second figure to display time series of another variable
 	fig2 = figure(output_backend="webgl",plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',x_range=fig.x_range,tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 2
-	fig2.xaxis[0].axis_label = 'Time'
 	fig2.scatter(x='x',y='y2',color='colo',hover_color=hover_color,alpha=0.7,source=source) # this is plotted in the second figure, it will read data from the 'source' object
 	
 	fig2.extra_y_ranges = {'second_var': DataRange1d()}
 	new_fig_axis2= LinearAxis(y_range_name='second_var')
 	fig2.add_layout(new_fig_axis2,'right')
 	fig2.scatter(x='x',y='y2',color='colo',hover_color=hover_color,alpha=0.7,y_range_name='second_var',source=source2) # this is plotted in the second figure, it will read data from the 'source2' object	
-	
+	fig2.xaxis.axis_label = ' '
+
 	fig2.select_one(BoxSelectTool).dimensions = boxselecttool_dimensions
 
 	# Figure 3, will plot y axis of Figure 1 vs y axis of Figure 2 using data from 'source' (the first site)
-	fig3 = figure(output_backend="webgl",plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
+	fig3 = figure(output_backend="webgl",title=' ',plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
 	fig3.min_border_right = 80
 	fig3.min_border_bottom = 170
 	fig3.scatter(x='y2',y='y1',color='colo',hover_color=hover_color,alpha=0.7,source=source)
 
 	# Figure 4, will plot y axis of Figure 1 vs y axis of Figure 2 using data from 'source2' (the second site)
-	fig4 = figure(output_backend="webgl",plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
+	fig4 = figure(output_backend="webgl",title=' ',plot_width=350,plot_height=350,tools=TOOLS,active_inspect=[],active_drag="box_zoom")
 	fig4.min_border_left = 90
 	fig4.scatter(x='y2',y='y1',color='colo',hover_color=hover_color,alpha=0.7,source=source2)
 
@@ -401,7 +402,7 @@ setTimeout(function(){
 # in 'comp' mode, each of the 3 plots has a different hover tool, this button can click them all at once for convenience.
 hover_button_code="""
 if(cb_obj.button_type.includes("success")){
-cb_obj.button_type = 'danger';
+cb_obj.button_type = 'warning';
 cb_obj.label = 'Disable hover tools'
 } else {
 	
@@ -426,33 +427,6 @@ if(toolbar_button_list.length>1){
 hover_button = Button(label='Enable hover',button_type='success',width=140)
 hover_button.callback = CustomJS(code=hover_button_code)
 
-# custom reset tool that will also trigger the 'custom_event()' function defined in the 'DumClass' code in order to preserve the custom css of widgets
-reset_tool_code = """
-import * as p from "core/properties"
-import {ResetTool,ResetToolView} from "models/tools/actions/reset_tool"
-
-export class NewResetToolView extends ResetToolView
-	
-	NewResetToolView::doit = ->
-	  @plot_view.clear_state()
-	  @plot_view.reset_range()
-	  @plot_view.reset_selection()
-	  custom_event()
-	  if @model.reset_size
-	    return @plot_view.reset_dimensions()
-	  return
-
-export class NewResetTool extends ResetTool
-
-	default_view : NewResetToolView
-	type : "NewResetTool"
-	tool_name : "NewReset"
-	icon : "bk-tool-icon-reset"
-"""
-
-class NewResetTool(Tool):
-	__implementation__ = reset_tool_code
-
 ## END OF TOOLS SETUP
 #################################################################################
 ## DUMMY WIDGETS SETUP
@@ -462,7 +436,7 @@ dum_button_code = """
 if (cb_obj.button_type.includes('success')){
 var start = new Date();	
 var intervalID = setInterval(function(){var current = new Date(); var diff=((current-start)/1000.0).toFixed(1); status_div.text='Loading data: '+diff.toString()+' s';	}, 100)
-cb_obj.button_type = 'danger';
+cb_obj.button_type = 'warning';
 } else {
 var noIntervals = setInterval(function(){});
 for (var i = 0; i<noIntervals; i++) { window.clearInterval(i);}
@@ -1397,15 +1371,10 @@ linediv = Div(text='<hr width="100%" color="lightblue">',width=430)
 linediv2 = Div(text='<hr width="100%" color="lightblue">',width=430)
 linediv3 = Div(text='<hr width="100%" color="lightblue">',width=430)
 
-fig.toolbar.tools += [NewResetTool()]
+fig.js_on_event(Reset,CustomJS(code='custom_event()')) # conserve the custom css after clicking on the Reset tool
 
 # put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
 if layout_mode == 'comp':
-
-	# add the custom reset tool to figures
-	fig2.toolbar.tools += [NewResetTool()]
-	fig3.toolbar.tools += [NewResetTool()]
-	fig4.toolbar.tools += [NewResetTool()]
 
 	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above')
 	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above')
