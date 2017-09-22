@@ -7,8 +7,6 @@ Public TCCON files can be downloaded from http://tccon.ornl.gov/
 
 How to use this app:
 
-	- Create a 'data' folder under 'tccon_app'
-
 	- Put TCCON .eof.csv or .nc files in the 'data' folder, only one type of file should be in the 'data' folder
 
 	- Run the app with the command "bokeh serve --show tccon_app"

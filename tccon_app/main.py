@@ -41,10 +41,10 @@ from bokeh.layouts import gridplot, widgetbox
 app_path = os.path.dirname(__file__)
 data_folder = os.path.join(app_path,'data')
 cache_folder = os.path.join(app_path,'cache')
-if not os.path.exists(data_folder):
-    os.mkdir(data_folder)
-if not os.path.exists(cache_folder):
-    os.mkdir(cache_folder)
+if '.empty' in os.listdir(cache_folder):
+	os.remove(os.path.join(cache_folder,'.empty'))
+if '.empty' in os.listdir(data_folder):
+	os.remove(os.path.join(data_folder,'.empty'))
 
 layout_mode = 'comp' # can be set to 'simple' or 'comp'; in 'simple' mode there is just one plot with one site and one variable to select
 
