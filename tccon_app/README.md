@@ -1,6 +1,7 @@
 This app requires python 2.7.x (not tested with python 3.x) and bokeh 0.12.9 and netCDF4 installed.
 
-	https://bokeh.pydata.org/en/latest/docs/installation.html
+	- Bokeh: https://bokeh.pydata.org/en/latest/docs/installation.html
+	- netCDF4: http://unidata.github.io/netcdf4-python/
 
 Public TCCON files can be downloaded from http://tccon.ornl.gov/
 
