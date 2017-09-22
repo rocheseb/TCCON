@@ -38,7 +38,14 @@ from bokeh.layouts import gridplot, widgetbox
 #############
 #############
 
-data_path = os.path.join(os.path.dirname(__file__),'data')
+app_path = os.path.dirname(__file__)
+data_folder = os.path.join(app_path,'data')
+cache_folder = os.path.join(app_path,'cache')
+if not os.path.exists(data_folder):
+    os.mkdir(data_folder)
+if not os.path.exists(cache_folder):
+    os.mkdir(cache_folder)
+
 layout_mode = 'comp' # can be set to 'simple' or 'comp'; in 'simple' mode there is just one plot with one site and one variable to select
 
 #########################################################################################################################################################################
@@ -149,10 +156,10 @@ for key in T_FULL:
 		T_site[key] += '_'.join(T_FULL[key].split())
 
 netcdf = True
-tccon_file_list = [i for i in os.listdir(data_path) if '.nc' in i] # list of the files in the 'TCCON' folder
+tccon_file_list = [i for i in os.listdir(data_folder) if '.nc' in i] # list of the files in the 'TCCON' folder
 if len(tccon_file_list) == 0:
 	netcdf = False
-	tccon_file_list = [i for i in os.listdir(data_path) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
+	tccon_file_list = [i for i in os.listdir(data_folder) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
 
 # list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
 prefix_list = list(set([i[:2] for i in tccon_file_list])) 
@@ -160,7 +167,7 @@ prefix_list = list(set([i[:2] for i in tccon_file_list]))
 # determine if the files are from the public or private archive
 public = True
 if netcdf:
-	f = netCDF4.Dataset(os.path.join(data_path,tccon_file_list[0]),'r')
+	f = netCDF4.Dataset(os.path.join(data_folder,tccon_file_list[0]),'r')
 	if 'flag' in [var for var in f.variables]:
 		public = False
 	f.close()
@@ -422,11 +429,11 @@ dum_box = widgetbox(dum_alert,dum_button,dum_text,width=600,name='dummy box')
 ## CACHE SETUP
 # use a different cache file for each data type
 if netcdf and public:
-	cache_file = 'tccon_app/cache/cache_dic_pub.npy'
+	cache_file = os.path.join(cache_folder,'cache_dic_pub.npy')
 elif netcdf:
-	cache_file = 'tccon_app/cache/cache_dic.npy'
+	cache_file = os.path.join(cache_folder,'cache_dic.npy')
 else:
-	cache_file = 'tccon_app/cache/cache_dic_eof.npy'
+	cache_file = os.path.join(cache_folder,'cache_dic_eof.npy')
 
 # global variables to make the data reading faster, it will save entire time series corresponding to different inputs; size will be limited, see the add_cache function
 try:
@@ -842,10 +849,10 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 		# loop over the TCCON files for the selected site
 		for filenum,site_file in enumerate(site_file_list):
 			if netcdf:
-				f = netCDF4.Dataset(os.path.join(data_path,site_file),'r') # netcdf file reader
+				f = netCDF4.Dataset(os.path.join(data_folder,site_file),'r') # netcdf file reader
 				all_var = [var for var in f.variables if 'run' not in var]
 			else:
-				df = pd.read_csv(os.path.join(data_path,site_file),header=2) # read the .eof.csv file
+				df = pd.read_csv(os.path.join(data_folder,site_file),header=2) # read the .eof.csv file
 				all_var = [var for var in list(df) if 'run' not in var]
 
 			# setup some initializations if it is the first file
