@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>TCCON</title>
+    {{ bokeh_css }}
+    {{ bokeh_js }}
+    <script type="text/javascript">
+      {% include 'scripts.js' %}
+    </script>
+  </head>
+  <body>
+    <style type="text/css">
+      {% include 'styles.css' %}
+    </style>
+    {{ plot_div|indent(8) }}
+    {{ plot_script|indent(8) }}
+  </body>
+</html>
