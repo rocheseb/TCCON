@@ -1,4 +1,4 @@
-This app requires python 2.7.x (not tested with python 3.x) and bokeh 0.12.9 and netCDF4 installed.
+This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.9 and netCDF4 installed.
 
 	- Bokeh: https://bokeh.pydata.org/en/latest/docs/installation.html
 	- netCDF4: http://unidata.github.io/netcdf4-python/

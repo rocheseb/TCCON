@@ -2,21 +2,27 @@ button {
 	border:none;
 }
 
+label {
+	font-weight: bold;
+}
+
+.first_site, .second_site {
+	width:200px;
+}
+
 .first_site label {
 	color:yellowgreen;
-	font-weight: bold;
 }
 
 .second_site label {
 	color:plum;
-	font-weight: bold;
 }
 
 .date_input input {
 	width:160px;
 }
 
-.date_input label {
+.date_input label, .flag_input label {
 	color:teal;
 	font-weight: bold;
 }
@@ -25,23 +31,27 @@ button {
 	width:20px;
 }
 
-.flag_input label {
-	color:teal;
-	font-weight: bold;
-}
-
-.bk-tooltip>div:not(:first-child) {
-	display: none;
-}
-
 .custom_button button.bk-bs-btn.bk-bs-btn-default {
 	background-color: lightblue;
 	font-weight: bold;
 	color:navy;
 }
 
-.notes_div>div {
+.side_box {
+	margin-left:15px;
+	padding-right: 20px;
 	border:2px solid lightblue;
-	border-radius:25px;
-	padding:20px;
+	border-radius: 25px;
+}
+
+.hover_bar, .bk-tooltip>div:not(:first-child) {
+	display:none;
+}
+
+.side_box_row {
+	margin:auto;
+}
+
+.notes_div>div {
+	padding: 0px 20px 20px 20px;
 }

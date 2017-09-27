@@ -6,14 +6,17 @@ This code will produce interactive plots  that will read into TCCON netcdf files
 
 In the 'data' folder, put netcdf files from TCCON (http://tccon.ornl.gov/ ~566MB for the public files as of 2017-08).
 
-You can also use .eof.csv files, but not together with netcdf files; only one type of files should be in the 'data' folder.
+You can also use .eof.csv files.
+Only one type of files should be in the 'data' folder.
+If both .eof.csv and .nc files are in the 'data' folder, the program will only 'see' the .nc files
+
 It is much slower to read from the .eof.csv files than it is to read from the netcdf files !
 And unlike the netcdf files, using the date input widget won't make loading of data subsets faster with the .eof.csv files.
 
 All the file names must start with the format xxYYYYMMDD_YYYYMMDD , xx is the two letters site abbreviation
 
 The program will create a cache_dic.npy file in which it will save full time series of variables that correspond to previous inputs.
-The size of this cache file will be kept under 200 MB. If you like you can increase that size by changing the 'cache_max_size' value (in bytes).
+The size of this cache file will be kept under 200 MB. If you like you can increase that size by changing the 'cache_max_size' value (in bytes) in the init.py file.
 """
 
 #############
@@ -34,6 +37,9 @@ from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, TextInput, Div, CustomJS, Button, TextInput, Select, HoverTool, BoxSelectTool, DataTable, TableColumn, LinearAxis, DataRange1d
 from bokeh.layouts import gridplot, widgetbox
+from bokeh.events import Reset
+
+from init import setup
 
 #############
 #############
@@ -41,110 +47,9 @@ from bokeh.layouts import gridplot, widgetbox
 app_path = os.path.dirname(__file__)
 data_folder = os.path.join(app_path,'data')
 cache_folder = os.path.join(app_path,'cache')
-if '.empty' in os.listdir(cache_folder):
-	os.remove(os.path.join(cache_folder,'.empty'))
-if '.empty' in os.listdir(data_folder):
-	os.remove(os.path.join(data_folder,'.empty'))
 
-layout_mode = 'comp' # can be set to 'simple' or 'comp'; in 'simple' mode there is just one plot with one site and one variable to select
+layout_mode, cache_max_size, main_color, main_color2, flag_color, hover_color, boxselecttool_dimensions, skip_list, T_FULL, T_LOC = setup()
 
-#########################################################################################################################################################################
-## MODIFIABLE SECTION
-cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
-
-# if you modify the plotting colors, you will need to remove your cache_dic.npy file; you will also need to edit the styles.css in tccon_app/templates/styles.css to match the new colors.
-main_color = 'yellowgreen' # this will be the color used for the flag=0 data; I use css 'YellowGreen' (#9ACD32) by default
-main_color2 = 'plum' # the main color for data from the second site in 'comp' mode; I use css 'Plum' (#DDA0DD) by default
-flag_color = 'grey' # this will be the color used for the flag!=0 data
-hover_color = 'red' # this will be the color used for data hovered by the mouse
-
-# this is the mode of the hovertool for the Figure 1 and Figure 2 in 'comp' mode
-# 'width' to have all y data select over a x range (you can only pan the box selection left-right)
-# 'height' can only pan the box selection up-down and it selects all the x data
-# 'both' you can select a specific rectangle of data
-boxselecttool_dimensions = 'both'
-
-# variables including the keywords in 'skip_list' won't be shown in the variable input dropdowns
-skip_list = [	'_Version','ak_','prio','checksum','graw','spectrum','year','ada','aicf','adcf','time',
-				'_OVC_','_VSF_','_AM_','_ZO','_Zpres','opd_cm','_S_G','RMS','Nit','CL','CT','CC','FS',] 
-
-# dictonnary with the full names of TCCON sites
-T_FULL = {
-			'pa':'Park Falls',
-			'oc':'Lamont',
-			'wg':'Wollongong',
-			'db':'Darwin',
-			'or':'Orleans',
-			'bi':'Bialystok',
-			'br':'Bremen',
-			'jc':'JPL 01',
-			'jf':'JPL 02',
-			'ra':'Reunion Island',
-			'gm':'Garmisch',
-			'lh':'Lauder 01',
-			'll':'Lauder 02',
-			'tk':'Tsukuba 02',
-			'ka':'Karlsruhe',
-			'ae':'Ascension Island',
-			'eu':'Eureka',
-			'so':'Sodankyla',
-			'iz':'Izana',
-			'if':'Indianapolis',
-			'df':'Dryden',
-			'js':'Saga',
-			'fc':'Four Corners',
-			'ci':'Pasadena',
-			'rj':'Rikubetsu',
-			'pr':'Paris',
-			'ma':'Manaus',
-			'sp':'Ny-Alesund',
-			'et':'East Trout Lake',
-			'an':'Anmyeondo',
-			'bu':'Burgos',
-			'we':'Jena',
-			#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
-			'zf':'site or instrument name'
-		 }
-
-# dictonnary with the country/state of TCCON sites
-T_LOC =  {	
-			'pa':'Wisconsin, USA',
-			'oc':'Oklahoma, USA',
-			'wg':'Australia',
-			'db':'Australia',
-			'or':'France',
-			'bi':'Poland',
-			'br':'Germany',
-			'jc':'California, USA',
-			'jf':'California, USA',
-			'ra':'France',
-			'gm':'Germany',
-			'lh':'New Zealand',
-			'll':'New Zealand',
-			'tk':'Japan',
-			'ka':'Germany',
-			'ae':'United Kingdom',
-			'eu':'Canada',
-			'so':'Finland',
-			'iz':'Spain',
-			'if':'Indiana, USA',
-			'df':'California, USA',
-			'js':'Japan',
-			'fc':'USA',
-			'ci':'California, USA',
-			'rj':'Japan',
-			'pr':'France',
-			'ma':'Brazil',
-			'sp':'Norway',
-			'et':'Canada',
-			'an':'South Korea',
-			'bu':'Philippines',
-			'we':'Germany',
-			#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
-			'zf':'site or instrument location'
-		 }
-
-## END OF MODIFIABLE SECTION
 #########################################################################################################################################################################
 ## SETUP SECTION
 
@@ -156,12 +61,12 @@ for key in T_FULL:
 		T_site[key] += '_'.join(T_FULL[key].split())
 
 netcdf = True
-tccon_file_list = [i for i in os.listdir(data_folder) if '.nc' in i] # list of the files in the 'TCCON' folder
+tccon_file_list = [i for i in os.listdir(data_folder) if '.nc' in i] # list of the netcdf files in the 'data' folder
 if len(tccon_file_list) == 0:
 	netcdf = False
-	tccon_file_list = [i for i in os.listdir(data_folder) if '.eof.csv' in i] # list of the files in the 'TCCON' folder
+	tccon_file_list = [i for i in os.listdir(data_folder) if '.eof.csv' in i] # list of the .eof.csv files in the 'data' folder
 
-# list of TCCON 2 letters abbreviations from the files in the 'TCCON' folder doing list(set(a)) prevents repeated elements in the final list
+# list of TCCON 2 letters abbreviations from the files in the 'data' folder doing list(set(a)) prevents repeated elements in the final list
 prefix_list = list(set([i[:2] for i in tccon_file_list])) 
 
 # determine if the files are from the public or private archive
@@ -190,6 +95,7 @@ if layout_mode == 'comp':
 elif layout_mode == 'simple':
 	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover,reset" # no box_select tool in simple mode
 
+# width and height of time series plots
 plot_width = 700
 if layout_mode == 'simple':
 	plot_height = 400
@@ -260,7 +166,7 @@ notes = """
 <font size=2>
 Use the dropdown buttons to select sites and variables</br>
 </br>
-Data from the second site will be plotted over data from the first site</br>
+Data from the <font color="%s"><b>second site</b></font> will be plotted over data from the <font color="%s"><b>first site</b></font></br>
 </br>
 Use the text input to specify dates between which data will be fetched</br>
 The second date is optional e.g. 20120101-20140101 or 20120101</br>
@@ -269,12 +175,13 @@ The second date is optional e.g. 20120101-20140101 or 20120101</br>
 You can explore the plotted data using the toolbar</br>
 </br>
 <font size=2 color='teal'><b>Links:</b></font> <a href='https://tccon-wiki.caltech.edu'>TCCON</a></font>
-"""
+""" % (main_color2,main_color)
 
-notes_div = Div(text=notes,width=400,css_classes=['notes_div']) # this will display the 'notes' above
+notes_div = Div(text=notes,width=420,css_classes=['notes_div']) # this will display the 'notes' above
 status_text = Div(text='<font size=2 color="teal"><b>Status:</b></font>',width=60)
-status_div = Div(text='Select a site',width=400) # the text of this widget will be updated with information on the state of callbacks
-select_text = Div(text='',width = 400) # text div that will be updated with the selected range of date within the BoxSelect tool
+status_div = Div(text='Select a site',width=350) # the text of this widget will be updated with information on the state of callbacks
+select_text = Div(text='<font size=2 color="teal"><b>Selection range:</b></font>',width=110)
+select_div = Div(text='no data selected',width = 300) # text div that will be updated with the selected range of date within the BoxSelect tool
 dumdiv = Div(text='',height=10) # dummy empty Div widget for spacing
 
 ## END OF SIDE WIDGETS SETUP
@@ -324,8 +231,8 @@ tab['R'][ROWID] = (T1/Math.sqrt(T2*T3)).toFixed(3);
 dt.change.emit();
 """
 
-# this code will trigger when the BoxSelectTool is used in 'comp' mode; it fills the data_table based on the selected data
-# it also triggers the 'center_button' after the selection if the files are not public
+# this code will trigger when the BoxSelectTool is used in 'comp' mode; it fills the table based on the selected data
+# it also triggers the 'center_button' after the selection
 box_select_code = """
 var sel = cb_data["geometry"];
 
@@ -343,7 +250,7 @@ finish.setUTCSeconds(finishsec)
 
 var finishstring = ("0" + finish.getUTCDate()).slice(-2) + "-" + ("0"+(finish.getUTCMonth()+1)).slice(-2) + "-" +finish.getUTCFullYear() + " " + ("0" + finish.getUTCHours()).slice(-2) + ":" + ("0" + finish.getUTCMinutes()).slice(-2);
 
-txt.text = 'Selection range from '+startstring + ' to ' + finishstring;
+txt.text = 'from '+startstring + ' to ' + finishstring;
 
 txt.change.emit(); 
 
@@ -357,7 +264,8 @@ setTimeout(function(){
 
 	}, 1000); // I need the timeout because it sometimes does not trigger without it
 """
-# the boxselect code of the correlation figure is different since it will not have time on any of its axes !, it just clicks the rescale button after selection
+
+# the boxselect code of the correlation figure is different since it will not have time on any of its axes ! It just clicks the rescale button after selection
 corfig_box_select_code = """
 setTimeout(function(){
 	button_list = document.getElementsByTagName('button');
@@ -365,7 +273,10 @@ setTimeout(function(){
 	for(i=0;i<button_list.length;i++){
 		if(button_list[i].textContent.includes("Scale")){button_list[i].click()}
 	}
-}, 1000); // I need the timeout because it sometimes misses without it"""
+}, 1000); // I need the timeout because it sometimes misses without it
+
+txt.text = "";
+"""
 
 # in 'comp' mode, each plot has a different hover tool, I hide them and this button will click them all at once.
 hover_button_code="""
@@ -392,7 +303,7 @@ if(toolbar_button_list.length>1){
 	}
 }
 """
-hover_button = Button(label='Enable hover',button_type='success',width=140)
+hover_button = Button(label='Enable hover',button_type='success',width=140,css_classes=["hover_button"])
 hover_button.callback = CustomJS(code=hover_button_code)
 
 ## END OF TOOLS SETUP
@@ -1098,20 +1009,20 @@ if layout_mode == 'comp':
 	var_input3.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	var_input4.on_change('value',lambda attr,old,new: set_site(site=site_input2.value,site_ID=2))
 	
-	# widgets specific to the comparison layout_mode
+	# widgets specific to the comparison layout_mode ('comp')
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
 	data_table = DataTable(source=table_source, reorderable=False, columns=[ TableColumn(field='Site',title='Site'),TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=75)
 		
-	# assign JS callbacks to the source and box selection tool
+	# assign JS callbacks to the source and box selection tool, need a callback on both data and selection changes.
 	source.js_on_change('data', CustomJS(args={'site_input':site_input,'site_input2':site_input2,'dt':data_table},code=correlation_code.replace('ROWID','0')))
 	source.js_on_change('selected', CustomJS(args={'site_input':site_input,'site_input2':site_input2,'dt':data_table},code=correlation_code.replace('ROWID','0')))
 	source2.js_on_change('data', CustomJS(args={'site_input':site_input,'site_input2':site_input2,'dt':data_table},code=correlation_code.replace('ROWID','1')))
 	source2.js_on_change('selected', CustomJS(args={'site_input':site_input,'site_input2':site_input2,'dt':data_table},code=correlation_code.replace('ROWID','1')))
 
-	fig.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_text},code = box_select_code)
-	fig2.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_text},code = box_select_code)
-	fig3.select_one(BoxSelectTool).callback = CustomJS(code = corfig_box_select_code)
-	fig4.select_one(BoxSelectTool).callback = CustomJS(code = corfig_box_select_code)
+	fig.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_div},code = box_select_code)
+	fig2.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_div},code = box_select_code)
+	fig3.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_div},code = corfig_box_select_code)
+	fig4.select_one(BoxSelectTool).callback = CustomJS(args={'txt':select_div},code = corfig_box_select_code)
 
 ## END OF INPUT WIDGETS CALLBACKS SECTION
 #########################################################################################################################################################################
@@ -1246,37 +1157,53 @@ center_button = Button(label='Scale without extrema',name='test',width=160,css_c
 center_button.on_click(center) # assign the callback function to the button
 
 # some blue lines that will be used to visually separate groups of widgets
-linediv = Div(text='<hr width="100%" color="lightblue">',width=430)
-linediv2 = Div(text='<hr width="100%" color="lightblue">',width=430)
-linediv3 = Div(text='<hr width="100%" color="lightblue">',width=430)
+linediv = Div(text='<hr width="100%" color="lightblue">',width=400)
+linediv2 = Div(text='<hr width="100%" color="lightblue">',width=400)
+linediv3 = Div(text='<hr width="100%" color="lightblue">',width=400)
+linediv4 = Div(text='<hr width="100%" color="lightblue">',width=400)
 
-# put the figure by itself in a grid layout (I can better control where the toolbar will show if i do that)
 if layout_mode == 'comp':
 
-	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above')
-	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above')
+	#add reset events
+	for curfig in [fig,fig2,fig3,fig4]:
+		curfig.js_on_event(Reset,CustomJS(args={'txt':select_div},code="txt.text='no data selected';"))
+
+	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above') # time series plots
+	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above') # correlation plots
 
 	for curgrid in [figrid,figrid2]:
 		curgrid.children[0].merge_tools = False # need to do that due to a bug in bokeh 0.12.6 that prevent gridplot to display the HoverTool in the toolbar
 		curgrid.children[0].tools = [i for i in curgrid.children[0].tools if type(i)==bokeh.models.tools.HoverTool]
+		curgrid.children[0].css_classes = ['hover_bar']
 
 	dumdiv2 = Div(text='',width=50) # dummy div for spacing
 	if not public:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv4],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text],[data_table],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv4],[notes_div]],toolbar_location=None)
 
 	figroup = gridplot([[figrid],[figrid2]],toolbar_location='left')
 elif layout_mode == 'simple':
+
+	fig.js_on_event(Reset,CustomJS(args={'txt':select_div},code="txt.text='no data selected';"))
+
 	figroup = gridplot([[fig]], toolbar_location = 'left')
 	figroup.children[0].merge_tools = False
 	if not public:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[linediv4],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[linediv4],[notes_div]],toolbar_location=None)
+
+side_box.css_classes = ['side_box'] #
+dum_box.css_classes = ['dum_box'] # used in scripts.js to make the dummy widgetbox invisible
+
+for elem in side_box.children:
+	elem.css_classes = ['side_box_row'] # custom class for each row in the side_box, will be used in styles.css to set their margin to 'auto' (center elements)
 
 # final layout
 grid = gridplot([[figroup,side_box],[dum_box]], toolbar_location = None)
+
+grid.children[0].css_classes = ['main_grid'] # used in scripts.js to increase the width the main div (otherwise adding a border to side_box will put it under the plots)
 
 ## END OF LAYOUT PLOT ELEMENTS
 #########################################################################################################################################################################
