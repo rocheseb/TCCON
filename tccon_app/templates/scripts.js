@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function(event){
 
 		//seems like setting those in styles.css does not work.
 		document.getElementsByClassName('dum_box')[0].style["display"] = "none"; 
-		document.getElementsByClassName('main_grid')[0].style["width"] = "1215px";
+		//document.getElementsByClassName('main_grid')[0].style["width"] = "1215px"; // this is to allow the addition of a border to 'side_box'
 		document.getElementsByClassName('custom_button')[0].parentElement.style["padding"] = "0px";
 
 	}, 2000)

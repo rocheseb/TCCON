@@ -37,12 +37,13 @@ label {
 	color:navy;
 }
 
-.side_box {
-	margin-left:15px;
-	padding-right: 20px;
-	border:2px solid lightblue;
-	border-radius: 25px;
-}
+// if the side_box css is set like below, the width of 'main_grid' must be adujset in scripts.js
+//.side_box {
+	//margin-left:15px;
+	//padding-right: 20px;
+	//border:2px solid lightblue;
+	//border-radius: 25px;
+//}
 
 .hover_bar, .bk-tooltip>div:not(:first-child) {
 	display:none;
