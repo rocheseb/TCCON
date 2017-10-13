@@ -30,7 +30,8 @@ install bokeh
 put tccon .eof or .nc files in tccon_app/data
 
 To run the app, in the same directory as tccon_app, run this command from a terminal
-	- bokeh serve --show tccon_app
+
+	bokeh serve --show tccon_app
 
 Your browser should pop up with the plots. The app will be available at http://localhost:5006/tccon_app
 
