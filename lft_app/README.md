@@ -20,7 +20,7 @@ This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.10 a
 While the server is running, the app will be available in the browser at localhost:5006/lft_app
 
 - Python dictionaries of the data are saved in lft_app/saved_sessions/
-- PDF document with all the plots are saved in lft_app/
+- PDF documents with all the plots are saved in lft_app/pdf/
 
 ### DISCLAIMER ###
 
