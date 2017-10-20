@@ -1,0 +1,419 @@
+Input file Linefit ver. 14.0
+
+
+input
+    species files (masses and partition sums)
+    number of species
+    for each species: linelist (HITRAN format)
+
+$
+hit\species.inf
+1
+hit\16_hit08.par
+0
+
+
+
+output 
+    Output directory
+    Working path
+    Output grade (0: normal, 1-3: extended)
+
+$
+ergs
+wrk
+0
+
+
+target of program call: select from...
+    1:forward calculation for specified spectral regimes
+    2:forward calculation for given measured spectra
+    3:ILS retrieval
+    4:Fit of aux parms only (fixed ILS parameters)
+
+$
+3
+
+
+ILS model:
+    1: Use simple ILS model
+    2: Use TCCON ILS model
+    3: Use extended ILS model
+
+$
+3
+
+
+
+Fit only real spectrum (false) or also fit imag spectrum (true)?
+(the fit of an imag spectrum requires extended ILS model)
+Assume single-sided (false) or double-sided IFG (true)?
+(the double-sided option requires fit of imag spectrum true)
+Assume common spectral abscissa for all species (T/F)?
+
+$
+.false.
+.false.
+.true.
+
+
+number of microwindows (max. 26)
+
+$
+13
+1.0d-3
+(5683.0,5684.0)
+(5687.1,5688.1)
+(5701.5,5702.5)
+(5705.6,5706.6)
+(5718.7,5719.7)
+(5734.6,5735.6)
+(5738.8,5739.8)
+(5749.3,5750.3)
+(5753.5,5754.5)
+(5762.7,5763.7)
+(5766.9,5767.9)
+(5774.8,5775.8)
+(5779.0,5780.0)
+
+
+
+deweighting regions for each MW
+
+$
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+
+
+Resampling of measured spectra? (T/F)
+Sampling density (integer value: 1 minimally sampled, >1 oversampling)
+(Note: Resampling will limit the resolution of the measured spectrum
+according to the OPDmax value specified below)
+$
+.true.
+8
+
+
+
+(in case 2/3)
+format of spectra (0: dpt, 1: bin, 2: OPUS transmittance)
+measurement files (one for each microwindow)
+(if fit of imag spectrum:
+ give all real spectra, then all imag spectra)
+
+$
+0
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+spectra\EUREKA-HCL\HCL_65_170303b.dpt
+
+
+
+species parameters:
+    for each species:
+        gas T,fit of gas T (F/T),column of species [m-2], ptot [mbar], fit of total pressure (F/T), ppart[mbar], default gamma
+            (cell column = 7.243e24 * p[mbar] * l[m] / T[K])
+            (first-guess values in case of retrieval)
+        for each MW: take species into account(T/F),column scaling factor, spectral scaling factor of species - 1
+
+$
+296.75,.false.,7.60e+20,1.52,.false.,1.52,0.0075
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+.true.,1.0,0.0
+
+
+
+MW dependent parameters I: (first-guess values in case of retrieval)
+    for each microwindow:
+        number of baseline parameters, values of baseline parameters        
+$
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+2  1.0  1.0
+
+
+
+MW dependent parameters II: (first-guess values in case of retrieval)
+    for each microwindow and species
+        number of spectral abscissa parameters, values of spectral abscissa parameters ...
+$
+MW1
+1  0.0d0
+MW2
+1  0.0d0
+MW3
+1  0.0d0
+MW4
+1  0.0d0
+MW5
+1  0.0d0
+MW6
+1  0.0d0
+MW7
+1  0.0d0
+MW8
+1  0.0d0
+MW9
+1  0.0d0
+MW10
+1  0.0d0
+MW11
+1  0.0d0
+MW12
+1  0.0d0
+MW13
+1  0.0d0
+
+
+
+channeling (first-guess values in case of retrieval)
+number of channeling frequencies to be handled (same for all mws)?
+frequencies: period [cm-1] (same for all mws!)?
+
+$
+0
+
+
+
+channeling amplitudes
+for each mw: (amplitude cosine,amplitude sine)
+frequency--->
+m
+w
+
+$
+(0.0d0,0.0d0)
+
+
+
+(if forward calculation ... case 1/2)
+Should noise be added to calculated spectra?
+standard deviation of instrumental noise in unapodised spectrum
+
+$
+.false.
+0.0
+
+
+
+instrumental parameters:
+    apodisation
+        (1: boxcar
+         2: triag
+         3: Hamming
+         4/5: Blackmann-Harris 3-term/4-term
+         6/7/8: Norton-Beer weak/medium/strong)
+    maximal optical path difference [cm]
+    Should self-apodisation taken into account?
+    maximum inclination of rays in the interferometer [rad]
+        (aperture radius / focal length of collimator)
+
+$
+1
+65.0
+.true.
+1.196e-3
+
+
+
+gas cell parameters:
+    handle self emission:
+            0     pure gas transmission (no self emission)
+            1/-1  transmission cell spectrum with self-emission (input / output port cell)
+            2     calibrated emission spectrum (nW / cm2 sterad cm-1)
+            3     laser lines
+    cell window temperature [K]
+    black-body temperature [K]
+    black-body emissivity
+    external transmittance of each cell window
+
+$
+0
+298.35
+1273.0
+0.98
+0.8
+
+
+
+adjustment of internal spectral grid:
+    adjustment of internal spectral grid width (default: 1.0)
+    mw-extension for calculation of irradiated transmission spectra
+    (equivalent to width of ILS folding kernel, pos. integer, in multiples of 1/2*opdmax)
+    maximal allowed spectral shift (pos. integer, in multiples of 1/2*opdmax)
+
+$
+1.0
+100
+20
+
+
+
+number of iterations in case of retrieval
+convergence threshold (positive, value nearer to zero triggers more iterations)
+L-M stab value
+$
+10
+1.0d0
+0.0d0
+
+
+
+Reg Modulation (dev+smooth), Reg Phase (dev+smooth),reg T(dev)
+Reg column (dev+smooth, per species), reg spectral scale (mean, per species)
+
+$
+1.0e4,1.8,0.0,1.8,0.0
+0.0,0.1,0.0001
+0.0,0.1,0.0001
+
+
+Parameter apo, Parameter Phase
+(if ILS model simple, then only first pair is used
+ and interpreted as linear modulation and constant phase error)
+(if ILS model extended: 20 / 39 values)
+
+$
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+
+
+
+Modulation profile used for regularisation
+(only used in case of extended ILS model: 20 / 39 values)
+
+$
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+1.0,0.0
+
+
+Modulation: Position-dependent regularisation strength (dev+smooth)
+(only used in case of extended ILS model: 20 values)
+
+$
+1.0000,1.0000
+0.0000,0.9955
+0.0000,0.9822
+0.0000,0.9603
+0.0000,0.9305
+0.0000,0.8936
+0.0000,0.8504
+0.0000,0.8021
+0.0000,0.7498
+0.0000,0.6945
+0.0000,0.6376
+0.0000,0.5801
+0.0000,0.5231
+0.0000,0.4674
+0.0000,0.4140
+0.0000,0.3633
+0.0000,0.3160
+0.0000,0.2724
+0.0000,0.2327
+0.0000,0.1970
+
+
+
+Phase: Position-dependent regularisation strength (dev+smooth)
+(only used in case of extended ILS model: 20 values)
+
+$
+0.0000,1.0000
+0.0000,0.9955
+0.0000,0.9822
+0.0000,0.9603
+0.0000,0.9305
+0.0000,0.8936
+0.0000,0.8504
+0.0000,0.8021
+0.0000,0.7498
+0.0000,0.6945
+0.0000,0.6376
+0.0000,0.5801
+0.0000,0.5231
+0.0000,0.4674
+0.0000,0.4140
+0.0000,0.3633
+0.0000,0.3160
+0.0000,0.2724
+0.0000,0.2327
+0.0000,0.1970

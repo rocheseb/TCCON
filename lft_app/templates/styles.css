@@ -1,0 +1,23 @@
+.custom_button button.bk-bs-btn.bk-bs-btn-default  {
+	border:none;
+	background-color: lightblue;
+	color:teal;
+	font-weight: bold;
+}
+
+label {
+	font-weight: bold;
+	color:teal;
+}
+
+.side_widgets div.bk-widget.bk-layout-fixed.spec_input select {
+	width:200px;
+}
+
+.side_widgets div.bk-widget-form-group.bk-layout-fixed.small_input input {
+	width:100px;
+}
+
+.side_widgets div.bk-widget-form-group.bk-layout-fixed.save_input input {
+	width:160px;
+}
