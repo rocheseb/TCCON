@@ -10,15 +10,14 @@ from __future__ import print_function # allows the use of Python 3.x print funct
 The folder 'lft_app' should be in the same directory as lft145.exe
 
 - reads all the .DPT ( not OPUS format !!! ) spectra in the 'spectra' folder of 'lft_app'
-- those spectra must have been cut and ratioed to ~1 beforehand
+- spectra should be cut between ~5200-5900 wavenumbers
 - reads the scanner temperature for each spectrum in the 'temp' file of the 'spectra' folder
 - modify linefit input file and runs linefit
 - plot Modulation efficiency and phase error vs OPD
 - plot column scale factor vs microwindow
 - plot ILS and fits in each microwindow
 
-You must create a file named 'temp' (with no extensions) in /lft_app/spectra
-In it you should list the spectrum file names with associated temperatures like this:
+In 'lft_app/spectra/temp' you should list the spectrum file names with associated temperatures like this:
 
 spectrumfilename1,temperature1
 spectrumfilename2,temperature2
@@ -258,11 +257,7 @@ def modify_input_file(spectrum,Temperature,mwindows):
 				#newP = hcl_cell_data[site]['effp_h35cl_296k']  # use the effective pressure from the TCCON wiki
 				newcol = hcl_cell_data[site]['h35cl_column'] # use the column from the TCCON wiki
 				print(newP,newcol)
-				content[i] = Temperature+',.false.,'+newcol+','+newP+',.false.,'+newP+',0.0075\n' #change retrieval parameters for 1st species (HCl35 for hcl cell)
-				if ('_hcl' in spectrum.lower()) and ('ratio' not in spectrum.lower()):
-					curdoc().select_one({"name":"status_div"}).text += "<br>- spectral detuning: -2.67E-06"
-					for ite in range(1,14):
-						content[i+ite] = '.true.,1.0,-2.67E-06\n'			
+				content[i] = Temperature+',.false.,'+newcol+','+newP+',.false.,'+newP+',0.0075\n' #change retrieval parameters for 1st species (HCl35 for hcl cell)		
 			if '1.2836e22' in content[i]:
 				newP = corP(hcl_cell_data[site]['effp_h37cl_296k'],Temperature) # update the cell pressure
 				newcol = corcol(newP,Temperature) # update the cell column as described in the input file
@@ -271,9 +266,6 @@ def modify_input_file(spectrum,Temperature,mwindows):
 				newcol = hcl_cell_data[site]['h37cl_column'] # use the column from the TCCON wiki
 				print(newP,newcol)
 				content[i] = Temperature+',.false.,'+newcol+','+newP+',.false.,'+newP+',0.0075\n'  #change retrieval parameters for 2nd species (HCl37 for hcl cell)
-				if ('_hcl' in spectrum.lower()) and ('ratio' not in spectrum.lower()):
-					for ite in range(1,14):
-						content[i+ite] = '.true.,1.0,-2.67E-06\n'
 			if 'gas cell parameters' in content[i]:
 				content[i+13] = Temperature+'\n'
 			if '1.196e-3' in content[i]:
