@@ -9,15 +9,15 @@ from __future__ import print_function # allows the use of Python 3.x print funct
 '''
 The folder 'lft_app' should be in the same directory as lft145.exe
 
-- reads all the .DPT ( not OPUS format !!! ) spectra in the 'spectra' folder of 'lft_app'
+- reads all the .DPT ( not OPUS format !!! ) spectra in the 'lft_app/spectra/cut/'
 - spectra should be cut between ~5200-5900 wavenumbers
-- reads the scanner temperature for each spectrum in the 'temp' file of the 'spectra' folder
+- reads the scanner temperature for each spectrum in the 'temp' file of the 'lft_app/spectra/cut/' folder
 - modify linefit input file and runs linefit
 - plot Modulation efficiency and phase error vs OPD
 - plot column scale factor vs microwindow
 - plot ILS and fits in each microwindow
 
-In 'lft_app/spectra/temp' you should list the spectrum file names with associated temperatures like this:
+In 'lft_app/spectra/cut/temp' you should list the spectrum file names with associated temperatures like this:
 
 spectrumfilename1,temperature1
 spectrumfilename2,temperature2
@@ -156,7 +156,7 @@ WINDOWS['HCl'] = [
 				]
 
 app_path = os.path.dirname(__file__) # the app should be in /linefit/lft145/lft_app
-specpath = os.path.join(app_path,'spectra') # /linefit/lft145/lft_app/spectra
+specpath = os.path.join(app_path,'spectra','cut') # /linefit/lft145/lft_app/spectra/cut
 save_path = os.path.join(app_path,'saved_sessions') # /linefit/lft145/lft_app/saved_sessions
 
 wdir = os.sep.join(app_path.split(os.sep)[:-1]) #get the working directory; path to /linefit/lft145
@@ -246,7 +246,7 @@ def modify_input_file(spectrum,Temperature,mwindows):
 
 		for i in range(len(content)):
 			if 'spectra\\' in content[i]:
-				content[i] = 'lft_app\\spectra\\'+spectrum+'\n' #path to spectrum for each microwindow
+				content[i] = os.path.join('lft_app','spectra',spectrum)+'\n' #path to spectrum for each microwindow
 			if 'number of microwindows' in content[i]:
 				for wid,window in enumerate(mwindows):
 					content[i+5+wid] = str(window)+'\n'
@@ -370,8 +370,8 @@ def run_linefit():
 
 	# check that the spectral range is ordered (dpt files are written with decreasing wavenumbers and lienfit wants increasing wavenumbers)
 	# if it is not ordered, orders it.
-	spec_path = os.path.join(specpath,spectrum)
-	infile = open(spec_path,'r')
+	spectrum_path = os.path.join(specpath,spectrum)
+	infile = open(spectrum_path,'r')
 	content = infile.readlines()
 	infile.close()
 
@@ -381,11 +381,11 @@ def run_linefit():
 		status_div.text += '<br>- Reordering '+spectrum
 		print('\n\t- Reordering',spectrum)
 
-		outfile = open(spec_path,'w')
+		outfile = open(spectrum_path,'w')
 		outfile.writelines(content[::-1])
 		outfile.close()
 
-	ratio_spectrum(spec_path)
+	ratio_spectrum(spectrum_path,spectrum)
 
 	modify_input_file(spectrum,Temperature,mwindows)
 
@@ -399,11 +399,11 @@ def run_linefit():
 
 	curdoc().select_one({'name':'status_div'}).text += "<br><b>DONE</b>"
 
-def ratio_spectrum(spec_path):
+def ratio_spectrum(spectrum_path,spectrum):
 	'''
 	Fit a second order polynomial to a spectrum in order to ratio it to ~1
 	'''
-	x,y = np.loadtxt(spec_path,unpack=True)
+	x,y = np.loadtxt(spectrum_path,unpack=True)
 
 	if 0.7<np.mean(y)<1.3: # spectrum was already ratioed
 		return
@@ -419,7 +419,7 @@ def ratio_spectrum(spec_path):
 
 	new_y = y/base_y # ratio to ~1
 
-	np.savetxt(spec_path,np.transpose([x,new_y])) # overwrite the spectrum with the ratioed one in lft_app/spectra
+	np.savetxt(os.path.join('lft_app','spectra',spectrum),np.transpose([x,new_y])) # write the ratioed spectrum in lft_app/spectra
 
 	curdoc().select_one({"name":"status_div"}).text += '<br>- Spectrum ratioed to ~{:.2f}'.format(np.mean(new_y))
 
@@ -509,9 +509,18 @@ def linefit_results(spectrum,colo):
  
 	source_dict[cur_name]['ILS'] = {'x':content[0],'y':content[1]}
 
-	ILS_fig = curdoc().select_one({"name":"ILS_fig"})
-
 	curdoc().select_one({"name":"ILS_line"}).data_source.data.update(source_dict[cur_name]['ILS'])
+
+	###############################
+	############################### Spectrum
+	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectrum'
+	print('\n\t- Adding spectrum')
+
+	x,y = np.loadtxt(os.path.join('lft_app','spectra','cut',spectrum),unpack=True)
+ 
+	source_dict[cur_name]['spec'] = {'x':x,'y':y}
+
+	curdoc().select_one({"name":"spec_line"}).data_source.data.update(source_dict[cur_name]['spec'])
 	
 	###############################
 	############################### Microwindows
@@ -622,11 +631,13 @@ def change_spectrum():
 	# Get ILS and microwindow data for the new spectrum
 	new_mw_data =  source_dict[cur_name]['mw'+cur_MW]
 	new_ILS_data =  source_dict[cur_name]['ILS']
+	new_spec_data = source_dict[cur_name]['spec']
 	# Update lines
 	curdoc().select_one({"name":"meas_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"calc_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"resid_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"ILS_line"}).data_source.data.update(new_ILS_data)
+	curdoc().select_one({"name":"spec_line"}).data_source.data.update(new_spec_data)
 
 def change_microwindow():
 	'''
@@ -910,10 +921,15 @@ def doc_maker():
 	resid_fig.yaxis.axis_label = '% Residuals'
 	resid_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	resid_fig.title.text = 'RMS = '
+	# Spectrum
+	spec_fig = figure(title='Spectrum,',plot_width=800,plot_height=360,min_border_left=80,min_border_bottom=50,min_border_right=30,y_range=DataRange1d(start=0, end=0.22),x_range=DataRange1d(start=5200,end=5900),tools=TOOLS,name="spec_fig")
+	spec_fig.yaxis.axis_label = 'Intensity (??)'
+	spec_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 
 	## SOURCES
 	ILS_source = ColumnDataSource(data={'x':[],'y':[]})
 	mw_source = ColumnDataSource(data={'x':[],'meas':[],'calc':[],'resid':[]})
+	spec_source = ColumnDataSource(data={'x':[],'y':[]})
 
 	## LINES
 	# Microwindows
@@ -924,6 +940,8 @@ def doc_maker():
 	resid_fig.line(x='x',y='resid',color='black',source=mw_source,name="resid_line")
 	# ILS
 	ILS_fig.line(x='x',y='y',source=ILS_source,name="ILS_line")
+	# Spectrum
+	spec_fig.line(x='x',y='y',source=spec_source,name="spec_line")
 
 	## LEGEND
 	dum_leg = dumfig(width=250,height=850,legend={'lft145':'black'})
@@ -938,7 +956,7 @@ def doc_maker():
 	# Subgrid with the microwindow and residuals figures
 	mw_grid = gridplot([[mw_fig],[resid_fig]],toolbar_location=None)
 	# Subgrid2 with the ILS figure and the mw_grid subgrid 
-	spec_grid = gridplot([[ILS_fig,mw_grid]],toolbar_location='left')
+	spec_grid = gridplot([[ILS_fig,mw_grid],[spec_fig]],toolbar_location='left')
 	# Grid with the 'cur_spec_div', the buttons for microwindows and the 'spec_grid'
 	diag_grid = gridplot([[cur_spec_div],[Column(elem) for elem in MW_buttons],[spec_grid]],toolbar_location=None)
 	# Panel for the diag_grid
