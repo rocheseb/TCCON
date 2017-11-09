@@ -164,6 +164,7 @@ def doc_maker():
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
 	fig.add_layout(fig_legend,'right')
 	fig.legend.click_policy = "hide"
+	fig.legend.inactive_fill_alpha = 0.6
 
 	# now the residual figure
 	fig_resid.line(x=freq,y=residuals,color='black',name='residuals')
