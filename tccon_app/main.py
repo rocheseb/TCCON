@@ -91,9 +91,9 @@ flag_input = TextInput(title='Flag (an integer):',value='',width=130,css_classes
 load_button = Button(label='Load Data',width=100,css_classes=['custom_button']) # this button will be used to start updating the plots according to the user inputs
 
 if layout_mode == 'comp':
-	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset" # the tools that will be available in the figure's toolbar
+	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset,save" # the tools that will be available in the figure's toolbar
 elif layout_mode == 'simple':
-	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover,reset" # no box_select tool in simple mode
+	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover,reset,save" # no box_select tool in simple mode
 
 # width and height of time series plots
 plot_width = 700
@@ -673,10 +673,12 @@ def load_data():
 
 	if layout_mode=='simple' and site_input.value=='':
 		status_div.text = 'Select a site'
+		save_inputs = []
 		return	
 	elif layout_mode=='comp':
-		if site_input.value==site_input2.value=='':
+		if (site_input.value=='') and (site_input2.value==''):
 			status_div.text = 'Select a site'
+			save_inputs = []
 			return
 
 	if layout_mode == 'simple':
@@ -694,7 +696,7 @@ def load_data():
 			status_div.text = 'Data already loaded'
 		else:
 			set_var(site=site_input.value,site_ID=1)
-	elif site_input.value!='' and ('' in first_site_mode_inputs):
+	elif site_input.value!='' and ('' in [var_input.value,var_input2.value]):
 		status_div.text = site_input.value+' still has an empty variable input'
 		return
 		
@@ -1046,11 +1048,23 @@ def center():
 
 	# get all the data sources in a list
 	if not public:
-		data_list = [np.array(source.data['y1'])[np.array(source.data['colo'])!=flag_color].astype(np.float)] # data in red is all the data from public files and flag=0 data from private files
+		data_list = []
 		if layout_mode == 'comp':
-			data_list += [	np.array(source.data['y2'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
-							np.array(source2.data['y1'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),
-							np.array(source2.data['y2'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),]
+			if var_input.value=='':
+				data_list = [	np.array(source2.data['y1'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),
+								np.array(source2.data['y2'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),
+								np.array(source2.data['y1'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),
+								np.array(source2.data['y2'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),]
+			elif var_input3.value=='':
+				data_list = [	np.array(source.data['y1'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
+								np.array(source.data['y2'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
+								np.array(source.data['y1'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
+								np.array(source.data['y2'])[np.array(source.data['colo'])!=flag_color].astype(np.float),]
+			else:
+				data_list = [	np.array(source.data['y1'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
+								np.array(source.data['y2'])[np.array(source.data['colo'])!=flag_color].astype(np.float),
+								np.array(source2.data['y1'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),
+								np.array(source2.data['y2'])[np.array(source2.data['colo'])!=flag_color].astype(np.float),]
 	else:
 		data_list = [np.array(source.data['y1'])]
 		if layout_mode == 'comp':

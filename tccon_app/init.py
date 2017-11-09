@@ -27,7 +27,7 @@ def setup():
 
 	# variables including the keywords in 'skip_list' won't be shown in the variable input dropdowns
 	skip_list = [	'_Version','ak_','prio','checksum','graw','spectrum','year','ada','aicf','adcf','time',
-					'_OVC_','_VSF_','_AM_','_ZO','_Zpres','opd_cm','_S_G','RMS','Nit','CL','CT','CC','FS',	] 
+					'_OVC_','_VSF_','_AM_','_ZO','_Zpres','opd_cm',] 
 
 	# dictonnary with the full names of TCCON sites
 	T_FULL = {
@@ -64,7 +64,7 @@ def setup():
 				'bu':'Burgos',
 				'we':'Jena',
 				#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
-				'zf':'site or instrument name'
+				'zf':'site or instrument name',
 			 }
 
 	# dictonnary with the country/state of TCCON sites
@@ -102,7 +102,7 @@ def setup():
 				'bu':'Philippines',
 				'we':'Germany',
 				#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
-				'zf':'site or instrument location'
+				'zf':'site or instrument location',
 			 }
 
 	return layout_mode, cache_max_size, main_color, main_color2, flag_color, hover_color, boxselecttool_dimensions, skip_list, T_FULL, T_LOC
