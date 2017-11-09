@@ -36,7 +36,7 @@ import sys
 
 # interactive html plots with bokeh
 from bokeh.plotting import figure
-from bokeh.models import Legend, CustomJS, ColumnDataSource, HoverTool, CheckboxGroup, Button, PreText, Range1d
+from bokeh.models import Legend, CustomJS, ColumnDataSource, HoverTool, CheckboxGroup, Button, Range1d
 from bokeh.layouts import gridplot,widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -182,9 +182,9 @@ for spectrum in select_spectra:
 	TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures
 
 	# spectrum figure 
-	fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+	fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
 	# residual figure
-	fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0)
+	fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0)
 
 	# axes labels
 	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
