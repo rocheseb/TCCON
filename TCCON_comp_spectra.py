@@ -42,7 +42,7 @@ from collections import OrderedDict
 # Functions #
 #############
 
-#a fancy loadbar to be displayed in the prompt while executing a time consuming loop.
+# loadbar to be displayed in the prompt to keep track of a loop's iterations
 def progress(i,tot,bar_length=20,word=''):
 	if tot==0:
 		tot=1
@@ -52,7 +52,6 @@ def progress(i,tot,bar_length=20,word=''):
 	sys.stdout.write("\rPercent:[{0}] {1}%".format(hashes + spaces, int(round(percent * 100)))+"    "+str(i+1)+"/"+str(tot)+'  Now plotting: '+word)
 	sys.stdout.flush()
 
-#####
 # spt files are the spectrum files output by GFIT/GFIT2
 def read_spt(path):
 
@@ -89,6 +88,33 @@ def read_spt(path):
 # Setup #
 #########
 
+# hardcode colors of elements
+# this should include all the standard tccon species
+# it is ok for different species to have the same color if they are not retrieved in the same window
+colors = {
+		'co2':'red',
+		'lco2':'red',
+		'wco2':'red',
+		'2co2':'olive',
+		'3co2':'hotpink',
+		'4co2':'indigo',
+		'0co2':'green',
+		'ch4':'green',
+		'co':'darkred',
+		'th2o':'blue',
+		'h2o':'blue',
+		'hdo':'cyan',
+		'hcl':'magenta',
+		'hf':'pink',
+		'n2o':'darkorange',
+		'o2':'purple',
+		'ao2':'purple',
+		'bo2':'purple',
+		'0o2':'green',
+		'solar':'goldenrod',
+		'other':'salmon',
+		}
+
 argu = sys.argv # commandline arguments
 
 path='not_a_directory_1e7fwf8wrf78wf' #this should just be a non-existent directory name
@@ -108,26 +134,7 @@ save_path=os.path.join(path,'SAVE')
 if not os.path.isdir(save_path):
 	os.makedirs(save_path)
 
-spectra=os.listdir(path) # list of everything in the given directory
-
-# hardcode colors of elements
-# it is ok for different species to have the same color if they are not retrieved in the same window
-colors = {
-		'co2':'red',
-		'2co2':'green',
-		'3co2':'pink',
-		'4co2':'purple',
-		'0co2':'green',
-		'ch4':'green',
-		'h2o':'blue',
-		'hdo':'cyan',
-		'o2':'purple',
-		'0o2':'green',
-		'hf':'pink',
-		'hcl':'magenta',
-		'solar':'goldenrod',
-		'other':'salmon',
-		}
+spectra = os.listdir(path) # list of everything in the given directory
 
 window_dic = {'y':'6339','w':'6073','z':'6220','s':'4852'} # dictionary to associate a spectrum prefix letter to a window center wavenumber.
 
@@ -172,17 +179,16 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	source_list[spectrum] = ColumnDataSource(data={var:spt_data['columns'][var] for var in header})
 	source_list[spectrum].data['resid'] = residuals
 
-	
 	if first_check:
 		# spectrum figure 
-		fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
 		# residual figure
-		fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
+		fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3))
 		
 		save_figs[spectrum[0]] = [fig,fig_resid]
 	else:
-		fig = figure(output_backend="webgl",title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0)
-		fig_resid = figure(output_backend="webgl",plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range)
+		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0)
+		fig_resid = figure(plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range)
 	# axes labels
 	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
 	fig_resid.yaxis.axis_label = '% Residuals'
@@ -200,22 +206,21 @@ for spec_ID,spectrum in enumerate(select_spectra):
 			print('KeyError:',gas,'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
-		hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j, j)
-		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','($~x{0.00} ; @'+gas+'{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','($~x{0.00} ; @'+gas+'{0.000})')] ) ) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x='Freq',y='Tm',color='black',line_width=2,name='Tm',source=source_list[spectrum]))
-	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+1, j+1)
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','($~x{0.00} ; @Tm{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','($~x{0.00} ; @Tm{0.000})')] )) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x='Freq',y='Tc',color='chartreuse',line_width=2,name='Tc',source=source_list[spectrum]))
-	hover_code = """if(!cb.active.includes(%d)) {document.getElementsByClassName('bk-tooltip')[%d].style.display = 'none';}""" % (j+2, j+2)
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] ), callback=CustomJS(args=dict(cb=checkbox),code=hover_code)) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] )) )
 
 	# legend outside of the figure
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
 	fig.add_layout(fig_legend,'right')
+	fig.legend.click_policy = "hide"
+	fig.legend.inactive_fill_alpha = 0.6
 
 	# now the residual figure
 	fig_resid.line(x='Freq',y='resid',color='black',name='residuals',source=source_list[spectrum])
@@ -232,17 +237,17 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	checkbox.callback = CustomJS(args={key: value for key,value in checkbox_iterable}, code=checkbox_code)
 
 	# button to uncheck all checkboxes
-	clear_button = Button(label='Clear all',width=120)
+	clear_button = Button(label='Hide all lines',width=200)
 	clear_button_code = """checkbox.active=[];"""+checkbox_code
 	clear_button.callback = CustomJS(args={key: value for key,value in checkbox_iterable}, code=clear_button_code)
 
 	# button to check all checkboxes
-	check_button = Button(label='Check all',width=120)
+	check_button = Button(label='Show all lines',width=200)
 	check_button_code = """checkbox.active="""+str(N_plots)+""";"""+checkbox_code
 	check_button.callback = CustomJS(args={key: value for key,value in checkbox_iterable}, code=check_button_code)
 
 	# put all the widgets in a box
-	group=widgetbox(checkbox,clear_button,check_button,width=120)	
+	group=widgetbox(clear_button,check_button,width=120)	
 
 	# define the grid with the figures and widget box
 	grid = gridplot([[fig,group],[fig_resid]],tools=TOOLS,toolbar_location='left')

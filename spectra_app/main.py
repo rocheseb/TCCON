@@ -139,7 +139,7 @@ def doc_maker():
 	N_plots = range(len(species)-1) # a range list from 0 to the number of plots, used by the checkbox group
 	
 	# group of checkboxes that will be used to toggle line and HoverTool visibility
-	checkbox = CheckboxGroup(labels=[header[j+3] for j in range(len(species)-3)]+['Measured','Calculated'],active=N_plots,width=200)
+	checkbox = CheckboxGroup(labels=header[3:]+['Measured','Calculated'],active=N_plots,width=200)
 	
 	# plotting species lines
 	plots = []
@@ -220,23 +220,31 @@ save_path = os.path.join(app_path,'save') # spectra_app/save
 TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures
 
 # hardcode colors of elements
+# this should include all the standard tccon species
 # it is ok for different species to have the same color if they are not retrieved in the same window
 colors = {
-			'co2':'red',
-			'2co2':'green',
-			'3co2':'pink',
-			'4co2':'purple',
-			'0co2':'green',
-			'ch4':'green',
-			'h2o':'blue',
-			'hdo':'cyan',
-			'o2':'purple',
-			'0o2':'green',
-			'hf':'pink',
-			'hcl':'magenta',
-			'solar':'goldenrod',
-			'other':'salmon',
-			}
+		'co2':'red',
+		'lco2':'red',
+		'wco2':'red',
+		'2co2':'olive',
+		'3co2':'hotpink',
+		'4co2':'indigo',
+		'0co2':'green',
+		'ch4':'green',
+		'co':'darkred',
+		'th2o':'blue',
+		'h2o':'blue',
+		'hdo':'cyan',
+		'hcl':'magenta',
+		'hf':'pink',
+		'n2o':'darkorange',
+		'o2':'purple',
+		'ao2':'purple',
+		'bo2':'purple',
+		'0o2':'green',
+		'solar':'goldenrod',
+		'other':'salmon',
+		}
 
 #############
 # Main code #
