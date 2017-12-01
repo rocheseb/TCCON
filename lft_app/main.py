@@ -9,7 +9,7 @@ from __future__ import print_function # allows the use of Python 3.x print funct
 '''
 The folder 'lft_app' should be in the same directory as lft145.exe
 
-- reads all the .DPT ( not OPUS format !!! ) spectra in the 'lft_app/spectra/cut/'
+- reads all the .DPT ( not OPUS format !!! ) spectra in 'lft_app/spectra/cut/'
 - spectra should be cut between ~5200-5900 wavenumbers
 - reads the scanner temperature for each spectrum in the 'temp' file of the 'lft_app/spectra/cut/' folder
 - modify linefit input file and runs linefit
@@ -208,7 +208,7 @@ def modify_input_file(spectrum,Temperature,mwindows):
 	'''
 	Update the linefit input file to correspond to the selected spectrum and regularisation factor.
 	For each site, the cell information must be added to the cell_data.py file
-	.dpt spectra must be on lft_app/spectra with the following naming convention
+	.dpt spectra must be on lft_app/spectra/cut with the following naming convention
 
 	HCl_MAXOPD_specnum_site_yymmdd.dpt
 
@@ -232,8 +232,8 @@ def modify_input_file(spectrum,Temperature,mwindows):
 		if '_'+site+'_' in spectrum:
 			curdoc().select_one({"name":"status_div"}).text += '<br>- '+hcl_cell_data[site]['location']+' cell specs found'
 			break
-	else: # if the site is not specified, default to Eureka (I need to change that)
-		print("\nSite not recognized: filename must be HCl_OPD_site_YYMMDD.dat , with 'site' the two letter site abbreviation")
+	else:
+		print("\nSite not recognized: filename must be HCl_OPD_specnum_site_YYMMDD.dat , with 'site' the two letter site abbreviation")
 		print("\nCheck that the cell information for the site is entered correctly in cell_data.py")
 		curdoc().select_one({"name":"status_div"}).text += '<br>- Site not recognized'
 		return
@@ -392,7 +392,6 @@ def run_linefit():
 	status_div.text+='<br>- Running linefit ...'
 	print('\n\t- Running linefit ...')
 	proc = subprocess.Popen(['lft145.exe'], stdout=subprocess.PIPE,stdin=subprocess.PIPE,stderr=subprocess.PIPE,shell=True) # run linefit without shell output
-	#give_input = proc.communicate(input="1\n")[0]
 	tmp = proc.stdout.read() # this saves the shell output of the linefit code, I don't use it later but it's there if you need to check the messages.
 
 	linefit_results(spectrum,colo)

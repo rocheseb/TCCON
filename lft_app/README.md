@@ -1,6 +1,6 @@
 # README #
 
-This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.10 and netCDF4 installed.
+This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.10 (not yet tested with bokeh 0.12.11) and netCDF4 installed.
 
 	Bokeh: https://bokeh.pydata.org/en/latest/docs/installation.html
 	netCDF4: http://unidata.github.io/netcdf4-python/
@@ -8,10 +8,11 @@ This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.10 a
 ### How to use this app ###
 
 - Put the lft_app folder in the linefit/lft145/ directory
-- Spectrum name e.g. HCl_45_eu_161122.dpt for a HCl test from Eureka on November 22nd 2016, with 45 cm max OPD
+- Spectrum name e.g. HCl_45_eu_161122.dpt for a HCl test from Eureka on November 22nd 2016, with 45 cm max OPD (naming convention: HCl_MAXOPD_specnum_site_yymmdd.dpt)
 - For several tests in one day : HCl_45_1_eu_161122.dpt, HCl_45_2_eu_161122.dpt etc.
-- Spectra in .DPT format, with no headers, must be placed in lft_app/spectra/ (cut the spectra between ~5200-5900 wavenumbers)
-- In lft_app/spectra/temp write the spectrum filename and scanner temperature
+- Spectra in .DPT format, with no headers, must be placed in lft_app/spectra/cut (cut the spectra between ~5200-5900 wavenumbers)
+- In lft_app/spectra/cut/temp write the spectrum filename and scanner temperature
+- In lft_app/cell_data.py, add your cell information (follow the template)
 
 - Run the app from the linefit/lft145/ directory with the command
 
