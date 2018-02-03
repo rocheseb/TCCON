@@ -594,7 +594,9 @@ if __name__ == "__main__":
 
 		if 'merra72' in mode:
 			# the merra 72 mid level pressures are not fixed, so need to interpolate to get just 1 array of levels
-			lev_AT = trilinear_interp(lev_AT, lev_scale_factor_AT, lev_add_offset_AT, site_lon_360, lon_AT, site_lat, lat_AT, site_tim, tim_AT) 
+			# Air temperature
+			lev_PL,lat_PL, lon_PL, tim_PL, data_PL, data_scale_factor_PL, data_add_offset_PL, julday0 = read_data(dataset,'PL',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)			
+			lev_AT = trilinear_interp(data_PL, data_scale_factor_PL, data_add_offset_PL, site_lon_360, lon_PL, site_lat, lat_PL, site_tim, tim_PL) 
 
 		if 'merra' in mode:
 
@@ -616,6 +618,12 @@ if __name__ == "__main__":
 			site_GH = site_GH[without_fill_IDs]
 			site_SH = site_SH[without_fill_IDs]
 			lev_AT = lev_AT[without_fill_IDs]
+
+			if 'merra72' in mode: # merra42 and ncep go from high pressure to low pressure, but merra 72 doest he reverse
+				site_AT = site_AT[::-1]
+				site_GH = site_AT[::-1]
+				site_SH = site_AT[::-1]
+				lev_AT = site_AT[::-1]
 
 			#insert surface values
 			try:
