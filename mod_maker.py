@@ -609,8 +609,6 @@ if __name__ == "__main__":
 			site_surf_SH = trilinear_interp(data_surf_SH, data_scale_factor_surf_SH, data_add_offset_surf_SH, site_lon_360, lon_surf_SH, site_lat, lat_surf_SH, site_tim, tim_surf_SH)
 			site_surf_P = trilinear_interp(data_surf_P, data_scale_factor_surf_P, data_add_offset_surf_P, site_lon_360, lon_surf_P, site_lat, lat_surf_P, site_tim, tim_surf_P)
 
-			print site_AT.shape,site_SH.shape,site_GH.shape,lev_AT.shape
-
 			without_fill_IDs = np.where(site_AT<1e10)
 
 			# get rid of fill values
@@ -618,8 +616,6 @@ if __name__ == "__main__":
 			site_GH = site_GH[without_fill_IDs]
 			site_SH = site_SH[without_fill_IDs]
 			lev_AT = lev_AT[without_fill_IDs]
-
-			print site_AT.shape,site_SH.shape,site_GH.shape,lev_AT.shape
 
 			#insert surface values
 			try:
