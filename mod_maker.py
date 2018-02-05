@@ -8,13 +8,13 @@ What's different?
 
 This is run with:
 
-python mod_maker.py arg1 arg2 ar3 arg4
+python mod_maker.py arg1 arg2 ar3 arg4 arg 5
 
 arg1: two letter site abbreviation (e.g. 'oc' for Lamont, Oklahoma; see the "site_dict" dictionary)
 arg2: date range (YYYYMMDD-YYYYMMDD, second one not inclusive, so you don't have to worry about end of months) or single date (YYYYMMDD)
 arg3: mode ('ncep', 'merra42,username,password', or 'merra72,username,password')
 arg4: (optional, default=12) local hour (HH) for time interpolation (12 is local noon)
-arg2: (optional, default=0) minute (MM) for time interpolation
+arg5: (optional, default=0) minute (MM) for time interpolation
 
 In GGGPATH/models/gnd it will write one mod file per day.
 The merra modes require an internet connection and EarthData credentials
