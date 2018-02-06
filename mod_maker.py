@@ -45,7 +45,7 @@ def svp_wv_over_ice(temp):
 	t0 = 273.16	# triple point temperature
 	tr = t0/temp 
 	yy = -9.09718*(tr-1)-3.56654*np.log10(tr)+0.876793*(1-1/tr)
-	svp = 6.1173*10**yy # saturation vapor pressure over ice
+	svp = 6.1173*10**yy # saturation vapor pressure over ice (mbar)
 
 	return svp
 
@@ -217,7 +217,7 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 		+ (fin[index_tt,:,index_yy+1,index_xx]*(1.0-fr_xx) \
 		+ fin[index_tt,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
 		+ ((fin[index_tt+1,:,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,:,index_yy+1,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+		+ fin[index_tt+1,:,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
 		+ (fin[index_tt+1,:,index_yy+1,index_xx]*(1.0-fr_xx) \
 		+ fin[index_tt+1,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
 	elif fin.ndim==3: # for data that do not have the vertical dimension
@@ -226,7 +226,7 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 		+ (fin[index_tt,index_yy+1,index_xx]*(1.0-fr_xx) \
 		+ fin[index_tt,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
 		+ ((fin[index_tt+1,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,index_yy+1,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+		+ fin[index_tt+1,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
 		+ (fin[index_tt+1,index_yy+1,index_xx]*(1.0-fr_xx) \
 		+ fin[index_tt+1,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
 	else:
@@ -450,7 +450,8 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 				'df':{'name': 'Dryden','loc':'California, USA','lat':34959917,'lon':242.118931,'alt':700},
 				'js':{'name': 'Saga','loc':'Japan','lat':33.240962,'lon':130.288239,'alt':7},
 				'fc':{'name': 'Four Corners','loc':'USA','lat':36.79749,'lon':251.51991,'alt':1643},
-				'ci':{'name': 'Pasadena','loc':'California, USA','lat':34.13623,'lon':241.873103,'alt':230},
+				#'ci':{'name': 'Pasadena','loc':'California, USA','lat':34.13623,'lon':241.873103,'alt':230},
+				'ci':{'name': 'Pasadena','loc':'California, USA','lat':34.136,'lon':241.873,'alt':230},
 				'rj':{'name': 'Rikubetsu','loc':'Japan','lat':43.4567,'lon':143.7661,'alt':380},
 				'pr':{'name': 'Paris','loc':'France','lat':48.846,'lon':2.356,'alt':60},
 				'ma':{'name': 'Manaus','loc':'Brazil','lat':-3.2133,'lon':299.4017,'alt':50},
