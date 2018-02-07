@@ -49,7 +49,7 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,site_lat,lev_AT,sat,sgh,sntp,h2omf,frh=0):
+def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,sntp,h2o_dmf,frh=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
@@ -58,7 +58,7 @@ def write_mod(mod_path,site_lat,lev_AT,sat,sgh,sntp,h2omf,frh=0):
 	    sat         site Atmospheric Temperature profile (vector)
 	    sgh         site Geometric Height profile in km (vector)	# this is from the idl code; but geopotential height is taken from ncep, not geometric
 	    sntp        site Tropopause Pressure (scalar)
-	    h2omf       site H2O Mole Fraction (VMR) profile (vector)
+	    h2o_dmf       site H2O Dry Mole Fraction (VMR) profile (vector)
 	"""
 
 	# Define US Standard Atmosphere (USSA) for use above 10 mbar
@@ -69,9 +69,10 @@ def write_mod(mod_path,site_lat,lev_AT,sat,sgh,sntp,h2omf,frh=0):
 	# The head of the .mod file	
 	fmt = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
 	mod_content = []
-	mod_content+=[	'4  6\n',
+	mod_content+=[	'5  6\n',
 					fmt.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,sntp),
-					' mbar        Kelvin         km      g/mole      vmr       %\n',
+					version+'\n',
+					' mbar        Kelvin         km      g/mole      DMF       %\n',
 					'Pressure  Temperature     Height     MMW        H2O      RH\n',	]
 
 	fmt = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}\n' # format for writting the lines
@@ -79,44 +80,50 @@ def write_mod(mod_path,site_lat,lev_AT,sat,sgh,sntp,h2omf,frh=0):
 	if type(frh)==int: # ncep mode
 
 		# Export the Pressure, Temp and SHum for lower levels (1000 to 300 mbar)
-		for k,elem in enumerate(h2omf):
+		for k,elem in enumerate(h2o_dmf):
 			svp = svp_wv_over_ice(sat[k])
-			satvmr = svp/lev_AT[k]   # vmr of saturated WV at T/P
-			
-			frh = h2omf[k]/satvmr    # fractional RH
+			h2o_wmf = h2o_dmf[k]/(1+h2o_dmf[k]) # wet mole fraction of h2o
+			frh = h2o_wmf*lev_AT[k]/svp # Fractional relative humidity
 
 			# Relace H2O mole fractions that are too small
 			if (frh < 30./lev_AT[k]):
+				print 'Replacing too-small H2O ',mod_path, lev_AT[k],h2o_wmf,svp*30./lev_AT[k]/lev_AT[k],frh,30./lev_AT[k]				
 				frh = 30./lev_AT[k]
-				print 'Replacing too small H2O_MF ',lev_AT[k],h2omf[k],frh*satvmr,frh
-				h2omf[k] = frh*satvmr
+				h2o_wmf = svp*frh/lev_AT[k]
+				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
 
 			# Relace H2O mole fractions that are too large (super-saturated)  GCT 2015-08-05
 			if (frh > 1.0):
+				print 'Replacing too-large H2O ',mod_path,lev_AT[k],h2o_wmf,svp/lev_AT[k],frh,1.0
 				frh=1.0
-				print 'Replacing too large H2O_MF ',lev_AT[k],h2omf[k],frh*satvmr,frh
-				h2omf[k] = frh*satvmr
+				h2o_wmf = svp*frh/lev_AT[k]
+				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
 
-			mod_content+=[fmt.format(lev_AT[k], sat[k],sgh[k],28.9640,h2omf[k],100*frh)]
+			mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
+
+			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh)]
 
 		# Export Pressure and Temp for middle levels (250 to 10 mbar)
 		# which have no SHum reanalysis
 		ptop = lev_AT[k] # Top pressure level
-		frhtop = frh  # remember the FRH at the top (300 mbar) level
+		frh_top = frh  # remember the FRH at the top (300 mbar) level
 
-		for k in range(len(h2omf),len(lev_AT)): 
+		for k in range(len(h2o_dmf),len(lev_AT)): 
 			zz = np.log10(lev_AT[k])  # log10[pressure]
-			strat_h2o = 7.5E-06*np.exp(-0.16*zz**2)
+			strat_wmf = 7.5E-06*np.exp(-0.16*zz**2)
 			svp = svp_wv_over_ice(sat[k])
-			satvmr = svp/lev_AT[k]   # vmr of saturated WV at T/P
-			trop_h2o = satvmr*frhtop
+			trop_wmf = frh_top*svp/lev_AT[k]
 			wt = (lev_AT[k]/ptop)**3
-			avg_h2o = trop_h2o*wt + strat_h2o*(1-wt)
-			if (avg_h2o > satvmr):
-			  print 'Replacing super-saturated H2O_MF ',lev_AT[k],avg_h2o,satvmr
-			  avg_h2o = satvmr
+			avg_wmf = trop_wmf*wt + strat_wmf*(1-wt)
+			avg_frh = avg_wmf*lev_AT[k]/svp
+			if (avg_frh > 1.0):
+				print 'Replacing super-saturated H2O ',mod_path, lev_AT[k],avg_wmf,svp*avg_frh/lev_AT[k],avg_frh,1.0
+				avg_frh = 1.0
+				avg_wmf = svp*avg_frh/lev_AT[k]
+
+			mmw = 28.964*(1-avg_wmf)+18.02*avg_wmf
 			
-			mod_content += [fmt.format(lev_AT[k],sat[k],sgh[k],28.9640,avg_h2o,100*avg_h2o/satvmr)]
+			mod_content += [fmt.format(lev_AT[k],sat[k],sgh[k],mmw,avg_wmf/(1-avg_wmf),100*avg_frh)]
 
 		# Get the difference between the USSA and given site temperature at 10 mbar,
 		Delta_T=sat[16]-t_ussa[0]
@@ -125,27 +132,29 @@ def write_mod(mod_path,site_lat,lev_AT,sat,sgh,sntp,h2omf,frh=0):
 		for k in range(1,len(t_ussa)):
 			Delta_T=Delta_T/2
 			zz = np.log10(p_ussa[k])  # log10[pressure]
-			strat_h2o = 7.5E-06*np.exp(-0.16*zz**2)
+			strat_wmf = 7.5E-06*np.exp(-0.16*zz**2)
 			svp = svp_wv_over_ice(sat[k])
-			satvmr = svp/lev_AT[k]   # vmr of saturated WV at T/P
-			# print p_ussa[k],strat_h2o
-			mod_content += [fmt.format(p_ussa[k],t_ussa[k]+Delta_T,z_ussa[k],28.9640,strat_h2o,100*strat_h2o/satvmr)]
+			mmw = 28.964*(1-strat_wmf)+18.02*strat_wmf
+			mod_content += [fmt.format(p_ussa[k],t_ussa[k]+Delta_T,z_ussa[k],mmw,strat_wmf,100*strat_wmf*lev_AT[k]/svp)] # why not use p_ussa instead of lev_AT[k] ?
 
 	else: # merra mode
 		# not sure if merra needs all the filters/corrections used for ncep data?
 
 		# Export the Pressure, Temp and SHum
-		for k,elem in enumerate(h2omf):
+		for k,elem in enumerate(h2o_dmf):
 			svp = svp_wv_over_ice(sat[k])
-			satvmr = svp/lev_AT[k]   # vmr of saturated WV at T/P
+			h2o_wmf = h2o_dmf[k]/(1+h2o_dmf[k]) # wet mole fraction of h2o
 
 			# Relace H2O mole fractions that are too large (super-saturated)  GCT 2015-08-05
 			if (frh[k] > 1.0):
-				frh[k]=1.0
-				print 'Replacing too large H2O_MF ',k,lev_AT[k],h2omf[k],frh[k]*satvmr,frh[k]
-				h2omf[k] = frh[k]*satvmr
+				print 'Replacing too-large H2O ',mod_path,lev_AT[k],h2o_wmf,svp/lev_AT[k],frh[k],1.0
+				frh[k] = 1.0
+				h2o_wmf = svp*frh[k]/lev_AT[k]
+				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
 
-			mod_content+=[fmt.format(lev_AT[k], sat[k],sgh[k],28.9640,h2omf[k],100*frh[k])]
+			mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
+
+			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh[k])]
 
 	with open(mod_path,'w') as outfile:
 		outfile.writelines(mod_content)
@@ -730,27 +739,27 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			site_GH = np.insert(site_GH,insert_ID,site_surf_GH)
 			lev_AT = np.insert(lev_AT,insert_ID,site_surf_P)
 
-		site_H2OMF = rmm*site_SH/(1-site_SH*(1-rmm)) 	# Convert Mass Mixing Ratio to Mole Fraction
+		site_H2ODMF = rmm*site_SH/(1-site_SH) # Convert specific humidity, a wet mass mixing ratio, to dry mole fraction
 		site_GH = site_GH/1000.0	# Convert m to km
 
 		if 'merra' in mode:
 			# compute surface relative humidity
 			svp = svp_wv_over_ice(site_surf_AT)
-			satvmr = svp/site_surf_P   # vmr of saturated WV at T/P
+			h2o_wmf = site_H2ODMF[insert_ID]/(1+site_H2ODMF[insert_ID]) # wet mole fraction of h2o
+			site_surf_RH = h2o_wmf*site_surf_P/svp # Fractional relative humidity
 			
-			site_surf_RH =( rmm*site_surf_SH/(1-site_surf_SH*(1-rmm))) /satvmr # fractional RH
-
 			site_RH = np.insert(site_RH,insert_ID,site_surf_RH)
 
 		# write the .mod file
-		write_mod(mod_file_path,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2OMF,frh=site_RH)
+		version = 'mod_maker_10.6   2017-04-11   GCT'
+		write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
 
 		date = date + time_step
 		astropy_date = Time(date)
-
+		
 		if ('ncep' in mode) and new_year:
 			# path to the netcdf files
 			ncdf_AT_file = os.path.join(GGGPATH,'ncdf','.'.join(['air','{:0>4}'.format(date.year),'nc']))
