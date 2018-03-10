@@ -491,7 +491,7 @@ def setup_linefit():
 	# also check the background spectrum for MIR cells
 	if cell == 'hbr':
 		ref_path = os.path.join(refpath,'ref_'+spectrum)
-		check_spectrum(ref_path)
+		check_spectrum(ref_path,'ref_'+spectrum)
 
 	# comment out to not ratio the spectrum, the temp file still needs to be in lft_app/spectra/cut and the spectrum will need to be directly in lft_app/spectra
 	ratio_spectrum(spectrum_path,spectrum,cell) 
@@ -657,9 +657,13 @@ def ratio_spectrum(spectrum_path,spectrum,cell):
 		ref_path = os.path.join(refpath,'ref_'+spectrum)
 		xref,yref = np.loadtxt(ref_path,unpack=True)
 
+		if len(x)!=len(xref):
+			print('WARNING: background and cell spectra have different number of points !')
+			sys.exit() # the correct cutting of the spectra should be handled outside this code.
+
 		# ratio the cell spectrum and background spectrum
-		temp_y = y/yref
-		base_y = np.mean(temp_y)
+		y = y/yref
+		base_y = np.mean(y)
 
 	elif cell == 'n2o': # n2o spectra should be ratioed with their background in OPUS, then the resulting spectrum is saved in a .dpt file
 		# just take the average intensity to do the ratio
@@ -667,7 +671,7 @@ def ratio_spectrum(spectrum_path,spectrum,cell):
 
 	new_y = y/base_y # ratio to ~1
 
-	np.savetxt(os.path.join('lft_app','spectra',spectrum),np.transpose([x,new_y])) # write the ratioed spectrum in lft_app/spectra
+	np.savetxt(os.path.join('lft_app','spectra',spectrum),np.transpose([x,new_y]),fmt='%10.5f\t%.5f') # write the ratioed spectrum in lft_app/spectra
 
 	curdoc().select_one({"name":"status_div"}).text += '<br>- Spectrum ratioed to ~{:.4f}'.format(np.mean(new_y))
 
