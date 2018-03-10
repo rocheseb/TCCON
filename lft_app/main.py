@@ -11,7 +11,7 @@ The folder 'lft_app' should be in the same directory as lft145.exe
 
 - reads all the .DPT ( not OPUS format !!! ) spectra in 'lft_app/spectra/cut/'
 - spectra should be cut to make the processing faster (e.g. between ~5200-5900 wavenumbers for HCl)
-- reads the scanner temperature and aperture size for each spectrum in the 'temp' file of the 'lft_app/spectra/cut/' folder
+- reads the scanner temperature and aperture size for each spectrum in the 'temp.dat' file of the 'lft_app/spectra/cut/' folder
 - modify linefit input file and runs linefit
 - plot Modulation efficiency and phase error vs OPD
 - plot column scale factor vs microwindow
@@ -309,7 +309,7 @@ def get_inputs(spectrum):
 	print(site)
 
 	#get the temperature and aperture size
-	infile = open(os.path.join(specpath,'temp'),'r')
+	infile = open(os.path.join(specpath,'temp.dat'),'r')
 	content = infile.readlines()
 	infile.close()
 
@@ -466,8 +466,8 @@ def setup_linefit():
 	print('\nNow doing',spectrum,'with reg=',reg)
 
 	# preliminary check on the temp file to make sure it has the spectrum
-	# I write my own inputfile called 'temp' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
-	infile = open(os.path.join(specpath,'temp'),'r')
+	# I write my own inputfile called 'temp.dat' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
+	infile = open(os.path.join(specpath,'temp.dat'),'r')
 	content = infile.readlines()
 	infile.close()
 
