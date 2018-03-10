@@ -40,10 +40,10 @@ def hcl_cells():
 	cell['eu']['length'] = 100
 	cell['eu']['batch'] = 'CT1303'
 	cell['eu']['text_on_cell_body'] = "cell #28"
-	cell['eu']['effp_h35cl_296k'] = '4.78'
-	cell['eu']['effp_h37cl_296k'] = '4.817'
-	cell['eu']['h35cl_column'] = '1.2909e+22'
-	cell['eu']['h37cl_column'] = '1.2836e+22'
+	cell['eu']['effp_h35cl_296k'] = 4.78
+	cell['eu']['effp_h37cl_296k'] = 4.817
+	cell['eu']['h35cl_column'] = 1.2909e+22
+	cell['eu']['h37cl_column'] = 1.2836e+22
 	cell['eu']['calibration_run'] = 1312
 
 	# East Trout Lake
@@ -54,10 +54,10 @@ def hcl_cells():
 	cell['et']['length'] = 100
 	cell['et']['batch'] = 'CT1510'
 	cell['et']['text_on_cell_body'] = 'cell #56'
-	cell['et']['effp_h35cl_296k'] = '4.673'
-	cell['et']['effp_h37cl_296k'] = '4.683'
-	cell['et']['h35cl_column'] = '1.3310e+22'
-	cell['et']['h37cl_column'] = '1.3260e+22'
+	cell['et']['effp_h35cl_296k'] = 4.673
+	cell['et']['effp_h37cl_296k'] = 4.683
+	cell['et']['h35cl_column'] = 1.3310e+22
+	cell['et']['h37cl_column'] = 1.3260e+22
 	cell['et']['calibration_run'] = 1510
 
 	return cell
@@ -81,7 +81,31 @@ def hbr_cells():
 	# Eureka
 	cell['eu'] = template
 	cell['eu']['location'] = 'Eureka'
-	cell['eu']['pressure'] = '1.52'
-	cell['eu']['column'] = '7.60e20'
+	cell['eu']['pressure'] = 1.52
+	cell['eu']['column'] = 7.60e20
+
+	return cell
+
+def n2o_cells():
+
+	cell = {}
+
+	template = {
+				'ID':None,
+				'length':None,
+				'batch':None,
+				'owner':None,
+				'text_on_cell_body':None,
+				'calibration_run':None,
+				'location':None,
+				'pressure':None,
+				'column':None,
+				}
+
+	# Eureka
+	cell['eu'] = template
+	cell['eu']['location'] = 'Eureka'
+	cell['eu']['pressure'] = 0.8734
+	cell['eu']['column'] = 4.373e20
 
 	return cell

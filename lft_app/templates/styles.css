@@ -5,6 +5,12 @@
 	font-weight: bold;
 }
 
+.remove_button button.bk-bs-btn.bk-bs-btn-default  {
+	border:none;
+	color:red;
+	font-weight: bold;
+}
+
 label {
 	font-weight: bold;
 	color:teal;

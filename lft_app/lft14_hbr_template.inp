@@ -7,16 +7,10 @@ input
     for each species: linelist (HITRAN format)
 
 $
-hit\species.inf
-2
-hit\15_hit08.par
+'hit/species.inf'
 1
-151
-hit\15_hit08.par
-1
-152
-
-
+'hit/16_hit08.par'
+0
 
 output 
     Output directory
@@ -24,8 +18,8 @@ output
     Output grade (0: normal, 1-3: extended)
 
 $
-ergs
-wrk
+'ergs'
+'wrk'
 0
 
 
@@ -58,33 +52,36 @@ Assume common spectral abscissa for all species (T/F)?
 $
 .false.
 .false.
-.true.
+.false.
+
 
 
 number of microwindows (max. 26)
 
 $
-13
+14
 1.0d-3
-(5683.0,5684.0)
-(5687.1,5688.1)
-(5701.5,5702.5)
-(5705.6,5706.6)
-(5718.7,5719.7)
-(5734.6,5735.6)
-(5738.8,5739.8)
-(5749.3,5750.3)
-(5753.5,5754.5)
-(5762.7,5763.7)
-(5766.9,5767.9)
-(5774.8,5775.8)
-(5779.0,5780.0)
+(2590.32, 2590.72)
+(2590.71, 2591.11)
+(2605.60, 2606.00)
+(2606.00, 2606.40)
+(2620.39, 2620.79)
+(2620.80, 2621.20)
+(2634.70, 2635.10)
+(2635.10, 2635.50)
+(2648.50, 2648.90)
+(2648.90, 2649.30)
+(2661.76, 2662.16)
+(2662.18, 2662.58)
+(2674.52, 2674.92)
+(2674.94, 2675.34)
 
 
 
 deweighting regions for each MW
 
 $
+0
 0
 0
 0
@@ -119,19 +116,20 @@ measurement files (one for each microwindow)
 
 $
 0
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
-spectra\EUREKA-HCL\HCL_65_170303b.dpt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
+HBr_Trans01.txt
 
 
 
@@ -145,19 +143,6 @@ species parameters:
 $
 298.35,.false.,1.2909e22,4.78,.false.,4.78,0.0075
 .true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-298.35,.false.,1.2836e22,4.817,.false.,4.817,0.0075
 .true.,1.0,0.0
 .true.,1.0,0.0
 .true.,1.0,0.0
@@ -191,6 +176,7 @@ $
 2  1.0  1.0
 2  1.0  1.0
 2  1.0  1.0
+2  1.0  1.0
 
 
 
@@ -200,42 +186,31 @@ MW dependent parameters II: (first-guess values in case of retrieval)
 $
 MW1
 1  0.0d0
-1  0.0d0
 MW2
-1  0.0d0
 1  0.0d0
 MW3
 1  0.0d0
-1  0.0d0
 MW4
-1  0.0d0
 1  0.0d0
 MW5
 1  0.0d0
-1  0.0d0
 MW6
-1  0.0d0
 1  0.0d0
 MW7
 1  0.0d0
-1  0.0d0
 MW8
-1  0.0d0
 1  0.0d0
 MW9
 1  0.0d0
-1  0.0d0
 MW10
-1  0.0d0
 1  0.0d0
 MW11
 1  0.0d0
-1  0.0d0
 MW12
-1  0.0d0
 1  0.0d0
 MW13
 1  0.0d0
+MW14
 1  0.0d0
 
 
@@ -246,6 +221,7 @@ frequencies: period [cm-1] (same for all mws!)?
 
 $
 0
+1.0d0
 
 
 
@@ -284,9 +260,9 @@ instrumental parameters:
 
 $
 1
-45.0
+180.0
 .true.
-0.001196
+0.0013756
 
 
 gas cell parameters:
@@ -302,7 +278,7 @@ gas cell parameters:
 
 $
 0
-298.35
+294.05
 1273.0
 0.98
 0.8
@@ -336,9 +312,10 @@ Reg Modulation (dev+smooth), Reg Phase (dev+smooth),reg T(dev)
 Reg column (dev+smooth, per species), reg spectral scale (mean, per species)
 
 $
-1.0e4,1.8,0.0,1.8,0.0
-0.0,0.1,0.0001
-0.0,0.1,0.0001
+1.0e4,5.0,0.0,5.0,0.0
+0.0,0.01,0.0
+0.0,0.01,0.0
+
 
 
 Parameter apo, Parameter Phase
@@ -367,7 +344,6 @@ $
 1.0,0.0
 1.0,0.0
 1.0,0.0
-
 
 
 Modulation profile used for regularisation
@@ -400,26 +376,26 @@ Modulation: Position-dependent regularisation strength (dev+smooth)
 (only used in case of extended ILS model: 20 values)
 
 $
-1.0000,1.0000
-0.0000,0.9955
-0.0000,0.9822
-0.0000,0.9603
-0.0000,0.9305
-0.0000,0.8936
-0.0000,0.8504
-0.0000,0.8021
-0.0000,0.7498
-0.0000,0.6945
-0.0000,0.6376
-0.0000,0.5801
-0.0000,0.5231
-0.0000,0.4674
-0.0000,0.4140
-0.0000,0.3633
-0.0000,0.3160
-0.0000,0.2724
-0.0000,0.2327
-0.0000,0.1970
+1.00,1.0000
+0.00,0.9913
+0.00,0.9658
+0.00,0.9248
+0.00,0.8702
+0.00,0.8048
+0.00,0.7314
+0.00,0.6533
+0.00,0.5735
+0.00,0.4947
+0.00,0.4195
+0.00,0.3495
+0.00,0.2862
+0.00,0.2303
+0.00,0.1822
+0.00,0.1416
+0.00,0.1082
+0.00,0.0812
+0.00,0.0599
+0.00,0.0434
 
 
 
@@ -427,23 +403,23 @@ Phase: Position-dependent regularisation strength (dev+smooth)
 (only used in case of extended ILS model: 20 values)
 
 $
-0.0000,1.0000
-0.0000,0.9955
-0.0000,0.9822
-0.0000,0.9603
-0.0000,0.9305
-0.0000,0.8936
-0.0000,0.8504
-0.0000,0.8021
-0.0000,0.7498
-0.0000,0.6945
-0.0000,0.6376
-0.0000,0.5801
-0.0000,0.5231
-0.0000,0.4674
-0.0000,0.4140
-0.0000,0.3633
-0.0000,0.3160
-0.0000,0.2724
-0.0000,0.2327
-0.0000,0.1970
+0.00,1.0000
+0.00,0.9913
+0.00,0.9658
+0.00,0.9248
+0.00,0.8702
+0.00,0.8048
+0.00,0.7314
+0.00,0.6533
+0.00,0.5735
+0.00,0.4947
+0.00,0.4195
+0.00,0.3495
+0.00,0.2862
+0.00,0.2303
+0.00,0.1822
+0.00,0.1416
+0.00,0.1082
+0.00,0.0812
+0.00,0.0599
+0.00,0.0434
