@@ -17,16 +17,15 @@ It also uses the parse package.
 	- MOPD: the maximum optical path difference in cm
 	- num: an index number for the cell test (there might be more than one per day)
 	
-	e.g. 180308_eu_HCl_45_e_0 for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+		e.g. 180308_eu_HCl_45_e_0 for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
 
 - For several tests in one day : 161122_eu_HCl_45_e_0.dpt, 161122_eu_HCl_45_e_1.dpt etc.
 - Spectra in .DPT format, with no headers, must be placed in lft_app/spectra/cut (cut the spectra, e.g. between ~5200-5900 wavenumbers for HCl cells)
 - In lft_app/spectra/cut/temp write the spectrum filename, scanner temperature, and aperture size
-
-	e.g. 
-	spectrumfilename1,temperature1,apt_size1
-	spectrumfilename2,temperature2,apt_size2
-	etc.
+	
+		spectrumfilename1,temperature1,apt_size1
+		spectrumfilename2,temperature2,apt_size2
+		etc.
 	
 - In lft_app/cell_data.py, add your cell information (follow the template)
 
