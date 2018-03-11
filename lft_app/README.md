@@ -75,20 +75,9 @@ The merged file can then be loaded from the browser.
 DISCLAIMER: if any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is
 The app may hang if there is any convergence problem, or if a significant spectral detuning is detected.
 There will be more detailed outputs in the terminal than in the browser.
-If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the input file for each microwindow
+If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the temp.dat line of the spectrum:
 
-e.g. for a spectral detuning of -2.67E-06
-
-	species parameters:
-    	for each species:
-        	gas T,fit of gas T (F/T),column of species [m-2], ptot [mbar], fit of total pressure (F/T), ppart[mbar], default gamma
-            	(cell column = 7.243e24 * p[mbar] * l[m] / T[K])
-            	(first-guess values in case of retrieval)
-        	for each MW: take species into account(T/F),column scaling factor, spectral scaling factor of species - 1
-
-	$
-	293.15,.false.,1.3310e+22,4.62,.false.,4.62,0.0075
-	.true.,1.0,-2.67E-06
+	spectrumfilename1,temperature1,apt_size1,spectral_detuning1
 
 ### Contact ###
 

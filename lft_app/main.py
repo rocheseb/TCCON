@@ -74,20 +74,10 @@ Spectra should be ratioed to ~1 to be used with the linefit extended mode:
 DISCLAIMER: if any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is
 The app may hang if there is any convergence problem, or if a significant spectral detuning is detected.
 There will be more detailed outputs in the terminal than in the browser.
-If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the input file for each microwindow
+If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the temp.dat line of the spectrum:
 
-e.g. for a spectral detuning of -2.67E-06
+spectrumfilename1,temperature1,apt_size1,spectral_detuning1
 
-species parameters:
-    for each species:
-        gas T,fit of gas T (F/T),column of species [m-2], ptot [mbar], fit of total pressure (F/T), ppart[mbar], default gamma
-            (cell column = 7.243e24 * p[mbar] * l[m] / T[K])
-            (first-guess values in case of retrieval)
-        for each MW: take species into account(T/F),column scaling factor, spectral scaling factor of species - 1
-
-$
-293.15,.false.,1.3310e+22,4.62,.false.,4.62,0.0075
-.true.,1.0,-2.67E-06
 '''
 ####################
 # Import libraries #
@@ -286,10 +276,6 @@ def get_inputs(spectrum):
 	site = site.lower()
 	ev = ev.lower()
 
-	vented = False
-	if ev == 'v':
-		vented = True
-
 	window_list = window_dict[cell]
 
 	for site in cell_map[cell]: # check the cell data for the appriopriate site
@@ -316,9 +302,15 @@ def get_inputs(spectrum):
 	temperature = float(line.split(',')[1]) # scanner temperature in Kelvin
 	APT = float(line.split(',')[2].split('\n')[0]) # aperture diameter in millimeters
 
-	return site,cell,str(MOPD),APT,temperature,window_list,vented
+	# check for spectral detuning
+	try:
+		spectral_detuning = float(line.split(',')[3].split('\n')[0])
+	except IndexError:
+		spectral_detuning = None
 
-def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,vented):
+	return site,cell,str(MOPD),APT,temperature,window_list,spectral_detuning
+
+def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectral_detuning):
 	'''
 	Update the linefit input file to correspond to the selected spectrum and regularisation factor.
 	For each site, the cell information must be added to the cell_data.py file
@@ -333,8 +325,6 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,vented
 
 	e.g. 180308_eu_HCl_45_e_0
 	for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
-
-	The distinctin between evacuated and vented is made to deal with potential spectral detuning when the instrument in vented.
 	'''
 
 	N_windows = len(window_list)
@@ -373,12 +363,11 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,vented
 				newcol = cell_map[cell][site]['h37cl_column'] # uncomment to use the column from the TCCON wiki
 				print(newP,newcol)
 				content[i+8+N_windows+1] = fmt.format(temperature,newcol,newP,newP)  #change retrieval parameters for 2nd species (HCl37 for hcl cell)
-				
 				# HCl 35 and HCl 37
-				if vented: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
-					for j in range(1,14):
-						content[i+8+j] = ".true.,1.0,-3.15E-06\n"	#replace the last value here
-						content[i+8+N_windows+1+j] = ".true.,1.0,-3.15E-06\n"	#replace the last value here
+				if spectral_detuning: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
+					for j in range(1,N_windows+1):
+						content[i+8+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
+						content[i+8+N_windows+1+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
 						
 					curdoc().select_one({"name":"status_div"}).text+="<br>- Spectral detuning corrected"
 
@@ -407,6 +396,9 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,vented
 				newP = cell_map[cell][site]['pressure'] # uncomment to use the initial cell pressure
 				newcol = cell_map[cell][site]['column'] # uncomment to use the initial cell column
 				content[i+8] = fmt.format(temperature,newcol,newP,newP) #change retrieval parameters for HBr cell
+				if spectral_detuning: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
+					for j in range(1,N_windows+1):
+						content[i+8+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
 			elif 'gas cell parameters' in content[i]:
 				content[i+13] = '{:.2f}'.format(temperature)+'\n'
 			elif 'focal length of collimator' in content[i]:
@@ -476,7 +468,7 @@ def setup_linefit():
 		all_data['ID'] += -1
 		return
 
-	site,cell,MOPD,APT,temperature,window_list,vented = get_inputs(spectrum)
+	site,cell,MOPD,APT,temperature,window_list,spectral_detuning = get_inputs(spectrum)
 
 	colo = check_colors(add_one=True)
 
@@ -494,7 +486,7 @@ def setup_linefit():
 
 	# update the input file; make sure that it modifies everything that you need !
 	# the regularisation factors are updated from the browser
-	modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,vented)
+	modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectral_detuning)
 
 	run_linefit(cell)
 
@@ -1259,10 +1251,10 @@ def doc_maker():
 	dum_div2 = Div(text='',height=10,name="dum_div2")
 	dum_div3 = Div(text='',height=15,name="dum_div3")
 	# Separation lines
-	line_div = Div(text='<hr width="100%" color="lightblue">',width= 185,name="line_div")
-	line_div2 = Div(text='<hr width="100%" color="lightblue">',width= 185,name="line_div2")
-	line_div3 = Div(text='<hr width="100%" color="lightblue">',width= 185,name="line_div3")
-	line_div4 = Div(text='<hr width="100%" color="lightblue">',width= 185,name="line_div4")
+	line_div = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div")
+	line_div2 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div2")
+	line_div3 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div3")
+	line_div4 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div4")
 
 	## FIGURES
 	# Modulation efficiency
