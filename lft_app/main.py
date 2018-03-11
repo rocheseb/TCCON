@@ -78,6 +78,7 @@ $
 import os
 import sys
 import subprocess
+from functools import partial
 
 import collections
 from collections import OrderedDict
@@ -88,7 +89,7 @@ from datetime import datetime, timedelta
 import bokeh
 from bokeh.io import curdoc
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Panel, Tabs, Legend, DataRange1d, RadioButtonGroup
+from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Panel, Tabs, Legend, DataRange1d, RadioButtonGroup, Legend
 from bokeh.layouts import gridplot, widgetbox, Column, Row
 
 import numpy as np
@@ -250,35 +251,6 @@ TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,reset,save" # tools that will be avai
 
 all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' will store the ID of the appriopriate color from 'kelly_colors'
 
-def dumfig(width=600,height=600,legend={}):
-	'''
-	Need to make a dummy figure to get the legend somewhere by itself ....
-	
-	legend is a dict/ordereddict with strcuture:
-		- {'name':'color'}
-	or  - {'name':{'legend':'name','line_dash':'...','color':'...'}}
-	or  - {'name':{'legend':'name','marker':'...','color':'...'}}
-	'''
-	dumx=range(10)
-	dumfig=figure(outline_line_alpha=0,plot_height=height,plot_width=width,toolbar_location=None)
-	for key in legend:
-		if type(legend[key]) in [dict,collections.OrderedDict]:
-			try:
-				dumfig.line(x=dumx,y=dumx,visible=False,color=legend[key]['color'],line_width=2,line_dash=legend[key]['line_dash'],legend=legend[key]['legend'])
-			except KeyError:
-				dumfig.scatter(x=dumx,y=dumx,visible=False,color=legend[key]['color'],marker=legend[key]['marker'],legend=legend[key]['legend'])
-		else:
-			dumfig.line(x=dumx,y=dumx,visible=False,color=legend[key],line_width=2,legend=key)
-	dumfig.renderers=[rend for rend in dumfig.renderers if (type(rend)==bokeh.models.renderers.GlyphRenderer or type(rend)==bokeh.models.annotations.Legend)]
-	dumfig.renderers[0].border_line_alpha=0
-	dumfig.renderers[0].spacing=6
-	dumfig.renderers[0].location='top_left'
-	for rend in dumfig.renderers:
-		if type(rend)==bokeh.models.renderers.GlyphRenderer:
-			rend.visible = False
-
-	return dumfig
-
 def get_inputs(spectrum):
 	'''
 	retrieves info from the spectrum name
@@ -433,9 +405,9 @@ def setup_linefit():
 
 	global all_data
 
-	dum_leg = curdoc().select_one({"name":"dum_leg"})
+	dum_fig = curdoc().select_one({"name":"dum_fig"})
 
-	if len(dum_leg.legend[0].items)>1:
+	if len(dum_fig.legend[0].items)>0:
 		all_data['ID'] += 1
 
 	curdoc().select_one({"name":"spec_input"}).js_on_change('value', CustomJS(args={'status_div':curdoc().select_one({"name":"status_div"})},code=spec_input_code))
@@ -456,10 +428,10 @@ def setup_linefit():
 		status_div.text = "Regularisation factor must be a number"
 		return
 
-	dum_leg_labels = [elem.label['value'] for elem in dum_leg.legend[0].items]
+	dum_leg_labels = [elem.label['value'] for elem in dum_fig.legend[0].items]
 	already_done = [elem for elem in dum_leg_labels if ((spectrum.split('.')[0] in elem) and ('reg={}'.format(reg) in elem))]!=[]
 	if already_done:
-		status_div.text = spectrum+" already analysed with reg="+reg 
+		status_div.text = "{} already analysed with reg={}".format(spectrum,reg) 
 		return
 	
 	status_div.text = "<b>Now doing:</b> <br>{}<br>reg= {}".format(spectrum,reg)
@@ -691,8 +663,6 @@ def linefit_results(spectrum,colo):
 
 	# Update the title in the diag_panel
 	curdoc().select_one({"name":"cur_spec_div"}).text = "<font size=3 color='teal'><b>"+test+"</b></font>"
-	# Update legend
-	curdoc().select_one({"name":"dum_leg"}).line(range(2),range(2),color=colo,line_width=2,visible=False,legend=test)
 	# Update status
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding ME and PE plot'
 	
@@ -720,7 +690,9 @@ def linefit_results(spectrum,colo):
 	PE_source = ColumnDataSource(data=all_data[test]['PE'])
 	series_source = ColumnDataSource(data=all_data[test]['series'])
 
-	curdoc().select_one({"name":"ME_fig"}).line(x='x',y='y',color=colo,line_width=2,source=ME_source,name='{} ME line'.format(test))
+	ME_line = curdoc().select_one({"name":"ME_fig"}).line(x='x',y='y',color=colo,line_width=2,source=ME_source,name='{} ME line'.format(test),legend=test)
+	ME_line.on_change('visible',partial(show_hide,test=test))
+	update_legend(test)
 	curdoc().select_one({"name":"PE_fig"}).line(x='x',y='y',color=colo,line_width=2,source=PE_source,name='{} PE line'.format(test))
 	curdoc().select_one({"name":"series_fig"}).scatter(x='x',y='y',color=colo,size=5,source=series_source,name='{} series scatter'.format(test))
 
@@ -880,13 +852,45 @@ def update_doc():
 		COL_source = ColumnDataSource(data=all_data[test]['COL'])
 		series_source = ColumnDataSource(data=all_data[test]['series'])
 		# Update lines
-		curdoc().select_one({"name":"ME_fig"}).line(x='x',y='y',color=colo,line_width=2,source=ME_source,name='{} ME line'.format(test))
+		ME_line = curdoc().select_one({"name":"ME_fig"}).line(x='x',y='y',color=colo,line_width=2,source=ME_source,name='{} ME line'.format(test),legend=test,tags=[])
+		ME_line.on_change('visible',partial(show_hide,test=test))
+		update_legend(test)
 		curdoc().select_one({"name":"PE_fig"}).line(x='x',y='y',color=colo,line_width=2,source=PE_source,name='{} PE line'.format(test))
 		curdoc().select_one({"name":"column_fig"}).line(x='x',y='y',color=colo,line_width=2,source=COL_source,name='{} column line'.format(test))
 		curdoc().select_one({"name":"column_fig"}).scatter(x='x',y='y',color=colo,source=COL_source,name='{} column scatter'.format(test))
 		curdoc().select_one({"name":"series_fig"}).scatter(x='x',y='y',color=colo,size=5,source=series_source,name='{} series scatter'.format(test))
-		# Update legend
-		curdoc().select_one({"name":"dum_leg"}).line(range(2),range(2),color=colo,line_width=2,visible=False,legend=test,name='{} ME line'.format(test))
+
+def show_hide(attr,old,new,test):
+	'''
+	link visible attributes of lines
+	'''
+	ME_line = curdoc().select_one({'name':'{} ME line'.format(test)})
+
+	PE_line = curdoc().select_one({'name':'{} PE line'.format(test)})
+	column_line = curdoc().select_one({'name':'{} column line'.format(test)})
+	column_scatter = curdoc().select_one({'name':'{} column scatter'.format(test)})
+	series_scatter = curdoc().select_one({'name':'{} series scatter'.format(test)})
+
+	for rend in [PE_line,column_line,column_scatter,series_scatter]:
+		rend.visible = ME_line.visible
+
+def update_legend(test):
+	'''
+	When a new line is added, move it over to dum_fig and remove it from the ME_fig
+	'''
+
+	ME_fig = curdoc().select_one({'name':'ME_fig'})
+	dum_fig = curdoc().select_one({'name':'dum_fig'})
+
+	glyph = curdoc().select_one({'name':'{} ME line'.format(test)})
+
+	legend = ME_fig.legend[0]
+
+	dum_fig.legend[0].items += legend.items
+	dum_fig.renderers += [glyph]
+	
+	legend.visible = False
+	ME_fig.renderers = [i for i in ME_fig.renderers if type(i)!=bokeh.models.annotations.Legend]
 
 def update_colors():
 	'''
@@ -1262,6 +1266,7 @@ def doc_maker():
 	mw_fig.line(x='x',y='meas',color='blue',legend='measured',source=mw_source,name="meas_line")
 	mw_fig.line(x='x',y='calc',color='red',legend='calculated',source=mw_source,name="calc_line")
 	mw_fig.legend.location="bottom_right"
+	mw_fig.legend.click_policy = 'hide'
 	# Residuals
 	resid_fig.line(x='x',y='resid',color='black',source=mw_source,name="resid_line")
 	# ILS
@@ -1270,14 +1275,16 @@ def doc_maker():
 	spec_fig.line(x='x',y='y',source=spec_source,name="spec_line")
 
 	## LEGEND
-	dum_leg = dumfig(width=265,height=850,legend={'lft145':'black'})
-	dum_leg.name = 'dum_leg'
+	dum_fig = figure(plot_width=265,plot_height=850,outline_line_alpha=0,toolbar_location=None,name='dum_fig')
+	dum_fig.x_range.end = 1005
+	dum_fig.x_range.start = 1000
+	dum_fig.renderers = [Legend(click_policy='hide',location='top_left',border_line_alpha=0)]
 
 	## Laying out plot objects
 	# Grid for modulation efficiency, phase error, column scale factor, and ME at MOPD time series
 	MEPECOL_grid = gridplot([[space_div2],[ME_fig],[PE_fig],[column_fig],[series_fig]],toolbar_location='left',name="MEPECOL_grid")
 	# Panel for the MEPECOL grid and the legend
-	MEPECOL_panel = Panel(child=gridplot([[MEPECOL_grid,dum_leg]],toolbar_location=None),title='Summary',name="MEPECOL_panel")
+	MEPECOL_panel = Panel(child=gridplot([[MEPECOL_grid,dum_fig]],toolbar_location=None),title='Summary',name="MEPECOL_panel")
 	
 	# Subgrid with the microwindow and residuals figures
 	mw_grid = gridplot([[mw_fig],[resid_fig]],toolbar_location=None)
