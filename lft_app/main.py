@@ -7,6 +7,24 @@ from __future__ import print_function # allows the use of Python 3.x print funct
 # Code Description #
 ####################
 '''
+
+# How to run:
+the lft_app folder should be placed under ... /linefit/lft145/ 
+In the terminal, cd to the lft125 directory and type:
+
+bokeh serve --show lft_app
+
+A browser window will pop up with the app. If the window is closed it can still be accessed at http://localhost:5006/lft_app
+You can drop the --show if you do not want the browser to pop up.
+
+By default the app will plot and save the spectrum itself; This can make for very large saved sessions.
+To avoid this the app can be run in light mode with:
+
+bokeh serve --show lft_app --args light
+
+In light mode the spectrum plot will not appear and saved sessions will not include the spectrum.
+#
+
 The folder 'lft_app' should be in the same directory as lft145.exe
 
 - reads all the .DPT ( not OPUS format !!! ) spectra in 'lft_app/spectra/cut/'
@@ -141,6 +159,12 @@ def execute(cmd):
 #########
 # Setup #
 #########
+
+argu = sys.argv
+ignore_spec = False
+if 'light' in argu:
+	# bokeh serve lftp_app --args light 
+	ignore_spec = True
 
 FLC = 418.0 # focal length of collimator in mm
 
@@ -653,7 +677,7 @@ def linefit_results(spectrum,colo):
 	after linefit has finished running, this stores the results in all_data and updates the plots
 	'''
 
-	global all_data
+	global all_data, ignore_spec
 
 	# string containing info on the current spectrum + current regularisation factor
 	test = '{} reg={}'.format(spectrum.split('.')[0],curdoc().select_one({'name':'reg_input'}).value)
@@ -737,20 +761,21 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"ILS_line"}).data_source.data.update(all_data[test]['ILS'])
 
 	###############################
-	############################### Spectrum
-	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectrum'
-	print('\n\t- Adding spectrum')
+	if not ignore_spec:
+		############################### Spectrum
+		curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectrum'
+		print('\n\t- Adding spectrum')
 
-	x,y = np.loadtxt(os.path.join('lft_app','spectra','cut',spectrum),unpack=True)
- 
-	all_data[test]['spec'] = {'x':x,'y':y}
+		x,y = np.loadtxt(os.path.join('lft_app','spectra','cut',spectrum),unpack=True)
+	 
+		all_data[test]['spec'] = {'x':x,'y':y}
 
-	curdoc().select_one({"name":"spec_line"}).data_source.data.update(all_data[test]['spec'])
-	spec_fig = curdoc().select_one({'name':'spec_fig'})
-	spec_fig.x_range.start = np.min(all_data[test]['spec']['x'])
-	spec_fig.x_range.end = np.max(all_data[test]['spec']['x'])
-	
-	###############################
+		curdoc().select_one({"name":"spec_line"}).data_source.data.update(all_data[test]['spec'])
+		spec_fig = curdoc().select_one({'name':'spec_fig'})
+		spec_fig.x_range.start = np.min(all_data[test]['spec']['x'])
+		spec_fig.x_range.end = np.max(all_data[test]['spec']['x'])
+		
+		###############################
 	############################### Microwindows
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectral fits with residuals'
 	print('\n\t- Adding spectral fits with residuals')
@@ -915,7 +940,7 @@ def change_spectrum():
 	callback for the spectrum buttons in 'button_box'
 	update the plots in 'spec_grid' to correspond to the desired spectrum
 	'''
-	global all_data
+	global all_data, ignore_spec
 
 	button_box = curdoc().select_one({"name":"button_box"})
 
@@ -941,18 +966,19 @@ def change_spectrum():
 	# Get ILS and microwindow data for the new spectrum
 	new_mw_data =  all_data[test]['mw'+cur_MW]
 	new_ILS_data =  all_data[test]['ILS']
-	new_spec_data = all_data[test]['spec']
 	# Update lines
 	curdoc().select_one({"name":"meas_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"calc_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"resid_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"ILS_line"}).data_source.data.update(new_ILS_data)
-	curdoc().select_one({"name":"spec_line"}).data_source.data.update(new_spec_data)
 
-	# update range
-	spec_fig = curdoc().select_one({'name':'spec_fig'})
-	spec_fig.x_range.start = np.min(all_data[test]['spec']['x'])
-	spec_fig.x_range.end = np.max(all_data[test]['spec']['x'])
+	if not ignore_spec:
+		curdoc().select_one({"name":"spec_line"}).data_source.data.update(new_spec_data)
+		# update spectrum range
+		new_spec_data = all_data[test]['spec']
+		spec_fig = curdoc().select_one({'name':'spec_fig'})
+		spec_fig.x_range.start = np.min(all_data[test]['spec']['x'])
+		spec_fig.x_range.end = np.max(all_data[test]['spec']['x'])
 
 	cell = test.split('_')[2].lower()
 
@@ -1145,7 +1171,7 @@ def load_session():
 	load a previously saved all_data and remake the whole document
 	'''
 
-	global all_data
+	global all_data, ignore_spec
 
 	curdoc().select_one({"name":"status_div"}).text = "Loading new session ..."
 	print('\n\t- Loading new session ...')
@@ -1153,6 +1179,21 @@ def load_session():
 	saved_session = os.path.join(save_path,curdoc().select_one({"name":"session_input"}).value)
 	
 	all_data = np.load(saved_session).item()
+
+	test_list = [i for i in all_data.keys() if 'reg' in i]
+	if not ignore_spec:
+		# check that all tests in the saved data have a stored spectrum.
+		# if they don't all have a spectrum, switch to the ignore_spec mode.
+		for test in test_list:
+			try:
+				dum = all_data[test]['spec']['x'][0]
+			except KeyError:
+				ignore_spec = True
+				break
+	if ignore_spec:
+		# set the 'spec' of each test to None to free some memory.
+		for test in test_list:
+			all_data[test]['spec'] = None
 
 	doc_maker() # rebuild the entire document using the new all_data
 
@@ -1180,7 +1221,7 @@ def doc_maker():
 	make the whole document
 	'''
 
-	global all_data
+	global all_data, ignore_spec
 
 	curdoc().clear() # removes everything in the current document
 
@@ -1250,15 +1291,18 @@ def doc_maker():
 	resid_fig.yaxis.axis_label = '% Residuals'
 	resid_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	resid_fig.title.text = 'RMS = '
-	# Spectrum
-	spec_fig = figure(title='Spectrum,',plot_width=800,plot_height=360,min_border_left=80,min_border_bottom=50,min_border_right=30,tools=TOOLS,active_drag="box_zoom",name="spec_fig")
-	spec_fig.yaxis.axis_label = 'Intensity (??)'
-	spec_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 
+	if not ignore_spec:
+		# Spectrum
+		spec_fig = figure(title='Spectrum,',plot_width=800,plot_height=360,min_border_left=80,min_border_bottom=50,min_border_right=30,tools=TOOLS,active_drag="box_zoom",name="spec_fig")
+		spec_fig.yaxis.axis_label = 'Intensity (??)'
+		spec_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
+		spec_source = ColumnDataSource(data={'x':[],'y':[]})
+		spec_fig.line(x='x',y='y',source=spec_source,name="spec_line")
+	
 	## SOURCES
 	ILS_source = ColumnDataSource(data={'x':[],'y':[]})
 	mw_source = ColumnDataSource(data={'x':[],'meas':[],'calc':[],'resid':[]})
-	spec_source = ColumnDataSource(data={'x':[],'y':[]})
 
 	## LINES
 	# Microwindows
@@ -1270,8 +1314,6 @@ def doc_maker():
 	resid_fig.line(x='x',y='resid',color='black',source=mw_source,name="resid_line")
 	# ILS
 	ILS_fig.line(x='x',y='y',source=ILS_source,name="ILS_line")
-	# Spectrum
-	spec_fig.line(x='x',y='y',source=spec_source,name="spec_line")
 
 	## LEGEND
 	dum_fig = figure(plot_width=265,plot_height=850,outline_line_alpha=0,toolbar_location=None,name='dum_fig')
@@ -1288,7 +1330,10 @@ def doc_maker():
 	# Subgrid with the microwindow and residuals figures
 	mw_grid = gridplot([[mw_fig],[resid_fig]],toolbar_location=None)
 	# Subgrid2 with the ILS figure and the mw_grid subgrid 
-	spec_grid = gridplot([[ILS_fig,mw_grid],[spec_fig]],toolbar_location='left')
+	if ignore_spec:
+		spec_grid = gridplot([[ILS_fig,mw_grid]],toolbar_location='left')
+	else:
+		spec_grid = gridplot([[ILS_fig,mw_grid],[spec_fig]],toolbar_location='left')
 	# Grid with the 'cur_spec_div', the buttons for microwindows and the 'spec_grid'
 	diag_grid = gridplot([[cur_spec_div],[MW_buttons],[spec_grid]],toolbar_location=None)
 	# Panel for the diag_grid

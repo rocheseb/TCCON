@@ -38,6 +38,11 @@ While the server is running, the app will be available in the browser at localho
 - Python dictionaries of the data are saved in lft_app/saved_sessions/
 - PDF documents with all the plots are saved in lft_app/pdf/
 
+By default the spectrum itself will be plotted in the browser and also saved in the data dictionary.
+This can lead to very large files and more loading time. To avoid this the app can be run in light mode with:
+
+	bokeh serve --show lft_app --args light
+
 ### Rationg of spectra ###
 
 Spectra should be ratioed to ~1 to be used with the linefit extended mode:
