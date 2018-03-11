@@ -904,12 +904,11 @@ def update_colors():
 
 		colo = all_data[test]['color']
 
-		curdoc.select_one({'name':'{} ME line'.format(test)}).glyph.line_color = colo
-		curdoc.select_one({'name':'{} PE line'.format(test)}).glyph.line_color = colo
-		curdoc.select_one({'name':'{} column line'.format(test)}).glyph.line_color = colo
-		curdoc.select_one({'name':'{} column scatter'.format(test)}).glyph.fill_color = colo
-		curdoc.select_one({'name':'{} series scatter'.format(test)}).glyph.fill_color = colo
-		curdoc.select_one({'name':'{} legend line'.format(test)}).glyph.line_color = colo
+		curdoc().select_one({'name':'{} ME line'.format(test)}).glyph.line_color = colo
+		curdoc().select_one({'name':'{} PE line'.format(test)}).glyph.line_color = colo
+		curdoc().select_one({'name':'{} column line'.format(test)}).glyph.line_color = colo
+		curdoc().select_one({'name':'{} column scatter'.format(test)}).glyph.fill_color = colo
+		curdoc().select_one({'name':'{} series scatter'.format(test)}).glyph.fill_color = colo
 
 def change_spectrum():
 	'''
