@@ -85,6 +85,7 @@ spectrumfilename1,temperature1,apt_size1,spectral_detuning1
 
 import os
 import sys
+import platform
 import subprocess
 from functools import partial
 
@@ -155,6 +156,14 @@ ignore_spec = False
 if 'light' in argu:
 	# bokeh serve lftp_app --args light 
 	ignore_spec = True
+
+system = platform.system()
+if system == 'Windows':
+	lft_command = ['lft145.exe']
+elif system == 'Linux':
+	lft_command = ['./lft145_ifort']
+elif system == 'Darwin':
+	lft_command = ['./lft145_gfortran']
 
 FLC = 418.0 # focal length of collimator in mm
 
@@ -537,7 +546,7 @@ def run_linefit(cell):
 
 	status_div.text+='<br>- Running linefit ...'
 	print('\n\t- Running linefit ...')
-	for line in execute(['lft145.exe']): # run linefit and print the output live
+	for line in execute(lft_command): # run linefit and print the output live
 		print(line, end="")
 
 	if cell in ['n2o','hbr']:
