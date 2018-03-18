@@ -184,9 +184,9 @@ kelly_colors = [ 	'#F3C300','#875692', '#F38400', '#A1CAF1','#BE0032', '#C2B280'
 #kelly_colors += ['blue','red','green','chartreuse','magenta','firebrick']
 # but it is not really possible to have only high contrast colors for more than 20 colors
 
-# if more than 26 lines are plotted the color palette will be switched to viridis(n) with n the number of lines
+# if more than 20 lines are plotted the color palette will be switched to viridis(n) with n the number of lines
 # you can check the viridis palette here: https://bokeh.pydata.org/en/latest/docs/reference/palettes.html
-# above 26 lines, each time a line is added, all line colors will change because viridis(n) does a linear mapping with the 256 colors of Viridis256
+# above 20 lines, each time a line is added, all line colors will change because viridis(n) does a linear mapping with the 256 colors of Viridis256
 # this will maximize contrast within the color palette
 
 window_dict = {}
@@ -258,6 +258,7 @@ app_path = os.path.dirname(__file__) # the app should be in ... /linefit/lft145/
 specpath = os.path.join(app_path,'spectra','cut') # ... /linefit/lft145/lft_app/spectra/cut
 refpath = os.path.join(app_path,'spectra','background') # ... /linefit/lft145/lft_app/spectra/background
 save_path = os.path.join(app_path,'saved_sessions') # ... /linefit/lft145/lft_app/saved_sessions
+static_path = os.path.join(app_path,'static') # ... /linefit/lft145/lft_app/static
 
 wdir = os.sep.join(app_path.split(os.sep)[:-1]) # get the working directory; path to ... /linefit/lft145
 ergpath = os.path.join(wdir,'ergs') # ... /linefit/lft145/ergs
@@ -273,6 +274,10 @@ if (cb_obj.value===""){
 TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,reset,save" # tools that will be available to interact with the plots
 
 all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' will store the ID of the appriopriate color from 'kelly_colors'
+
+##################
+# Main functions #
+##################
 
 def get_inputs(spectrum):
 	'''
@@ -423,12 +428,29 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Input file updated'
 	print('\n\t- Input file updated')
 
+def show_loader():
+	'''
+	show the loading animation for time consuming tasks
+	'''
+	infile = open(os.path.join(static_path,'loader.html'),'r')
+	loader_css = infile.read().replace('\n',"")
+	infile.close()
+	curdoc().select_one({'name':'loader'}).text = loader_css
+
+def hide_loader():
+	'''
+	hide the loading animation
+	'''
+	curdoc().select_one({'name':'loader'}).text = ""
+
 def setup_linefit():
 	'''
 	setup a linefit run for the spectrum selected in spec_input
 	'''
 
 	global all_data
+
+	show_loader()
 
 	dum_fig = curdoc().select_one({"name":"dum_fig"})
 
@@ -441,6 +463,7 @@ def setup_linefit():
 
 	if spectrum=='':
 		status_div.text = "Select a spectrum"
+		hide_loader()
 		return
 
 	reg = curdoc().select_one({"name":"reg_input"}).value
@@ -451,12 +474,14 @@ def setup_linefit():
 		float(reg)
 	except:
 		status_div.text = "Regularisation factor must be a number"
+		hide_loader()
 		return
 
 	dum_leg_labels = [elem.label['value'] for elem in dum_fig.legend[0].items]
 	already_done = [elem for elem in dum_leg_labels if ((spectrum.split('.')[0] in elem) and ('reg={}'.format(reg) in elem))]!=[]
 	if already_done:
-		status_div.text = "{} already analysed with reg={}".format(spectrum,reg) 
+		status_div.text = "{} already analysed with reg={}".format(spectrum,reg)
+		hide_loader()
 		return
 	
 	status_div.text = "<b>Now doing:</b> <br>{}<br>reg= {}".format(spectrum,reg)
@@ -475,6 +500,7 @@ def setup_linefit():
 		status_div.text = spectrum+':</br>scanner temperature not listed in the temp file'
 		print(spectrum,'scanner temperature not listed in the temp file')
 		all_data['ID'] += -1
+		hide_loader()
 		return
 
 	site,cell,MOPD,APT,temperature,window_list,spectral_detuning = get_inputs(spectrum)
@@ -504,6 +530,8 @@ def setup_linefit():
 
 	curdoc().select_one({'name':'status_div'}).text += "<br><b>DONE</b>"
 
+	hide_loader()
+
 def check_colors(add_one=False):
 	'''
 	If there are more tests to be displayed than colors in the kelly_colors list, change the kelly_colors color palette for a linear mapping of Viridis256 colors
@@ -519,7 +547,7 @@ def check_colors(add_one=False):
 
 	N_tests = len(test_list)
 
-	if N_tests > len(kelly_colors):
+	if N_tests >= len(kelly_colors):
 		print('\n\t - Too many lines for kelly_colors, using large palette')
 		new_palette = viridis(N_tests)[::-1]	# linear mapping from 256 Viridis colors to the N differents tests
 		for i,test in enumerate(test_list):
@@ -861,6 +889,12 @@ def update_doc():
 	'''
 	global all_data
 
+	show_loader()
+
+	status_div = curdoc().select_one({"name":"status_div"})
+
+	status_div.text = 'Updating plots ...'
+
 	test_list = sorted([key for key in all_data if 'reg' in key])
 
 	colo = check_colors()
@@ -885,6 +919,10 @@ def update_doc():
 		curdoc().select_one({"name":"column_fig"}).line(x='x',y='y',color=colo,line_width=2,source=COL_source,name='{} column line'.format(test))
 		curdoc().select_one({"name":"column_fig"}).scatter(x='x',y='y',color=colo,source=COL_source,name='{} column scatter'.format(test))
 		curdoc().select_one({"name":"series_fig"}).scatter(x='x',y='y',color=colo,size=5,source=series_source,name='{} series scatter'.format(test))
+
+	status_div.text = "Ready"
+
+	hide_loader()
 
 def show_hide(attr,old,new,test):
 	'''
@@ -1144,6 +1182,8 @@ def save_session():
 	'''
 	global all_data
 
+	show_loader()
+
 	status_div = curdoc().select_one({"name":"status_div"})
 	session_input = curdoc().select_one({"name":"session_input"})
 	save_input = curdoc().select_one({"name":"save_input"})
@@ -1166,6 +1206,8 @@ def save_session():
 	
 	# now that a new session has been saved, update the options of the session_input widget
 	session_input.options = ['']+[i for i in os.listdir(save_path) if reg_npy.match(i)]
+
+	hide_loader()
 
 def load_session():
 	'''
@@ -1196,7 +1238,7 @@ def load_session():
 		for test in test_list:
 			all_data[test]['spec'] = None
 
-	doc_maker() # rebuild the entire document using the new all_data
+	doc_maker() # rebuild the entire document using the new all_data dictionary
 
 	curdoc().select_one({"name":"spec_input"}).value = ""
 
@@ -1252,7 +1294,9 @@ def doc_maker():
 	status_text = Div(text='<font size=2 color="teal"><b>Status:</b></font>',name="status_text")
 	status_div = Div(text='Select a spectrum',width=300,name="status_div") # will display information on app status
 	cur_spec_div = Div(text="<font size=3 color='teal'><b>Spectrum</b></font>",width=400,name="cur_spec_div") # will display the current spectrum
-	suptitle = Div(text='<font size=5 color="teal"><b>Linefit 14.5</b></font>',width=300,name='suptitle') # big title displayed at the top of the webpage
+	suptitle = Div(text='<font size=5 color="teal"><b>Linefit 14.5</b></font>',width=150,name='suptitle') # big title displayed at the top of the webpage
+	# Loader gif
+	loader = Div(text="",width=40,height=40,name="loader")
 	# Spacing DIVs
 	space_div = Div(text='',height=30,name="dum_div")
 	space_div2 = Div(text='',height=15,name="dum_div")
@@ -1344,7 +1388,7 @@ def doc_maker():
 	final = Tabs(tabs=[MEPECOL_panel,diag_panel],width=920,name='final')
 
 	# put all the widgets in a widget box
-	widget_box = widgetbox(space_div,refresh_button,session_input,load_button,line_div,dum_div,spec_input,dum_div2,reg_input,line_div2,lft_button,line_div4,save_input,save_button,line_div3,loop_input,loop_button,dum_div3,status_text,status_div,css_classes=['side_widgets'],name="widget_box")
+	widget_box = widgetbox(space_div,refresh_button,session_input,load_button,line_div,dum_div,spec_input,dum_div2,reg_input,line_div2,lft_button,line_div4,save_input,save_button,line_div3,loop_input,loop_button,dum_div3,loader,status_text,status_div,css_classes=['side_widgets'],name="widget_box")
 
 	# empty widget box. After linefit is run, it will be filled with buttons that select the spectrum to be displayed in the diag_panel
 	button_box = Column(children=[widgetbox(width=255)],name='button_box')
@@ -1368,6 +1412,7 @@ def linefit_loop():
 	'''
 	run linefit for all the spectra that include in their name the keyword given in the 'loop_input'
 	'''
+
 	keyword = curdoc().select_one({"name":"loop_input"}).value
 
 	reg_key = re.compile(keyword.replace('*','.*'),re.IGNORECASE)
