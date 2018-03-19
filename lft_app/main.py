@@ -413,6 +413,7 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 				if spectral_detuning: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
 					for j in range(1,N_windows+1):
 						content[i+8+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
+					curdoc().select_one({"name":"status_div"}).text+="<br>- Spectral detuning corrected"
 			elif 'gas cell parameters' in content[i]:
 				content[i+13] = '{:.2f}'.format(temperature)+'\n'
 			elif 'focal length of collimator' in content[i]:
