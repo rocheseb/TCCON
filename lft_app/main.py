@@ -279,6 +279,23 @@ all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' wi
 # Main functions #
 ##################
 
+def busy(func):
+	'''
+	busy decorator that will display a loading animation when the program is working on something
+	'''
+	def wrapper():
+		# show the loading animation for time consuming tasks
+		infile = open(os.path.join(static_path,'loader.html'),'r')
+		loader_css = infile.read().replace('\n',"")
+		infile.close()
+		curdoc().select_one({'name':'loader'}).text = loader_css
+
+		func() # run the decorated function
+
+		# hide the loading animation
+		curdoc().select_one({'name':'loader'}).text = ""
+	return wrapper
+
 def get_inputs(spectrum):
 	'''
 	retrieves info from the spectrum name
@@ -429,21 +446,7 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Input file updated'
 	print('\n\t- Input file updated')
 
-def show_loader():
-	'''
-	show the loading animation for time consuming tasks
-	'''
-	infile = open(os.path.join(static_path,'loader.html'),'r')
-	loader_css = infile.read().replace('\n',"")
-	infile.close()
-	curdoc().select_one({'name':'loader'}).text = loader_css
-
-def hide_loader():
-	'''
-	hide the loading animation
-	'''
-	curdoc().select_one({'name':'loader'}).text = ""
-
+@busy
 def setup_linefit():
 	'''
 	setup a linefit run for the spectrum selected in spec_input
@@ -451,7 +454,7 @@ def setup_linefit():
 
 	global all_data
 
-	show_loader()
+	status_div = curdoc().select_one({"name":"status_div"})
 
 	dum_fig = curdoc().select_one({"name":"dum_fig"})
 
@@ -464,25 +467,20 @@ def setup_linefit():
 
 	if spectrum=='':
 		status_div.text = "Select a spectrum"
-		hide_loader()
 		return
 
 	reg = curdoc().select_one({"name":"reg_input"}).value
-
-	status_div = curdoc().select_one({"name":"status_div"})
 
 	try:
 		float(reg)
 	except:
 		status_div.text = "Regularisation factor must be a number"
-		hide_loader()
 		return
 
 	dum_leg_labels = [elem.label['value'] for elem in dum_fig.legend[0].items]
 	already_done = [elem for elem in dum_leg_labels if ((spectrum.split('.')[0] in elem) and ('reg={}'.format(reg) in elem))]!=[]
 	if already_done:
 		status_div.text = "{} already analysed with reg={}".format(spectrum,reg)
-		hide_loader()
 		return
 	
 	status_div.text = "<b>Now doing:</b> <br>{}<br>reg= {}".format(spectrum,reg)
@@ -501,7 +499,6 @@ def setup_linefit():
 		status_div.text = spectrum+':</br>scanner temperature not listed in the temp file'
 		print(spectrum,'scanner temperature not listed in the temp file')
 		all_data['ID'] += -1
-		hide_loader()
 		return
 
 	site,cell,MOPD,APT,temperature,window_list,spectral_detuning = get_inputs(spectrum)
@@ -530,8 +527,6 @@ def setup_linefit():
 	linefit_results(spectrum,colo)
 
 	curdoc().select_one({'name':'status_div'}).text += "<br><b>DONE</b>"
-
-	hide_loader()
 
 def check_colors(add_one=False):
 	'''
@@ -883,14 +878,12 @@ def remove_test():
 
 	doc_maker()
 
-
+@busy
 def update_doc():
 	'''
 	Use the current all_data to fill the plots in the document
 	'''
 	global all_data
-
-	show_loader()
 
 	status_div = curdoc().select_one({"name":"status_div"})
 
@@ -922,8 +915,6 @@ def update_doc():
 		curdoc().select_one({"name":"series_fig"}).scatter(x='x',y='y',color=colo,size=5,source=series_source,name='{} series scatter'.format(test))
 
 	status_div.text = "Ready"
-
-	hide_loader()
 
 def show_hide(attr,old,new,test):
 	'''
@@ -1177,13 +1168,12 @@ def pdf_report(save_name):
 
 	pdf.close()
 
+@busy
 def save_session():
 	'''
 	save the current all_data
 	'''
 	global all_data
-
-	show_loader()
 
 	status_div = curdoc().select_one({"name":"status_div"})
 	session_input = curdoc().select_one({"name":"session_input"})
@@ -1207,8 +1197,6 @@ def save_session():
 	
 	# now that a new session has been saved, update the options of the session_input widget
 	session_input.options = ['']+[i for i in os.listdir(save_path) if reg_npy.match(i)]
-
-	hide_loader()
 
 def load_session():
 	'''
