@@ -24,6 +24,8 @@ import os
 
 import sys
 
+import subprocess
+
 import numpy as np
 
 from numpy.linalg import inv
@@ -116,6 +118,37 @@ def flatten(obj,keep=[]):
 					yield x
 			else:
 				yield item
+
+def read_opus_header(igram_file_path):
+	'''
+	use the perl progran OpusHdr to read the acquisition parameters and return them in a dictionary
+
+	igram_file_path: full path to Opus file
+	'''
+
+	GGGPATH = os.environ['GGGPATH']
+
+	cwd = os.path.join(GGGPATH,'i2s','scripts') # path
+
+	proc = subprocess.Popen(['./OpusHdr',igram_file_path], stdout=subprocess.PIPE,shell=False,cwd=os.path.join(GGGPATH,'i2s','scripts'))
+	tmp = proc.stdout.read() # shell output of OpusHdr
+	prompt = tmp.split('\n')
+
+	data = {}
+
+	for line in prompt:
+		if (':' not in line) and (line!=''):
+			key = line.strip()
+			data[key] = {}
+		elif line!='':
+			try:
+				subkey,val = [x.strip() for x in line.split(': ')]
+			except ValueError:
+				pass
+			else:
+				data[key][subkey] = val
+
+	return data
 
 def read_col(path):
 	'''
