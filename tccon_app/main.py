@@ -99,11 +99,13 @@ elif layout_mode == 'simple':
 plot_width = 700
 if layout_mode == 'simple':
 	plot_height = 400
+	fig = figure(output_backend="webgl",title=' ',plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 1
+
 elif layout_mode == 'comp':
 	plot_height = 180
-
-fig = figure(output_backend="webgl",plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 1
+	fig = figure(output_backend="webgl",plot_width=plot_width,plot_height=plot_height,x_axis_type='datetime',tools=TOOLS,active_inspect=[],active_drag="box_zoom") # Figure 1
 fig.min_border_left = 90
+fig.xaxis.axis_label = ' '
 	
 if layout_mode == 'comp':
 	fig.min_border_right = 80
@@ -160,7 +162,7 @@ if layout_mode == 'comp':
 ## SIDE WIDGETS SETUP
 
 # Information text for a Div widget
-notes = """
+comp_notes = """
 <font size=4 color='teal'><b>Notes:</b></font></br>
 </br>
 <font size=2>
@@ -176,6 +178,26 @@ You can explore the plotted data using the toolbar</br>
 </br>
 <font size=2 color='teal'><b>Links:</b></font> <a href='https://tccon-wiki.caltech.edu'>TCCON</a></font>
 """ % (main_color2,main_color)
+
+simple_notes = """
+<font size=4 color='teal'><b>Notes:</b></font></br>
+</br>
+<font size=2>
+Use the dropdown buttons to select the site and variable</br>
+</br>
+Use the text input to specify dates between which data will be fetched</br>
+The second date is optional e.g. 20120101-20140101 or 20120101</br>
+'20120101' will show all data after 20120101</br>
+</br>
+You can explore the plotted data using the toolbar</br>
+</br>
+<font size=2 color='teal'><b>Links:</b></font> <a href='https://tccon-wiki.caltech.edu'>TCCON</a></font>
+"""
+
+if layout_mode == 'comp':
+	notes = comp_notes
+else:
+	notes = simple_notes
 
 notes_div = Div(text=notes,width=420,css_classes=['notes_div']) # this will display the 'notes' above
 status_text = Div(text='<font size=2 color="teal"><b>Status:</b></font>',width=60)
@@ -325,15 +347,15 @@ status_div.text='Data loaded';
 cb_obj.button_type = 'success';
 }
 """
-dum_button = Button(label='dummy_button',button_type='success',width=200,css_classes=["dum_button"]) # the dummy button itself
+dum_button = Button(label='dummy_button',button_type='success',width=200,css_classes=["dum_button","hidden"]) # the dummy button itself
 dum_button.callback = CustomJS(args={'status_div':status_div},code=dum_button_code) # the callback of the button
 
-dum_text = TextInput() # dummy text input widget; it will be used to trigger the dummy button callback when the dropdown widgets are used.
+dum_text = TextInput(css_classes=["hidden"]) # dummy text input widget; it will be used to trigger the dummy button callback when the dropdown widgets are used.
 dum_text.js_on_change('value',CustomJS(code="click_dummy_button()")) # callback of the dummy 'dum_text' TextInput widget to trigger a button click on the dummy button 'dum_button'
 
-dum_alert = Div(text='<b>OOPS !</b> the widgets below are supposed to be hidden. Try refreshing the page',width=700)
+dum_alert = Div(text='<b>OOPS !</b> the widgets below are supposed to be hidden. Try refreshing the page',width=700,css_classes=["hidden"])
 
-dum_box = widgetbox(dum_alert,dum_button,dum_text,width=600,name='dummy box')
+dum_box = widgetbox(dum_alert,dum_button,dum_text,width=600,name='dummy box',css_classes=["hidden"])
 
 ## END OF DUMMY WIDGETS SETUP
 #################################################################################
@@ -749,6 +771,9 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 	except KeyError:
 		no_cached_data = True
 
+	if cache_max_size == 0:
+		no_cached_data = True
+
 	if not public:
 		flag_mode = flag_input.value
 		if flag_mode != '':
@@ -928,13 +953,13 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 					status_div.text = site+' has no data'+add_flag_message+' for '+date_val
 				return
 			print site,'data source updated:',len(site_source.data['x']),'values'
-		if len(site_source.data['y1'])!=0:
+		if len(site_source.data['y1'])!=0 and cache_max_size!=0:
 			if layout_mode == 'simple':
 				add_cache(date_val,site,save_data,first_var=first_var)
 			elif layout_mode == 'comp':
 				add_cache(date_val,site,save_data,first_var=first_var,second_var=second_var)
 
-	else: #else clause of 'if no_cached_data', this will execute if there is cached data corresponding to the inputs
+	else: # else clause of 'if no_cached_data', this will execute if there is cached data corresponding to the inputs
 		initialize(all_var,site_source,site_ID) # fills variable inputs with options,resets the data site_source, and setup hovertool tooltips
 		if not filled_site_inputs:
 			dum_text.value = str(time.time()+1) # click the timer button to start the loading countdown in the 'status_div' widget
@@ -1206,10 +1231,10 @@ elif layout_mode == 'simple':
 	if not public:
 		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[linediv4],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[linediv4],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[notes_div]],toolbar_location=None)
 
-side_box.css_classes = ['side_box'] #
-dum_box.css_classes = ['dum_box'] # used in scripts.js to make the dummy widgetbox invisible
+side_box.css_classes = ['side_box']
+dum_box.css_classes = ['dum_box']
 
 for elem in side_box.children:
 	elem.css_classes = ['side_box_row'] # custom class for each row in the side_box, will be used in styles.css to set their margin to 'auto' (center elements)

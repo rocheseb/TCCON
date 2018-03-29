@@ -12,6 +12,7 @@ def setup():
 	layout_mode = 'comp' # can be set to 'simple' or 'comp'; in 'simple' mode there is just one plot with one site and one variable to select
 
 	cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
+	# set cache_max_size to 0 if you do not want to make a cache file (reading from netcdf files can be faster than from the cache file)
 
 	# if you modify the plotting colors, you will need to remove your cache_dic.npy file; you will also need to edit the styles.css in tccon_app/templates/styles.css to match the new colors.
 	main_color = 'yellowgreen' # this will be the color used for the flag=0 data; I use css 'YellowGreen' (#9ACD32) by default
