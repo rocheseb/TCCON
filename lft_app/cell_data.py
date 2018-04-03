@@ -18,7 +18,7 @@ def hcl_cells():
 	"""
 	# copy paste this template to add a cell
 	# site
-	cell['site'] = {key:template[key] for key in template}
+	cell['site'] = dict(template)
 	cell['site']['location'] =
 	cell['site']['owner'] = 
 	cell['site']['ID'] =
@@ -33,7 +33,7 @@ def hcl_cells():
 	"""
 	
 	# Eureka
-	cell['eu'] = {key:template[key] for key in template}
+	cell['eu'] = dict(template)
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['owner'] = 'University of Toronto'
 	cell['eu']['ID'] = 30
@@ -47,7 +47,7 @@ def hcl_cells():
 	cell['eu']['calibration_run'] = 1312
 
 	# East Trout Lake
-	cell['et'] = {key:template[key] for key in template}
+	cell['et'] = dict(template)
 	cell['et']['location'] = 'East Trout Lake'
 	cell['et']['owner'] = 'University of Toronto'
 	cell['et']['ID'] = 62
@@ -79,7 +79,7 @@ def hbr_cells():
 				}
 
 	# Eureka
-	cell['eu'] = template
+	cell['eu'] = dict(template)
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['pressure'] = 1.52
 	cell['eu']['column'] = 7.60e20
@@ -103,7 +103,7 @@ def n2o_cells():
 				}
 
 	# Eureka
-	cell['eu'] = template
+	cell['eu'] = dict(template)
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['pressure'] = 0.8734
 	cell['eu']['column'] = 4.373e20
