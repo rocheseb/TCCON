@@ -66,7 +66,7 @@ from math import ceil
 
 # interactive plots
 from bokeh.plotting import figure, output_file
-from bokeh.models import Legend, Panel, Tabs, CustomJS, ColumnDataSource, CheckboxGroup, RadioGroup, Button, VBox, PreText, Range1d
+from bokeh.models import Legend, Panel, Tabs, CustomJS, ColumnDataSource, CheckboxGroup, RadioGroup, Button, PreText, Range1d
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.layouts import gridplot, widgetbox
 from bokeh.resources import CDN
@@ -140,7 +140,12 @@ kelly_colors = {
 					'peru':'peru',
 					'goldenrod':'goldenrod',
 					'navy':'navy',
-					'green':'green'
+					'green':'green',
+					'orange':'orange',
+					'purple','purple',
+					'red':'red',
+					'blue':'blue',
+
 				}
 
 # dictonnary with the full names of TCCON sites
@@ -172,11 +177,17 @@ T_FULL = {
 			'rj':'Rikubetsu',
 			'pr':'Paris',
 			'ma':'Manaus',
+			'sp':'Ny-Alesund',
+			'et':'East Trout Lake',
+			'an':'Anmyeondo',
+			'bu':'Burgos',
+			'we':'Jena',
+			'zs':'Zugspitze',
 		 }
 
 # dictonnary with the country/state of TCCON sites
 T_LOC =  {	
-			'pa':' Wisconsin, USA',
+			'pa':'Wisconsin, USA',
 			'oc':'Oklahoma, USA',
 			'wg':'Australia',
 			'db':'Australia',
@@ -203,6 +214,12 @@ T_LOC =  {
 			'rj':'Japan',
 			'pr':'France',
 			'ma':'Brazil',
+			'sp':'Norway',
+			'et':'Canada',
+			'an':'South Korea',
+			'bu':'Philippines',
+			'we':'Germany',
+			'zs':'Germany',
 		 }
 
 site_files =[i for i in os.listdir(TCCON_path) if '.' in i]
