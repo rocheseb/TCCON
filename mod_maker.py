@@ -316,11 +316,11 @@ def read_data(dataset, varname, min_lat_ID='', max_lat_ID='', min_lon_ID='',max_
 		#lon_XX = lon_XX[sort_IDs]
 
 		if dataset[varname].ndim == 4:
-			data_XX = dataset[varname][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID].data 	# Read in variable varname
+			data_XX = dataset[varname][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
 		else:
 			data_XX = dataset[varname][:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
-			if opendap:
-				data_XX = data_XX.data
+		if opendap or ('Masked' in str(type(data_XX))):
+			data_XX = data_XX.data
 
 		time_units = dataset['time'].units  # string containing definition of time units
 
@@ -456,9 +456,10 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 				'pa':{'name': 'Park Falls','loc':'Wisconsin, USA','lat':45.945,'lon':269.727,'alt':442},
 				'oc':{'name': 'Lamont','loc':'Oklahoma, USA','lat':36.604,'lon':262.514,'alt':320},
 				'wg':{'name': 'Wollongong','loc':'Australia','lat':-34.406,'lon':150.879,'alt':30},
-				'db':{'name': 'Darwin','loc':'Australia',tuple([datetime(2005,8,1),datetime(2015,7,1)]):{'lat':-12.422445,'lon':130.89154,'alt':30},
-														tuple([datetime(2015,7,1)]):{'lat':-12.45606,'lon':130.92658,'alt':37}
-						},
+				'db':{'name': 'Darwin','loc':'Australia','lat':-12.45606,'lon':130.92658,'alt':37},
+				#,tuple([datetime(2005,8,1),datetime(2015,7,1)]):{'lat':-12.422445,'lon':130.89154,'alt':30},
+				#										tuple([datetime(2015,7,1)]):{'lat':-12.45606,'lon':130.92658,'alt':37}
+				#		},
 				'or':{'name': 'Orleans','loc':'France','lat':47.97,'lon':2.113,'alt':130},
 				'bi':{'name': 'Bialystok','loc':'Poland','lat':53.23,'lon':23.025,'alt':180},
 				'br':{'name': 'Bremen','loc':'Germany','lat':53.1037,'lon':8.849517,'alt':30},
@@ -473,9 +474,9 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 				'ae':{'name': 'Ascenssion Island','loc':'United Kingdom','lat':-7.933333,'lon':345.583333,'alt':0},
 				'eu':{'name': 'Eureka','loc':'Canada','lat':80.05,'lon':273.58,'alt':610},
 				'so':{'name': 'Sodankyla','loc':'Finland','lat':67.3668,'lon':26.6310,'alt':188},
-				'iz':{'name': 'Izana','loc':'Spain','lat':28,'lon':344,'alt':0},
+				'iz':{'name': 'Izana','loc':'Spain','lat':28.0,'lon':344.0,'alt':0},
 				'if':{'name': 'Idianapolis','loc':'Indiana, USA','lat':39.861389,'lon':273.996389,'alt':270},
-				'df':{'name': 'Dryden','loc':'California, USA','lat':34959917,'lon':242.118931,'alt':700},
+				'df':{'name': 'Dryden','loc':'California, USA','lat':34.959917,'lon':242.118931,'alt':700},
 				'js':{'name': 'Saga','loc':'Japan','lat':33.240962,'lon':130.288239,'alt':7},
 				'fc':{'name': 'Four Corners','loc':'USA','lat':36.79749,'lon':251.51991,'alt':1643},
 				#'ci':{'name': 'Pasadena','loc':'California, USA','lat':34.13623,'lon':241.873103,'alt':230},
@@ -492,8 +493,6 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 
 	GGGPATH = os.environ['GGGPATH'] # reads the GGGPATH environment variable
 	print 'GGGPATH =',GGGPATH
-
-	mod_path = os.path.join(GGGPATH,'models','gnd')	# .mod files will be saved here
 
 	argu = sys.argv # list of commandline arguments, argu[0] will be "mod_maker.py"
 
@@ -519,7 +518,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 
 	mode = argu[3].lower() # ncep or merra
 	if False not in [elem not in mode for elem in ['merradap','merraglob','fpglob','fpitglob','ncep']]:
-		print 'Wrong mode, must be one of [ncep, merradap42, merradap72, merraloc, fpgeos, fpitgeos]'
+		print 'Wrong mode, must be one of [ncep, merradap42, merradap72, merraglob, fpglob, fpitglob]'
 		sys.exit()
 	if 'merradap' in mode: # get the earthdata credentials
 		try:
@@ -529,6 +528,12 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			sys.exit()
 
 	print 'Mode:',mode.upper()
+
+	simple = {'merradap42':'merra','merradap72':'merra','merraglob':'merra','ncep':'ncep','fpglob':'fp','fpitglob':'fpit'}
+	mod_path = os.path.join(GGGPATH,'models','gnd','comparison',simple[mode],site_abbrv)	# .mod files will be saved here
+	if not os.path.exists(mod_path):
+		os.makedirs(mod_path)
+	print 'MOD files will be saved in:',mod_path
 
 	# hour and minute for time interpolation, default is noon
 	if len(argu)>4:
@@ -606,11 +611,11 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 
 		# get the min/max lat-lon indices of merra lat-lon that lies within a given box.
 		if 'fpglob' in mode:
-			box_lat_half_width = 0.2501
-			box_lon_half_width = 0.3126
+			box_lat_half_width = 0.250001
+			box_lon_half_width = 0.312501
 		else:
-			box_lat_half_width = 0.5001
-			box_lon_half_width = 0.6251
+			box_lat_half_width = 0.500001
+			box_lon_half_width = 0.625001
 		min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID = querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half_width)
 
 		print 'Read global',start_date.year,mode,'data ...'
