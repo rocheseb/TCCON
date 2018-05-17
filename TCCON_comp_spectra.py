@@ -178,6 +178,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	source_list[spectrum] = ColumnDataSource(data={var:spt_data['columns'][var] for var in header})
 	source_list[spectrum].data['resid'] = residuals
+	source_list[spectrum].data['const'] = np.zeros(len(residuals))
 
 	if first_check:
 		# spectrum figure 
@@ -206,15 +207,15 @@ for spec_ID,spectrum in enumerate(select_spectra):
 			print('KeyError:',gas,'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
-		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','($~x{0.00} ; @'+gas+'{0.000})')] ) ) )
+		#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=[gas],tooltips=OrderedDict( [('name',gas),('index','$index'),('(x;y)','($~x{0.00} ; @'+gas+'{0.000})')] ) ) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x='Freq',y='Tm',color='black',line_width=2,name='Tm',source=source_list[spectrum]))
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','($~x{0.00} ; @Tm{0.000})')] )) )
+	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','($~x{0.00} ; @Tm{0.000})')] )) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x='Freq',y='Tc',color='chartreuse',line_width=2,name='Tc',source=source_list[spectrum]))
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] )) )
+	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] )) )
 
 	# legend outside of the figure
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
@@ -224,7 +225,8 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	# now the residual figure
 	fig_resid.line(x='Freq',y='resid',color='black',name='residuals',source=source_list[spectrum])
-	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @resid{0.000})'}))
+	fig_resid.line(x='Freq',y='const',color='red',source=source_list[spectrum])
+	#fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($~x{0.00} ; @resid{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(residuals))],color='white',visible=False,alpha=0)

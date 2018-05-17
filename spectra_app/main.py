@@ -127,9 +127,9 @@ def doc_maker():
 	sigma_rms = spt_data[spectrum]['rms_resid'] # sqrt(mean(residuals**2))
 
 	# spectrum figure 
-	fig = figure(name="spec_fig",title=spectrum+'; SZA='+SZA+'; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0)
+	fig = figure(name="spec_fig",title=spectrum+'; SZA='+SZA+'; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
 	# residual figure
-	fig_resid = figure(name="resid_fig",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0)
+	fig_resid = figure(name="resid_fig",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
 
 	# axes labels
 	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
@@ -150,15 +150,15 @@ def doc_maker():
 			print('KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
-		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+		#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x=freq,y=tm,color='black',line_width=2,name='Tm'))
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x=freq,y=tc,color='chartreuse',line_width=2,name='Tc'))
-	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+2]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+2]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 
 	# legend outside of the figure
 	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
@@ -168,7 +168,8 @@ def doc_maker():
 
 	# now the residual figure
 	fig_resid.line(x=freq,y=residuals,color='black',name='residuals')
-	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($x{0.00} ; $y{0.000})'}))
+	fig_resid.line(x=freq,y=np.zeros(len(freq)),color='red')
+	#fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($x{0.00} ; $y{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(freq))],color='white',visible=False,alpha=0)
