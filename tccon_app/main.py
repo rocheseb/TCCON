@@ -50,6 +50,13 @@ cache_folder = os.path.join(app_path,'cache')
 
 layout_mode, cache_max_size, main_color, main_color2, flag_color, hover_color, boxselecttool_dimensions, skip_list, T_FULL, T_LOC = setup()
 
+def linediv(color='lightblue',width=400):
+	"""
+	Function to generate a Div widget with a straight line.
+	This is because a same model cannot be used several times in a same document.
+	"""
+	return Div(text='<hr width="100%" color="{}">'.format(color),width=width)
+
 #########################################################################################################################################################################
 ## SETUP SECTION
 
@@ -92,6 +99,7 @@ load_button = Button(label='Load Data',width=100,css_classes=['custom_button']) 
 
 if layout_mode == 'comp':
 	TOOLS = "box_zoom,wheel_zoom,pan,box_select,redo,undo,hover,reset,save" # the tools that will be available in the figure's toolbar
+	duplicate_button = Button(label='Duplicate variables',width=160,css_classes=['custom_button']) # convenience button to duplicate first site variables in the second site inputs
 elif layout_mode == 'simple':
 	TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,hover,reset,save" # no box_select tool in simple mode
 
@@ -681,6 +689,36 @@ def set_var(site='',site_ID=0):
 	load_var(site_file_list,site,site_source,site_ID,mode="set_var")
 ## END OF SET_VAR FUNCTION
 #########################################################################################################################################################################
+## DUPLICATE_VAR FUNCTION
+def duplicate_var():
+	"""
+	Callback for the "Duplicate variables" button
+	It duplicates the variables selected for the first site to fill the second site variables
+	"""
+	if site_input.value == '':
+		status_div.text = 'The <font color="{}"><b>first site</b></font> needs to be selected'.format(main_color)
+		return
+	elif site_input2.value == '':
+		status_div.text = 'The <font color="{}"><b>second site</b></font> needs to be selected'.format(main_color2)
+		return		
+	elif '' in [var_input.value,var_input2.value]:
+		status_div.text = 'Both <font color="{}"><b>{}</b></font> variables need to be selected'.format(main_color,site_input.value)
+		return
+	elif var_input.value not in var_input3.options:
+		status_div.text = '<font color="{}"><b>{}</b></font> not in <font color="{}"><b>{}</b></font> variables'.format(main_color,var_input.value,main_color2,site_input2)
+		return
+	elif var_input2.value not in var_input4.options:
+		status_div.text = '<font color="{}"><b>{}</b></font> not in <font color="{}"><b>{}</b></font> variables'.format(main_color,var_input2.value,main_color2,site_input2)
+		return
+	elif (var_input2.value == var_input4.value) and (var_input.value == var_input3.value):
+		status_div.text = '<font color="{}"><b>{}</b></font> and <font color="{}"><b>{}</b></font> variables are already the same'.format(main_color,site_input.value,main_color2,site_input2.value)		
+		return
+	else:
+		var_input3.value = var_input.value
+		var_input4.value = var_input2.value
+
+## END OF DUPLICATE_VAR FUNCTION
+#########################################################################################################################################################################
 ## LOAD_DATA FUNCTION
 if layout_mode == 'simple':
 	save_inputs = ['']*5
@@ -719,7 +757,7 @@ def load_data():
 		else:
 			set_var(site=site_input.value,site_ID=1)
 	elif site_input.value!='' and ('' in [var_input.value,var_input2.value]):
-		status_div.text = site_input.value+' still has an empty variable input'
+		status_div.text = '<font color="{}"><b>{}</b></font> still has an empty variable input'.format(main_color,site_input.value)
 		return
 		
 	if layout_mode == 'comp':
@@ -729,7 +767,7 @@ def load_data():
 			else:
 				set_var(site=site_input2.value,site_ID=2)
 		elif site_input2.value!='' and ('' in [var_input3.value,var_input4.value]):
-			status_div.text = site_input2.value+' still has an empty variable input'
+			status_div.text = '<font color="{}"><b>{}</b></font> still has an empty variable input'.format(main_color2,site_input2.value)
 ## END OF LOAD_DATA FUNCTION
 #########################################################################################################################################################################
 ## LOAD_VAR FUNCTION
@@ -799,7 +837,7 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 					initialize(all_var,site_source,site_ID,reset=False) # fills variable inputs with options, does not reset the data source
 					dum_text.value = str(time.time()+3) # click the timer button again to stop the loading countdown in the 'status_div' widget
 					time.sleep(0.1)
-					status_div.text = site+' still has an empty variable input'
+					status_div.text = '<font color="{}"><b>{}</b></font> still has an empty variable input'.format(no_flag_color,site)
 					return
 				if mode == 'set_site':
 					initialize(all_var,site_source,site_ID,reset=False) # fills variable inputs with options, does not reset the data source
@@ -1028,6 +1066,7 @@ site_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value
 var_input.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
 
 load_button.on_click(load_data)
+duplicate_button.on_click(duplicate_var)
 
 if layout_mode == 'comp':
 	var_input2.on_change('value',lambda attr,old,new: set_site(site=site_input.value,site_ID=1))
@@ -1038,7 +1077,7 @@ if layout_mode == 'comp':
 	
 	# widgets specific to the comparison layout_mode ('comp')
 	table_source = ColumnDataSource( data = {'Site':['',''],'N':[0,0],'R':[0,0]} ) # the data source of the table
-	data_table = DataTable(source=table_source, reorderable=False, columns=[ TableColumn(field='Site',title='Site'),TableColumn(field='N',title='N'),TableColumn(field='R',title='R'),], width=200, height=75)
+	data_table = DataTable(source=table_source, reorderable=False, columns=[ TableColumn(field='Site',title='Site',width=150),TableColumn(field='N',title='N',width=50),TableColumn(field='R',title='R',width=50),],width=300, height=75)
 		
 	# assign JS callbacks to the source and box selection tool, need a callback on both data and selection changes.
 	source.js_on_change('data', CustomJS(args={'site_input':site_input,'site_input2':site_input2,'dt':data_table},code=correlation_code.replace('ROWID','0')))
@@ -1195,12 +1234,6 @@ def center():
 center_button = Button(label='Scale without extrema',name='test',width=160,css_classes=['custom_button']) # button to 'center' the plot on the 'good' data
 center_button.on_click(center) # assign the callback function to the button
 
-# some blue lines that will be used to visually separate groups of widgets
-linediv = Div(text='<hr width="100%" color="lightblue">',width=400)
-linediv2 = Div(text='<hr width="100%" color="lightblue">',width=400)
-linediv3 = Div(text='<hr width="100%" color="lightblue">',width=400)
-linediv4 = Div(text='<hr width="100%" color="lightblue">',width=400)
-
 if layout_mode == 'comp':
 
 	#add reset events
@@ -1217,9 +1250,9 @@ if layout_mode == 'comp':
 
 	dumdiv2 = Div(text='',width=50) # dummy div for spacing
 	if not public:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv4],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[duplicate_button],[linediv()],[date_input,flag_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv4],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv()],[date_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 
 	figroup = gridplot([[figrid],[figrid2]],toolbar_location='left')
 elif layout_mode == 'simple':
@@ -1229,9 +1262,9 @@ elif layout_mode == 'simple':
 	figroup = gridplot([[fig]], toolbar_location = 'left')
 	figroup.children[0].merge_tools = False
 	if not public:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input,flag_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[center_button],[linediv4],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv()],[date_input,flag_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button],[linediv()],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input],[var_input],[linediv],[date_input],[linediv2],[load_button],[status_text,status_div],[linediv3],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input],[var_input],[linediv()],[date_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[notes_div]],toolbar_location=None)
 
 side_box.css_classes = ['side_box']
 dum_box.css_classes = ['dum_box']
