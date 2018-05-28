@@ -795,7 +795,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		site_SH = trilinear_interp(data_SH, data_scale_factor_SH, data_add_offset_SH, site_lon_360, lon_SH, site_lat, lat_SH, site_tim, tim_SH)
 
 		if 'ncep' in mode:
-			# ncep has geopotential height profiles, merra has heights
+			# ncep has geopotential height profiles
 			site_GH = trilinear_interp(data_GH, data_scale_factor_GH, data_add_offset_GH, site_lon_360, lon_GH, site_lat, lat_GH, site_tim, tim_GH)
 			site_TP = 0.0 # tropopause pressure not used with NCEP data
 			site_RH = 0 # won't be used, just to feed something to write_mod frh
@@ -803,7 +803,8 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			# interpolate height levels
 			site_H = trilinear_interp(data_H, data_scale_factor_H, data_add_offset_H, site_lon_360, lon_H, site_lat, lat_H, site_tim, tim_H)
 			# convert to geopotential
-			site_GH = (site_H)/(1.0+(site_H)/earth_radius_at_lat)		# Convert from geometric to geopotential
+			#site_GH = (site_H)/(1.0+site_H/earth_radius_at_lat)		# Convert from geometric to geopotential
+			site_GH = site_H # unclear if merra2 / geos5 height field is geopotential or geometric
 			# interpolate relative humidity
 			site_RH = trilinear_interp(data_RH, data_scale_factor_RH, data_add_offset_RH, site_lon_360, lon_RH, site_lat, lat_RH, site_tim, tim_RH)
 			# interpolate potential vorticity
