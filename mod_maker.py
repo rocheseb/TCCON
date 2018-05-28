@@ -8,14 +8,14 @@ What's different?
 
 This is run with:
 
-python mod_maker.py arg1 arg2 ar3 arg4 arg 5
+python mod_maker.py arg1 arg2 ar3 arg4 arg5
 
 arg1: two letter site abbreviation (e.g. 'oc' for Lamont, Oklahoma; see the "site_dict" dictionary)
 arg2: date range (YYYYMMDD-YYYYMMDD, second one not inclusive, so you don't have to worry about end of months) or single date (YYYYMMDD)
 arg3: mode ('ncep', 'merradap42', 'merradap72', 'merraglob', 'fpglob', 'fpitglob'), ncep and 'glob' modes require local files
 the 'merradap' modes require a .netrc file in your home directory with credentials to connect to urs.earthdata.nasa.gov
-arg4: (optional, default=12) local hour (HH) for time interpolation (12 is local noon)
-arg5: (optional, default=0) minute (MM) for time interpolation
+arg4: (optional, default=12:00)  hour:minute (HH:MM) for the starting time, default is local time, add 'UT' to use UTC time (15:30 will be local, 15:30UTC will be UTC)
+arg5: (optional, default=24) time step in hours (can be decimal)
 
 In GGGPATH/models/gnd it will write one mod file per day.
 The merra modes require an internet connection and EarthData credentials
@@ -51,7 +51,7 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_RH=0,surf_H2ODMF=0):
+def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_H2ODMF=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
@@ -143,12 +143,12 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 
 		# The head of the .mod file	
 		fmt1 = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
-		fmt2 = '{:9.3e}    {:9.3e}    {:7.3f}    {:7.3f}    {:9.3e}{:>6.1f}  {:9.3e}\n'
+		fmt2 = '{:9.3e}    {:9.3e}    {:7.3f}    {:7.3f}    {:9.3e}{:>6.1f}    {:9.3e}\n'
 		mod_content = []
 		mod_content+=[	'7  7\n',
 						fmt1.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,site_TP),
-						'   SLP          SP           ST         SGH        DMF       RH       TROPPB\n',
-						fmt2.format(SLP,surf_P,surf_AT,surf_GH,surf_H2ODMF,surf_RH,site_TP),
+						'   SLP          SP           ST         SGH        DMF       RH     TROPPB\n',
+						fmt2.format(SLP,surf_P,surf_AT,surf_GH,surf_H2ODMF,100*surf_FRH,site_TP),
 						version+'\n',
 						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s\n',
 						'Pressure  Temperature     Height     MMW        H2O      RH          EPV\n',	]
@@ -215,7 +215,7 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 	if (fr_tt < -1) or (fr_tt > 2):
 	   print 'Excessive time extrapolation:',fr_tt,' time-steps   =',fr_tt*dt,' days'
 	   print ' tt= ',tt,'  index_tt=',index_tt,'  fr_tt=',fr_tt
-	   print 'An NCEP file doesnt cover the full range of dates'
+	   print 'input file does not cover the full range of dates'
 	   print 'site_tim',site_tim
 	   print 'tim_XX',tim_XX
 	   raw_input() # will hold the program until something is typed in commandline
@@ -223,13 +223,13 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 	if (fr_xx < 0) or (fr_xx > 1):
 	   print 'Excessive longitude extrapolation:',fr_xx,' steps   =',fr_xx*dx,' deg'
 	   print ' xx= ',xx,'  index_xx=',index_xx,'  fr_xx=',fr_xx
-	   print 'NCEP file doesnt cover the full range of longitudes'
+	   print 'input file does not cover the full range of longitudes'
 	   raw_input() # will hold the program until something is typed in commandline
 
 	if (fr_yy < 0) or (fr_yy > 1):
 	   print 'Excessive latitude extrapolation:',fr_yy-1,' steps   =',(fr_yy-1)*dy,' deg'
 	   print ' yy= ',yy,'  index_yy=',index_yy,'  fr_yy=',fr_yy
-	   print 'NCEP file doesnt cover the full range of latitudes'
+	   print 'input file does not cover the full range of latitudes'
 	   raw_input() # will hold the program until something is typed in commandline
 
 	if (fr_tt < 0) or (fr_tt > 1):
@@ -362,7 +362,7 @@ def querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half
 
 	To be certain to get two points on both side of the site lat and lon, use the grid resolution
 	"""
-	# define 2xbox_lat_half_width°x2xbox_lon_half_width° lat-lon box centered on the site lat-lon and construct the url querry
+	# define 2xbox_lat_half_width°x2xbox_lon_half_width° lat-lon box centered on the site lat-lon
 	min_lat, max_lat = site_lat-box_lat_half_width, site_lat+box_lat_half_width
 	min_lon, max_lon = site_lon_180-box_lon_half_width, site_lon_180+box_lon_half_width
 	
@@ -550,10 +550,14 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		os.makedirs(mod_path)
 	print 'MOD files will be saved in:',mod_path
 
-	# hour and minute for time interpolation, default is noon
+	# hour and minute for time interpolation, default is local noon
+	UTC = False
 	if len(argu)>4:
-		HH = int(argu[4])
-		MM = int(argu[5])
+		time_input = re.search('([0-9][0-9]):([0-9][0-9])(UTC)?',argu[4]).groups()
+		if 'UTC' in time_input:
+			UTC = True
+		HH = int(time_input[0])
+		MM = int(time_input[1])
 	else:
 		HH = 12
 		MM = 0
@@ -565,7 +569,11 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 	if MM>=60 or MM<0:
 		print 'Need 0<=MM<60'
 		sys.exit()
-	print 'Local time for interpolation: {:0>2}:{:0>2}'.format(HH,MM)
+
+	if len(argu)>5:
+		time_step = int(argu[5])
+	else:
+		time_step = 24
 
 	# will need to handle sites that changed location at some point
 	site_moved = False
@@ -597,8 +605,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 
 	ncdf_path = os.path.join(GGGPATH,'ncdf')
 
-	if mode == 'ncep':
-
+	if 'ncep' in mode:
 		# path to the netcdf files
 		ncdf_AT_file = os.path.join(ncdf_path,'.'.join(['air','{:0>4}'.format(start_date.year),'nc']))
 		ncdf_GH_file = os.path.join(ncdf_path,'.'.join(['hgt','{:0>4}'.format(start_date.year),'nc']))
@@ -683,17 +690,25 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		tim_SLP = tim_SLP / 60.0
 		tim_TP = tim_TP / 60.0
 
-	date = start_date + timedelta(hours=HH,minutes=MM) # date with local time
+	if UTC:
+		date = start_date + timedelta(hours=HH-site_lon_180/15.0,minutes=MM) # date with local time
+	else:
+		date = start_date + timedelta(hours=HH,minutes=MM) # date with local time
+	print 'Starting local time for interpolation:',date.strftime('%Y-%m-%d %H:%M')
 	astropy_date = Time(date)
 
-	time_step = timedelta(days=1) # time step between mod files; will need to change the mod file naming and gsetup to do sub-daily files
+	time_step = timedelta(hours=time_step) # time step between mod files; will need to change the mod file naming and gsetup to do sub-daily files
 	print 'Time step:',time_step.total_seconds()/3600.0,'hours'
 	new_year = False
 	while date<end_date:
 
 		# use the local date for the name of the .mod file
 		YYYYMMDD = date.strftime('%Y%m%d')
-		mod_name = '_'.join(['NCEP',YYYYMMDD,'{:0>2.0f}'.format(round(abs(site_lat)))+ns,'{:0>3.0f}'.format(round(abs(site_lon_180)))+ew+'.mod'])
+		HHMM = date.strftime('%H%M')
+		if time_step < timedelta(days=1):
+			mod_name = 'NCEP_{}_{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,HHMM,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
+		else:
+			mod_name = 'NCEP_{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
 		mod_file_path = os.path.join(mod_path,mod_name)
 		print '\n',mod_name
 
@@ -850,14 +865,14 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			# compute surface relative humidity
 			svp = svp_wv_over_ice(site_surf_AT)
 			h2o_wmf = site_surf_H2ODMF/(1+site_surf_H2ODMF) # wet mole fraction of h2o
-			site_surf_RH = h2o_wmf*site_surf_P/svp # Fractional relative humidity
+			site_surf_FRH = h2o_wmf*site_surf_P/svp # Fractional relative humidity
 
 		# write the .mod file
 		version = 'mod_maker_10.6   2017-04-11   GCT'
 		if 'ncep' in mode:
 			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
 		else:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_RH=site_surf_RH,surf_H2ODMF=site_surf_H2ODMF)
+			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_H2ODMF=site_surf_H2ODMF)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
