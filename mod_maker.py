@@ -51,7 +51,7 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_H2ODMF=0):
+def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
@@ -143,12 +143,12 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 
 		# The head of the .mod file	
 		fmt1 = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
-		fmt2 = '{:9.3e}    {:9.3e}    {:7.3f}    {:7.3f}    {:9.3e}{:>6.1f}    {:9.3e}\n'
+		fmt2 = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}    {:9.3e}\n'
 		mod_content = []
 		mod_content+=[	'7  7\n',
 						fmt1.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,site_TP),
-						'   SLP          SP           ST         SGH        DMF       RH     TROPPB\n',
-						fmt2.format(SLP,surf_P,surf_AT,surf_GH,surf_H2ODMF,100*surf_FRH,site_TP),
+						'Pressure  Temperature     Height     MMW        H2O      RH         SLP        TROPPB\n',
+						fmt2.format(surf_P,surf_AT,surf_GH,surf_mmw,surf_H2ODMF,100*surf_FRH,SLP,site_TP),
 						version+'\n',
 						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s\n',
 						'Pressure  Temperature     Height     MMW        H2O      RH          EPV\n',	]
@@ -866,13 +866,14 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			svp = svp_wv_over_ice(site_surf_AT)
 			h2o_wmf = site_surf_H2ODMF/(1+site_surf_H2ODMF) # wet mole fraction of h2o
 			site_surf_FRH = h2o_wmf*site_surf_P/svp # Fractional relative humidity
+			site_surf_mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
 
 		# write the .mod file
 		version = 'mod_maker_10.6   2017-04-11   GCT'
 		if 'ncep' in mode:
 			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
 		else:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_H2ODMF=site_surf_H2ODMF)
+			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
