@@ -51,7 +51,7 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,ozone=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0):
+def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,ozone=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0,site_TROPPT=0,site_TROPPV=0,site_TROPT=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
@@ -143,12 +143,12 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 
 		# The head of the .mod file	
 		fmt1 = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
-		fmt2 = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}    {:9.3e}\n'
+		fmt2 = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}    {:9.3e}    {:9.3e}    {:9.3e}    {:7.3f}\n'
 		mod_content = []
 		mod_content+=[	'7  7\n',
 						fmt1.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,site_TP),
-						'Pressure  Temperature     Height     MMW        H2O      RH         SLP        TROPPB\n',
-						fmt2.format(surf_P,surf_AT,surf_GH,surf_mmw,surf_H2ODMF,100*surf_FRH,SLP,site_TP),
+						'Pressure  Temperature     Height     MMW        H2O      RH         SLP        TROPPB        TROPPV      TROPPT       TROPT\n',
+						fmt2.format(surf_P,surf_AT,surf_GH,surf_mmw,surf_H2ODMF,100*surf_FRH,SLP,site_TP,site_TROPPV,site_TROPPT,site_TROPT),
 						version+'\n',
 						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s   kg/kg\n',
 						'Pressure  Temperature     Height     MMW        H2O      RH          EPV         O3\n',	]
@@ -649,7 +649,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID = querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half_width)
 
 		# multi-level data
-		print 'Read global',start_date.year,mode,'data ...'
+		print 'Read global',start_date.year,mode,'multi-level data ...'
 		# Air temperature
 		lev_AT,lat_AT, lon_AT, tim_AT, data_AT, data_scale_factor_AT, data_add_offset_AT, julday0 = read_data(dataset,'T',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
 		# Specific humidity
@@ -664,7 +664,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		lev_O3,lat_O3, lon_O3, tim_O3, data_O3, data_scale_factor_O3, data_add_offset_O3, julday0 = read_data(dataset,'O3',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
 
 		# single level data
-		print 'Read global',start_date.year,mode,'surface data ...'
+		print 'Read global',start_date.year,mode,'single-level data ...'
 		# 2 meter Air Temperature
 		lev_surf_AT,lat_surf_AT, lon_surf_AT, tim_surf_AT, data_surf_AT, data_scale_factor_surf_AT, data_add_offset_surf_AT, julday0 = read_data(surface_dataset,'T2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
 		# 2 meter Specific humidity
@@ -678,7 +678,15 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		data_surf_GH = data_surf_GH / gravity_at_lat # convert from m2 s-2 to m
 		# Tropopause pressure (blended)
 		lev_TP,lat_TP, lon_TP, tim_TP, data_TP, data_scale_factor_TP, data_add_offset_TP, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		
+		# Tropopause pressure (blended)
+		lev_TROPPB,lat_TROPPB, lon_TROPPB, tim_TROPPB, data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+		# PV based Tropopause pressure
+		lev_TROPPV,lat_TROPPV, lon_TROPPV, tim_TROPPV, data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, julday0 = read_data(surface_dataset,'TROPPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+		# Temperature based Tropopause pressure
+		lev_TROPPT,lat_TROPPT, lon_TROPPT, tim_TROPPT, data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, julday0 = read_data(surface_dataset,'TROPPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+		# Tropopause Temperature
+		lev_TROPT,lat_TROPT, lon_TROPT, tim_TROPT, data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, julday0 = read_data(surface_dataset,'TROPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+			
 		# merra/geos time is minutes since base time, need to convert to hours
 		tim_AT = tim_AT / 60.0
 		tim_SH = tim_SH / 60.0
@@ -690,7 +698,10 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		tim_surf_GH = tim_surf_GH / 60.0
 		tim_surf_P = tim_surf_P / 60.0
 		tim_SLP = tim_SLP / 60.0
-		tim_TP = tim_TP / 60.0
+		tim_TROPPB = tim_TROPPB / 60.0
+		tim_TROPPV = tim_TROPPV / 60.0
+		tim_TROPPT = tim_TROPPT / 60.0
+		tim_TROPT = tim_TROPT / 60.0
 		tim_O3 = tim_O3 / 60.0
 
 	if UTC:
@@ -771,7 +782,13 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			lev_surf_GH,lat_surf_GH, lon_surf_GH, tim_surf_GH, data_surf_GH, data_scale_factor_surf_GH, data_add_offset_surf_GH, julday0 = read_data(dataset,'PHIS',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID) # surface geopotential height is in the levels datasets			
 			data_surf_GH = data_surf_GH / gravity_at_lat # convert from m2 s-2 to m
 			# Tropopause pressure (blended)
-			lev_TP,lat_TP, lon_TP, tim_TP, data_TP, data_scale_factor_TP, data_add_offset_TP, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+			lev_TROPPB,lat_TROPPB, lon_TROPPB, tim_TROPPB, data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+			# PV based Tropopause pressure
+			lev_TROPPV,lat_TROPPV, lon_TROPPV, tim_TROPPV, data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, julday0 = read_data(surface_dataset,'TROPPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+			# Temperature based Tropopause pressure
+			lev_TROPPT,lat_TROPPT, lon_TROPPT, tim_TROPPT, data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, julday0 = read_data(surface_dataset,'TROPPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
+			# Tropopause Temperature
+			lev_TROPT,lat_TROPT, lon_TROPT, tim_TROPT, data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, julday0 = read_data(surface_dataset,'TROPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
 			
 			# merra/geos time is minutes since base time, need to convert to hours
 			tim_AT = tim_AT / 60.0
@@ -784,7 +801,10 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			tim_surf_GH = tim_surf_GH / 60.0
 			tim_surf_P = tim_surf_P / 60.0
 			tim_SLP = tim_SLP / 60.0
-			tim_TP = tim_TP / 60.0
+			tim_TROPPB = tim_TROPPB / 60.0
+			tim_TROPPV = tim_TROPPV / 60.0
+			tim_TROPPT = tim_TROPPT / 60.0
+			tim_TROPT = tim_TROPT / 60.0
 			tim_O3 = tim_O3 / 60.0
 
 		"""
@@ -850,10 +870,15 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			site_surf_P = site_surf_P / 100.0 # convert Pa to hPa
 			site_SLP = trilinear_interp(data_SLP, data_scale_factor_SLP, data_add_offset_SLP, site_lon_360, lon_SLP, site_lat, lat_SLP, site_tim, tim_SLP)
 			site_SLP = site_SLP / 100.0 # convert Pa to hPa
-			site_TP = trilinear_interp(data_TP, data_scale_factor_TP, data_add_offset_TP, site_lon_360, lon_TP, site_lat, lat_TP, site_tim, tim_TP)
-			site_TP = site_TP / 100.0 # convert Pa to hPa
+			site_TROPPB = trilinear_interp(data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, site_lon_360, lon_TROPPB, site_lat, lat_TROPPB, site_tim, tim_TROPPB)
+			site_TROPPB = site_TROPPB / 100.0 # convert Pa to hPa
+			site_TROPPV = trilinear_interp(data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, site_lon_360, lon_TROPPV, site_lat, lat_TROPPV, site_tim, tim_TROPPV)
+			site_TROPPV = site_TROPPV / 100.0 # convert Pa to hPa
+			site_TROPPT = trilinear_interp(data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, site_lon_360, lon_TROPPT, site_lat, lat_TROPPT, site_tim, tim_TROPPT)
+			site_TROPPT = site_TROPPT / 100.0 # convert Pa to hPa
+			site_TROPT = trilinear_interp(data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, site_lon_360, lon_TROPT, site_lat, lat_TROPT, site_tim, tim_TROPT)
 
-			# site_TP = site_TP/100.0 # convert from Pa to hPa
+			# site_TROPPB = site_TROPPB/100.0 # convert from Pa to hPa
 			# I think the TROPPB is wrongly indicated as having 'Pa' units: the values are of order 1-3 *10e4, if we assume they are hPa this is usually between 8-16 km
 			# if we divide those by 100 we get values of order 1-3 *10e2 which is between 40-45 km !!
 
@@ -883,7 +908,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		if 'ncep' in mode:
 			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
 		else:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,ozone=site_O3,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF)
+			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TROPPB,site_H2ODMF,frh=site_RH,epv=site_EPV,ozone=site_O3,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF,site_TROPPT=site_TROPPT,site_TROPPV=site_TROPPV,site_TROPT=site_TROPT)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
