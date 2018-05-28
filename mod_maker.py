@@ -51,7 +51,7 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0):
+def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,ozone=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
@@ -150,10 +150,10 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 						'Pressure  Temperature     Height     MMW        H2O      RH         SLP        TROPPB\n',
 						fmt2.format(surf_P,surf_AT,surf_GH,surf_mmw,surf_H2ODMF,100*surf_FRH,SLP,site_TP),
 						version+'\n',
-						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s\n',
-						'Pressure  Temperature     Height     MMW        H2O      RH          EPV\n',	]
+						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s   kg/kg\n',
+						'Pressure  Temperature     Height     MMW        H2O      RH          EPV         O3\n',	]
 
-		fmt = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}\n' # format for writting the lines
+		fmt = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}    {:9.3e}\n' # format for writting the lines
 
 		# not sure if merra needs all the filters/corrections used for ncep data?
 
@@ -171,7 +171,7 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 
 			mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
 
-			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh[k],epv[k])]
+			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh[k],epv[k],ozone[k])]
 
 	with open(mod_path,'w') as outfile:
 		outfile.writelines(mod_content)
@@ -660,6 +660,8 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		lev_H,lat_H, lon_H, tim_H, data_H, data_scale_factor_H, data_add_offset_H, julday0 = read_data(dataset,'H',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
 		# Potential vorticity
 		lev_EPV,lat_EPV, lon_EPV, tim_EPV, data_EPV, data_scale_factor_EPV, data_add_offset_EPV, julday0 = read_data(dataset,'EPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
+		# Ozone
+		lev_O3,lat_O3, lon_O3, tim_O3, data_O3, data_scale_factor_O3, data_add_offset_O3, julday0 = read_data(dataset,'O3',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
 
 		# single level data
 		print 'Read global',start_date.year,mode,'surface data ...'
@@ -689,6 +691,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		tim_surf_P = tim_surf_P / 60.0
 		tim_SLP = tim_SLP / 60.0
 		tim_TP = tim_TP / 60.0
+		tim_O3 = tim_O3 / 60.0
 
 	if UTC:
 		date = start_date + timedelta(hours=HH-site_lon_180/15.0,minutes=MM) # date with local time
@@ -706,9 +709,9 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		YYYYMMDD = date.strftime('%Y%m%d')
 		HHMM = date.strftime('%H%M')
 		if time_step < timedelta(days=1):
-			mod_name = 'NCEP_{}_{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,HHMM,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
+			mod_name = '{}_{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,HHMM,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
 		else:
-			mod_name = 'NCEP_{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
+			mod_name = '{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
 		mod_file_path = os.path.join(mod_path,mod_name)
 		print '\n',mod_name
 
@@ -753,7 +756,8 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			lev_H,lat_H, lon_H, tim_H, data_H, data_scale_factor_H, data_add_offset_H, julday0 = read_data(dataset,'H',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
 			# Potential vorticity
 			lev_EPV,lat_EPV, lon_EPV, tim_EPV, data_EPV, data_scale_factor_EPV, data_add_offset_EPV, julday0 = read_data(dataset,'EPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			
+			# Ozone
+			lev_O3,lat_O3, lon_O3, tim_O3, data_O3, data_scale_factor_O3, data_add_offset_O3, julday0 = read_data(dataset,'O3',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)			
 
 			# 2 meter Air Temperature
 			lev_surf_AT,lat_surf_AT, lon_surf_AT, tim_surf_AT, data_surf_AT, data_scale_factor_surf_AT, data_add_offset_surf_AT, julday0 = read_data(surface_dataset,'T2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
@@ -781,6 +785,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			tim_surf_P = tim_surf_P / 60.0
 			tim_SLP = tim_SLP / 60.0
 			tim_TP = tim_TP / 60.0
+			tim_O3 = tim_O3 / 60.0
 
 		"""
 		Interpolation time:
@@ -809,6 +814,8 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			site_RH = trilinear_interp(data_RH, data_scale_factor_RH, data_add_offset_RH, site_lon_360, lon_RH, site_lat, lat_RH, site_tim, tim_RH)
 			# interpolate potential vorticity
 			site_EPV = trilinear_interp(data_EPV, data_scale_factor_EPV, data_add_offset_EPV, site_lon_360, lon_EPV, site_lat, lat_EPV, site_tim, tim_EPV)
+			# interpolate ozone
+			site_O3 = trilinear_interp(data_O3, data_scale_factor_O3, data_add_offset_O3, site_lon_360, lon_O3, site_lat, lat_O3, site_tim, tim_O3)
 
 		if 'merradap72' in mode:
 			# the merra 72 mid level pressures are not fixed, so need to interpolate to get just 1 array of levels
@@ -828,6 +835,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			site_SH = site_SH[without_fill_IDs]
 			site_RH = site_RH[without_fill_IDs]
 			site_EPV = site_EPV[without_fill_IDs]
+			site_O3 = site_O3[without_fill_IDs]
 			if 'glob' in mode:
 				lev_AT = lev_SH[without_fill_IDs] # I use lev_SH because lev_AT is not redefined in the while loop contrary to the others, otherwise it would trigger index errors
 			else:
@@ -851,6 +859,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 
 			if 'merradap72' in mode: # merra42 and ncep go from high pressure to low pressure, but merra 72 does the reverse
 				# reverse merra72 profiles
+				site_O3 = site_O3[::-1]
 				site_AT = site_AT[::-1]
 				site_GH = site_GH[::-1]
 				site_SH = site_SH[::-1]
@@ -874,7 +883,7 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		if 'ncep' in mode:
 			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
 		else:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF)
+			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH,epv=site_EPV,ozone=site_O3,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
