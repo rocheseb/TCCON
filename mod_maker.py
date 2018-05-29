@@ -36,6 +36,8 @@ from datetime import datetime, timedelta
 from astropy.time import Time # this is essentialy like datetime, but with better methods for conversion of datetime to / from julian dates, can also be converted to datetime
 from pydap.cas.urs import setup_session # used to connect to the merra opendap servers
 from pydap.client import open_url
+import xarray
+from urllib2 import HTTPError
 
 def svp_wv_over_ice(temp):
 	"""	
@@ -51,16 +53,15 @@ def svp_wv_over_ice(temp):
 
 	return svp
 
-def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv=0,ozone=0,SLP=0,surf_P=0,surf_AT=0,surf_GH=0,surf_FRH=0,surf_mmw=0,surf_H2ODMF=0,site_TROPPT=0,site_TROPPV=0,site_TROPT=0):
+def write_mod(mod_path,version,site_lat,data=0,surf_data=0):
 	"""
 	Creates a GGG-format .mod file
 	INPUTS:
-	    site_lat    The latitude of the site
-	    lev_AT      The pressure levels on which the data are tabulated
-	    sat         site Atmospheric Temperature profile (vector)
-	    sgh         site Geometric Height profile in km (vector)	# this is from the idl code; but geopotential height is taken from ncep, not geometric
-	    site_TP        site Tropopause Pressure (scalar)
-	    h2o_dmf       site H2O Dry Mole Fraction (VMR) profile (vector)
+		mod_path: full path to write the .mod file
+		version: the mod_maker version
+		site_lat: site latitude (-90 to 90)
+		data: dictionary of the inputs
+		surf_data: dictionary of the surface inputs (for merra/geos5)
 	"""
 
 	# Define US Standard Atmosphere (USSA) for use above 10 mbar
@@ -68,13 +69,13 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 	t_ussa=[227.7, 239.2, 257.9, 270.6, 231.6, 198.0, 189.8, 235.0]
 	z_ussa=[31.1,  36.8,  42.4,  47.8,  64.9,  79.3,  92.0,  106.3]
 
-	if type(frh)==int: # ncep mode
+	if type(surf_data)==int: # ncep mode
 
 		# The head of the .mod file	
 		fmt = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
 		mod_content = []
 		mod_content+=[	'5  6\n',
-						fmt.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,site_TP),
+						fmt.format(6378.137,6.000E-05,site_lat,9.81,data['H'][0],1013.25,data['TROPP']),
 						version+'\n',
 						' mbar        Kelvin         km      g/mole      DMF       %\n',
 						'Pressure  Temperature     Height     MMW        H2O      RH\n',	]
@@ -82,62 +83,62 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 		fmt = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}\n' # format for writting the lines
 
 		# Export the Pressure, Temp and SHum for lower levels (1000 to 300 mbar)
-		for k,elem in enumerate(h2o_dmf):
-			svp = svp_wv_over_ice(sat[k])
-			h2o_wmf = h2o_dmf[k]/(1+h2o_dmf[k]) # wet mole fraction of h2o
-			frh = h2o_wmf*lev_AT[k]/svp # Fractional relative humidity
+		for k,elem in enumerate(data['H2O_DMF']):
+			svp = svp_wv_over_ice(data['T'][k])
+			h2o_wmf = data['H2O_DMF'][k]/(1+data['H2O_DMF'][k]) # wet mole fraction of h2o
+			frh = h2o_wmf*data['T'][k]/svp # Fractional relative humidity
 
 			# Relace H2O mole fractions that are too small
-			if (frh < 30./lev_AT[k]):
-				print 'Replacing too-small H2O ',mod_path, lev_AT[k],h2o_wmf,svp*30./lev_AT[k]/lev_AT[k],frh,30./lev_AT[k]				
-				frh = 30./lev_AT[k]
-				h2o_wmf = svp*frh/lev_AT[k]
-				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
+			if (frh < 30./data['T'][k]):
+				print 'Replacing too-small H2O ',mod_path, data['lev'][k],h2o_wmf,svp*30./data['lev'][k]/data['lev'][k],frh,30./data['lev'][k]				
+				frh = 30./data['lev'][k]
+				h2o_wmf = svp*frh/data['lev'][k]
+				data['H2O_DMF'][k] = h2o_wmf/(1-h2o_wmf)
 
 			# Relace H2O mole fractions that are too large (super-saturated)  GCT 2015-08-05
 			if (frh > 1.0):
-				print 'Replacing too-large H2O ',mod_path,lev_AT[k],h2o_wmf,svp/lev_AT[k],frh,1.0
+				print 'Replacing too-large H2O ',mod_path,data['lev'][k],h2o_wmf,svp/data['lev'][k],frh,1.0
 				frh=1.0
-				h2o_wmf = svp*frh/lev_AT[k]
-				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
+				h2o_wmf = svp*frh/data['lev'][k]
+				data['H2O_DMF'][k] = h2o_wmf/(1-h2o_wmf)
 
 			mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
 
-			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh)]
+			mod_content += [fmt.format(data['lev'][k], data['T'][k],data['H'][k],mmw,data['H2O_DMF'][k],100*frh)]
 
 		# Export Pressure and Temp for middle levels (250 to 10 mbar)
 		# which have no SHum reanalysis
-		ptop = lev_AT[k] # Top pressure level
+		ptop = data['lev'][k] # Top pressure level
 		frh_top = frh  # remember the FRH at the top (300 mbar) level
 
-		for k in range(len(h2o_dmf),len(lev_AT)): 
-			zz = np.log10(lev_AT[k])  # log10[pressure]
+		for k in range(len(data['H2O_DMF']),len(data['T'])): 
+			zz = np.log10(data['lev'][k])  # log10[pressure]
 			strat_wmf = 7.5E-06*np.exp(-0.16*zz**2)
-			svp = svp_wv_over_ice(sat[k])
-			trop_wmf = frh_top*svp/lev_AT[k]
-			wt = (lev_AT[k]/ptop)**3
+			svp = svp_wv_over_ice(data['T'][k])
+			trop_wmf = frh_top*svp/data['lev'][k]
+			wt = (data['lev'][k]/ptop)**3
 			avg_wmf = trop_wmf*wt + strat_wmf*(1-wt)
-			avg_frh = avg_wmf*lev_AT[k]/svp
+			avg_frh = avg_wmf*data['lev'][k]/svp
 			if (avg_frh > 1.0):
-				print 'Replacing super-saturated H2O ',mod_path, lev_AT[k],avg_wmf,svp*avg_frh/lev_AT[k],avg_frh,1.0
+				print 'Replacing super-saturated H2O ',mod_path, data['lev'][k],avg_wmf,svp*avg_frh/data['lev'][k],avg_frh,1.0
 				avg_frh = 1.0
-				avg_wmf = svp*avg_frh/lev_AT[k]
+				avg_wmf = svp*avg_frh/data['lev'][k]
 
 			mmw = 28.964*(1-avg_wmf)+18.02*avg_wmf
 			
-			mod_content += [fmt.format(lev_AT[k],sat[k],sgh[k],mmw,avg_wmf/(1-avg_wmf),100*avg_frh)]
+			mod_content += [fmt.format(data['lev'][k],data['T'][k],data['H'][k],mmw,avg_wmf/(1-avg_wmf),100*avg_frh)]
 
 		# Get the difference between the USSA and given site temperature at 10 mbar,
-		Delta_T=sat[16]-t_ussa[0]
+		Delta_T=data['T'][16]-t_ussa[0]
 
 		# Export the P-T profile above 10mbar
 		for k in range(1,len(t_ussa)):
 			Delta_T=Delta_T/2
 			zz = np.log10(p_ussa[k])  # log10[pressure]
 			strat_wmf = 7.5E-06*np.exp(-0.16*zz**2)
-			svp = svp_wv_over_ice(sat[k])
+			svp = svp_wv_over_ice(data['T'][k])
 			mmw = 28.964*(1-strat_wmf)+18.02*strat_wmf
-			mod_content += [fmt.format(p_ussa[k],t_ussa[k]+Delta_T,z_ussa[k],mmw,strat_wmf,100*strat_wmf*lev_AT[k]/svp)] # why not use p_ussa instead of lev_AT[k] ?
+			mod_content += [fmt.format(p_ussa[k],t_ussa[k]+Delta_T,z_ussa[k],mmw,strat_wmf,100*strat_wmf*p_ussa[k]/svp)]
 
 	else: # merra/geos mode
 
@@ -145,10 +146,10 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 		fmt1 = '{:8.3f} {:11.4e} {:7.3f} {:5.3f} {:8.3f} {:8.3f} {:8.3f}\n'
 		fmt2 = '{:9.3e}    {:7.3f}    {:7.3f}    {:7.4f}    {:9.3e}{:>6.1f}    {:9.3e}    {:9.3e}    {:9.3e}    {:9.3e}    {:7.3f}\n'
 		mod_content = []
-		mod_content+=[	'7  7\n',
-						fmt1.format(6378.137,6.000E-05,site_lat,9.81,sgh[0],1013.25,site_TP),
+		mod_content+=[	'7  8\n',
+						fmt1.format(6378.137,6.000E-05,site_lat,9.81,data['H'][0],1013.25,surf_data['TROPPB']),
 						'Pressure  Temperature     Height     MMW        H2O      RH         SLP        TROPPB        TROPPV      TROPPT       TROPT\n',
-						fmt2.format(surf_P,surf_AT,surf_GH,surf_mmw,surf_H2ODMF,100*surf_FRH,SLP,site_TP,site_TROPPV,site_TROPPT,site_TROPT),
+						fmt2.format(*[surf_data[key] for key in ['PS','T2M','H','MMW','H2O_DMF','RH','SLP','TROPPB','TROPPV','TROPPT','TROPT']]),
 						version+'\n',
 						' mbar        Kelvin         km      g/mole      DMF       %       k.m+2/kg/s   kg/kg\n',
 						'Pressure  Temperature     Height     MMW        H2O      RH          EPV         O3\n',	]
@@ -158,45 +159,46 @@ def write_mod(mod_path,version,site_lat,lev_AT,sat,sgh,site_TP,h2o_dmf,frh=0,epv
 		# not sure if merra needs all the filters/corrections used for ncep data?
 
 		# Export the Pressure, Temp and SHum
-		for k,elem in enumerate(h2o_dmf):
-			svp = svp_wv_over_ice(sat[k])
-			h2o_wmf = h2o_dmf[k]/(1+h2o_dmf[k]) # wet mole fraction of h2o
+		for k,elem in enumerate(data['H2O_DMF']):
+			svp = svp_wv_over_ice(data['T'][k])
+			h2o_wmf = data['H2O_DMF'][k]/(1+data['H2O_DMF'][k]) # wet mole fraction of h2o
 
 			# Relace H2O mole fractions that are too large (super-saturated)  GCT 2015-08-05
-			if (frh[k] > 1.0):
-				print 'Replacing too-large H2O ',mod_path,lev_AT[k],h2o_wmf,svp/lev_AT[k],frh[k],1.0
-				frh[k] = 1.0
-				h2o_wmf = svp*frh[k]/lev_AT[k]
-				h2o_dmf[k] = h2o_wmf/(1-h2o_wmf)
+			if (data['RH'][k] > 1.0):
+				print 'Replacing too-large H2O ',mod_path,data['lev'][k],h2o_wmf,svp/data['T'][k],data['RH'][k],1.0
+				data['RH'][k] = 1.0
+				h2o_wmf = svp*data['RH'][k]/data['T'][k]
+				data['H2O_DMF'][k] = h2o_wmf/(1-h2o_wmf)
 
 			mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
 
-			mod_content += [fmt.format(lev_AT[k], sat[k],sgh[k],mmw,h2o_dmf[k],100*frh[k],epv[k],ozone[k])]
+			mod_content += [fmt.format(data['lev'][k], data['T'][k],data['H'][k],mmw,data['H2O_DMF'][k],100*data['RH'][k],data['EPV'][k],data['O3'][k])]
 
 	with open(mod_path,'w') as outfile:
 		outfile.writelines(mod_content)
 
-def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site_lat, lat_XX, site_tim, tim_XX):
+def trilinear_interp(DATA,varlist,site_lon_360,site_lat,site_tim):
 	"""
 	Evaluates  fout = fin(xx,yy,*,tt) 
 	Result is a 1-vector
 	"""
+	INTERP_DATA = {}
 
-	dx = lon_XX[1]-lon_XX[0]
-	dy = lat_XX[1]-lat_XX[0]
-	dt = tim_XX[1]-tim_XX[0]
+	dx = DATA['lon'][1]-DATA['lon'][0]
+	dy = DATA['lat'][1]-DATA['lat'][0]
+	dt = DATA['time'][1]-DATA['time'][0]
 
-	xx = (site_lon_360-lon_XX[0])/dx
-	yy = (site_lat-lat_XX[0])/dy
-	tt = (site_tim-tim_XX[0])/dt
+	xx = (site_lon_360-DATA['lon'][0])/dx
+	yy = (site_lat-DATA['lat'][0])/dy
+	tt = (site_tim-DATA['time'][0])/dt
 
-	nxx =  len(lon_XX)
-	nyy =  len(lat_XX)
-	ntt =  len(tim_XX)
+	nxx =  len(DATA['lon'])
+	nyy =  len(DATA['lat'])
+	ntt =  len(DATA['time'])
 
 	index_xx = int(xx)
 	ixpomnxx = (index_xx+1) % nxx
-	fr_xx = xx-index_xx
+	fr_xx = xx-index_xx	
 
 	index_yy = int(yy)
 	if index_yy > nyy-2:
@@ -217,7 +219,7 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 	   print ' tt= ',tt,'  index_tt=',index_tt,'  fr_tt=',fr_tt
 	   print 'input file does not cover the full range of dates'
 	   print 'site_tim',site_tim
-	   print 'tim_XX',tim_XX
+	   print 'tim_XX',DATA['time']
 	   raw_input() # will hold the program until something is typed in commandline
 
 	if (fr_xx < 0) or (fr_xx > 1):
@@ -238,108 +240,112 @@ def trilinear_interp(fin, fscale_factor, fadd_offset, site_lon_360, lon_XX, site
 		print ' Warning: longitude extrapolation of ',fr_xx,' steps'
 	if (fr_yy < 0) or (fr_yy > 1):
 		print ' Warning: latitude extrapolation of ',fr_yy,' steps'
-	
-	if fin.ndim==4:
-		fout =	((fin[index_tt,:,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt,:,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
-		+ (fin[index_tt,:,index_yy+1,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
-		+ ((fin[index_tt+1,:,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,:,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
-		+ (fin[index_tt+1,:,index_yy+1,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
-	elif fin.ndim==3: # for data that do not have the vertical dimension
-		fout =	((fin[index_tt,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
-		+ (fin[index_tt,index_yy+1,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
-		+ ((fin[index_tt+1,index_yy,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
-		+ (fin[index_tt+1,index_yy+1,index_xx]*(1.0-fr_xx) \
-		+ fin[index_tt+1,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
-	else:
-		print 'Data has unexpected dimensions, ndim =',fin.ndim
-		sys.exit()
 
-	fout = fout*fscale_factor + fadd_offset
+	for varname in varlist:
 
-	return fout
+		fin = DATA[varname]
+		
+		if fin.ndim==4:
+			fout =	((fin[index_tt,:,index_yy,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt,:,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+			+ (fin[index_tt,:,index_yy+1,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
+			+ ((fin[index_tt+1,:,index_yy,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt+1,:,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+			+ (fin[index_tt+1,:,index_yy+1,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt+1,:,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
+		elif fin.ndim==3: # for data that do not have the vertical dimension
+			fout =	((fin[index_tt,index_yy,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+			+ (fin[index_tt,index_yy+1,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*(1.0-fr_tt) \
+			+ ((fin[index_tt+1,index_yy,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt+1,index_yy,ixpomnxx]*fr_xx)*(1.0-fr_yy) \
+			+ (fin[index_tt+1,index_yy+1,index_xx]*(1.0-fr_xx) \
+			+ fin[index_tt+1,index_yy+1,ixpomnxx]*fr_xx)*fr_yy)*fr_tt
+		else:
+			print 'Data has unexpected dimensions, ndim =',fin.ndim
+			sys.exit()
 
-def read_data(dataset, varname, min_lat_ID='', max_lat_ID='', min_lon_ID='',max_lon_ID=''):
+		INTERP_DATA[varname] = fout*DATA['scale_factor_'+varname] + DATA['add_offset_'+varname]
+
+	return INTERP_DATA
+
+def read_data(dataset, varlist, lat_lon_box=0):
 	"""
 	for ncep files "dataset" is the full path to the netcdf file
 
 	for merra files "dataset" is a pydap.model.DatasetType object
 	"""
+	DATA = {}
+
 	opendap = type(dataset)!=netCDF4._netCDF4.Dataset
 
-	# Initialize add_offset and scale_factor
-	data_add_offset_XX = 0
-	data_scale_factor_XX = 1.0
+	if lat_lon_box == 0: # ncep mode
 
-	if min_lat_ID == '': # ncep mode
-		try: 
-			dataset = netCDF4.Dataset(dataset,'r')	# open the netcdf files
+		varlist += ['level','lat','lon','time']
+
+		for varname in varlist:
+			DATA[varname] = dataset[varname][:]
+
+			for attribute in ['add_offset','scale_factor']:
+				try:
+					DATA['add_offset_'+varname] = dataset[varname].getncattr('add_offset')
+				except:
+					DATA['add_offset_'+varname] = 0.0
+					DATA['scale_factor_'+varname] = 1.0
+
+	else: # merra/geos5 mode
+		
+		min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID = lat_lon_box
+
+		DATA['lat'] = dataset['lat'][min_lat_ID:max_lat_ID] 	# Read in variable 'lat'
+		DATA['lon'] = dataset['lon'][min_lon_ID:max_lon_ID] 	# Read in variable 'lon'
+		DATA['time'] = dataset['time'][:]	# Read in variable 'time'
+
+		try:
+			dataset['lev']
 		except:
-			print dataset,'not found'
-			sys.exit()
-
-		lev_XX = dataset.variables['level'][:]	# Read in variable 'level'
-		lat_XX = dataset.variables['lat'][:]	# Read in variable 'lat'
-		lon_XX = dataset.variables['lon'][:]	# Read in variable 'lon'
-		tim_XX = dataset.variables['time'][:]	# Read in variable 'time'
-		data_XX = dataset.variables[varname][:]	# Read in variable varname
-
-		# Check variable for offset and scaling factor attributes
-		for attribute in dataset.variables[varname].ncattrs():
-			# Set data_add_offset_XX
-			if attribute == 'add_offset':
-				data_add_offset_XX = dataset.variables[varname].getncattr(attribute)
-			# Set data_scale_factor_XX
-			if attribute == 'scale_factor':
-				data_scale_factor_XX = dataset.variables[varname].getncattr(attribute)
-
-		time_units = dataset.variables['time'].units  # string containing definition of time units
-			
-		dataset.close()
-	else: # merra/fp mode
-
-		if dataset[varname].ndim == 4:
-			if dataset['lev'].shape[0] == 72:
-				# the merra 72 mid level pressures are not fixed
-				lev_XX = dataset['PL'][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID]
-			elif dataset['lev'].shape[0] == 42:
-				# the 42 levels data is on a fixed pressure grid
-				lev_XX = dataset['lev'][:]
-		else: # surface data doesn't have a 'lev' variable
-			lev_XX = dataset['PS'][:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID]
-			
-
-		lat_XX = dataset['lat'][min_lat_ID:max_lat_ID] 	# Read in variable 'lat'
-		lon_XX = dataset['lon'][min_lon_ID:max_lon_ID] 	# Read in variable 'lon'
-		tim_XX = dataset['time'][:]	# Read in variable 'time'
-		if opendap:
-			tim_XX = tim_XX.data
-			lev_XX = lev_XX.data
-			lat_XX = lat_XX.data
-			lon_XX = lon_XX.data
-		# get longitudes as 0 -> 360 instead of -180 -> 180, needed for trilinear_interp
-		for i,elem in enumerate(lon_XX):
-			if elem < 0:
-				lon_XX[i] = elem + 360.0
-		#sort_IDs = np.argsort(lon_XX)
-		#lon_XX = lon_XX[sort_IDs]
-
-		if dataset[varname].ndim == 4:
-			data_XX = dataset[varname][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
+			pass
 		else:
-			data_XX = dataset[varname][:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
-		if opendap or ('Masked' in str(type(data_XX))):
-			data_XX = data_XX.data
+			if dataset['lev'].shape[0] == 72:
+				DATA['lev'] = dataset['PL'][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID]	# the merra 72 mid level pressures are not fixed
+			elif dataset['lev'].shape[0] == 42:
+				DATA['lev'] = dataset['lev'][:]	# the 42 levels data is on a fixed pressure grid
+			else:
+				DATA['lev'] = dataset['PS'][:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] # surface data doesn't have a 'lev' variable
 
-		time_units = dataset['time'].units  # string containing definition of time units
+		if opendap:
+			for varname in ['time','lev','lat','lon']:
+				try:
+					DATA[varname] = DATA[varname].data	
+				except KeyError,IndexError:
+					pass
 
-	print varname,': lev_shape,lat_shape,lon_shape,tim_shape =',lev_XX.shape,lat_XX.shape,lon_XX.shape,tim_XX.shape
+		# get longitudes as 0 -> 360 instead of -180 -> 180, needed for trilinear_interp
+		for i,elem in enumerate(DATA['lon']):
+			if elem < 0:
+				DATA['lon'][i] = elem + 360.0
+
+		for varname in varlist:
+
+			if dataset[varname].ndim == 4:
+				DATA[varname] = dataset[varname][:,:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
+			else:
+				DATA[varname] = dataset[varname][:,min_lat_ID:max_lat_ID,min_lon_ID:max_lon_ID] 	# Read in variable varname
+			if opendap or ('Masked' in str(type(DATA[varname]))):
+				DATA[varname] = DATA[varname].data
+
+			for attribute in ['add_offset','scale_factor']:
+				try:
+					DATA[attribute+'_'+varname] = dataset[varname].getncattr(attribute)
+				except:
+					DATA['add_offset_'+varname] = 0.0
+					DATA['scale_factor_'+varname] = 1.0
+
+			print varname, DATA[varname].shape
+
+	time_units = dataset['time'].units  # string containing definition of time units
 
 	# two lines to parse the date (no longer need to worry about before/after 2014)
 	date_list = re.findall(r"[\w]+",time_units.split(' since ')[1])
@@ -348,9 +354,9 @@ def read_data(dataset, varname, min_lat_ID='', max_lat_ID='', min_lon_ID='',max_
 	start_date = datetime.strptime(common_date_format,'%Y-%m-%d %H:%M:%S')
 	astropy_start_date = Time(start_date)
 
-	julday0 = astropy_start_date.jd # gives same results as IDL's JULDAY function
+	DATA['julday0'] = astropy_start_date.jd # gives same results as IDL's JULDAY function
 
-	return lev_XX, lat_XX, lon_XX, tim_XX, data_XX, data_scale_factor_XX, data_add_offset_XX, julday0
+	return DATA
 
 def querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half_width):
 	"""	
@@ -403,7 +409,7 @@ def querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half
 	min_lon_ID, max_lon_ID = merra_lon_in_box_IDs[0], merra_lon_in_box_IDs[-1]+1
 	# +1 because ARRAY[i:j] in python will return elements i to j-1
 
-	return min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID
+	return [min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID]
 
 # ncep has geopotential height profiles, not merra(?, only surface), so I need to convert geometric heights to geopotential heights
 # the idl code uses a fixed radius for the radius of earth (6378.137 km), below the gravity routine of gsetup is used
@@ -463,6 +469,189 @@ def gravity(gdlat,altit):
 
 	return gravity, radius
 
+def read_merradap(username,password,mode,site_lon_180,gravity_at_lat,date,end_date,time_step,varlist,surf_varlist):
+	"""
+	Read MERRA2 data via opendap.
+
+	This has to connect to the daily netcdf files, and then concatenate the subsetted datasets.
+
+	This is EXTREMELY slow, should probably make that use separate to generate local files, and then use to files in mod_maker
+	"""
+	DATA = {}
+	SURF_DATA = {}
+
+	if '42' in mode:
+		letter = 'P'
+	elif '72' in mode:
+		letter = 'V'
+		varlist += ['PL']
+
+	old_UTC_date = ''
+	urllist = []
+	surface_urllist = []
+	print '\n\t-Making lists of URLs'
+	while date < end_date:
+		UTC_date = date + timedelta(hours = -site_lon_180/15.0) # merra times are in UTC, so the date may be different than the local date, make sure to use the UTC date to querry the file
+		if (UTC_date.strftime('%Y%m%d') != old_UTC_date):
+			print '\t\t',UTC_date.strftime('%Y-%m-%d')
+			urllist += ['https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2I3N{}ASM.5.12.4/{:0>4}/{:0>2}/MERRA2_400.inst3_3d_asm_N{}.{:0>4}{:0>2}{:0>2}.nc4'.format(letter,UTC_date.year,UTC_date.month,letter.lower(),UTC_date.year,UTC_date.month,UTC_date.day)]
+			surface_urllist += ['https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2I1NXASM.5.12.4/{:0>4}/{:0>2}/MERRA2_400.inst1_2d_asm_Nx.{:0>4}{:0>2}{:0>2}.nc4'.format(UTC_date.year,UTC_date.month,UTC_date.year,UTC_date.month,UTC_date.day)]
+			if old_UTC_date == '':
+				session = setup_session(username,password,check_url=urllist[0]) # just need to setup the authentication session once
+		old_UTC_date = UTC_date.strftime('%Y%m%d')
+		date = date + time_step
+
+	# multi-level data
+	print '\nNow doing multi-level data'
+	print '\t-Connecting to datasets ...'
+	store_list = [xarray.backends.PydapDataStore.open(url,session) for url in urllist]
+	dataset_list = [xarray.open_dataset(store) for store in store_list]
+	print '\t-Datasets opened'
+	min_lat_ID,max_lat_ID,min_lon_ID,max_lon_ID = querry_indices(dataset_list[0],site_lat,site_lon_180,2.5,2.5) # just need to get the lat/lon box once
+	subsest_dataset_list = [dataset[{'lat':range(min_lat_ID,max_lat_ID+1),'lon':range(min_lon_ID,max_lon_ID+1)}] for dataset in dataset_list]
+	print '\t-Datasets subsetted'
+	print '\t-Merging datasets (time consuming)'
+	merged_dataset = xarray.concat(subsest_dataset_list,'time')
+	merged_dataset = merged_dataset.fillna(1e15)
+
+	# single-level data
+	print '\nNow doing single-level data'
+	print '\t-Connecting to datasets ...'
+	surface_store_list = [xarray.backends.PydapDataStore.open(url,session) for url in surface_urllist]
+	surface_dataset_list = [xarray.open_dataset(store) for store in surface_store_list]
+	print '\t-Datasets opened'
+	subsest_surface_dataset_list = [dataset[{'lat':range(min_lat_ID,max_lat_ID+1),'lon':range(min_lon_ID,max_lon_ID+1)}] for dataset in surface_dataset_list]
+	print '\t-Datasets subsetted'
+	print '\t-Merging datasets (time consuming)'
+	merged_surface_dataset = xarray.concat(subsest_surface_dataset_list,'time')
+	merged_surface_dataset = merged_surface_dataset.fillna(1e15)
+
+	for varname in varlist:
+		DATA[varname] = merged_dataset[varname].data	
+		DATA['add_offset_'+varname] = 0.0
+		DATA['scale_factor_'+varname] = 1.0
+	for varname in surf_varlist:
+		SURF_DATA[varname] = merged_surface_dataset[varname].data
+		SURF_DATA['add_offset_'+varname] = 0.0
+		SURF_DATA['scale_factor_'+varname] = 1.0
+
+	for varname in ['time','lat','lon']:
+		DATA[varname] = merged_dataset[varname].data
+		SURF_DATA[varname] = merged_surface_dataset[varname].data
+	DATA['lev'] = merged_dataset['lev'].data
+
+	DATA['PHIS'] = DATA['PHIS'] / gravity_at_lat # convert from m2 s-2 to m
+
+	delta_time = [(i-DATA['time'][0]).astype('timedelta64[h]') / np.timedelta64(1,'h') for i in DATA['time']] # hours since base time
+	surf_delta_time = [(i-SURF_DATA['time'][0]).astype('timedelta64[h]') / np.timedelta64(1,'h') for i in SURF_DATA['time']] # hours since base time
+
+	DATA['julday0'] = Time(str(DATA['time'][0]),format="isot").jd
+	SURF_DATA['julday0'] = Time(str(SURF_DATA['time'][0]),format="isot").jd
+
+	DATA['time'] = delta_time
+	SURF_DATA['time'] = surf_delta_time
+
+	# get longitudes as 0 -> 360 instead of -180 -> 180, needed for trilinear_interp
+	for i,elem in enumerate(DATA['lon']):
+		if elem < 0:
+			DATA['lon'][i] = elem + 360.0
+	for i,elem in enumerate(SURF_DATA['lon']):
+		if elem < 0:
+			SURF_DATA['lon'][i] = elem + 360.0
+
+	return DATA, SURF_DATA
+
+def read_ncep(ncdf_path,year):
+	"""
+	Read data from yearly NCEP netcdf files and return it in one dictionary
+	"""
+
+	# path to the netcdf files
+	ncdf_AT_file = os.path.join(ncdf_path,'.'.join(['air','{:0>4}'.format(year),'nc']))
+	ncdf_GH_file = os.path.join(ncdf_path,'.'.join(['hgt','{:0>4}'.format(year),'nc']))
+	ncdf_SH_file = os.path.join(ncdf_path,'.'.join(['shum','{:0>4}'.format(year),'nc']))
+
+	print 'Read global',year,'NCEP data ...'
+	# Air Temperature
+	DATA = read_data(netCDF4.Dataset(ncdf_AT_file,'r'), ['air'])
+	if len(DATA['air']) < 17:
+		print 'Need 17 levels of AT data: found only ',len(lev_AT)
+
+	# Specific Humidity
+	SHUM_DATA = read_data(netCDF4.Dataset(ncdf_SH_file,'r'), ['shum'])
+	if len(SHUM_DATA['level']) <  8:
+		print 'Need  8 levels of SH data: found only ',len(lev_SH)
+
+	if list(SHUM_DATA['level'])!=list(DATA['level'][:len(SHUM_DATA['level'])]):
+		print 'Warning: air and shum do not share the same lower pressure levels'
+	
+	DATA.update(SHUM_DATA)
+	
+	# Geopotential Height
+	GH_DATA = read_data(netCDF4.Dataset(ncdf_GH_file,'r'), ['hgt'])
+	if len(GH_DATA['level']) < 17:
+		print 'Need 17 levels of GH data: found only ',len(lev_GH)
+	
+	DATA.update(GH_DATA)
+
+	for key in DATA:
+		if 'air' in key:
+			DATA[key.replace('air','T')] = DATA[key]
+			del DATA[key]
+		if 'hgt' in key:
+			DATA[key.replace('hgt','H')] = DATA[key]
+			del DATA[key]
+		if 'shum' in key:
+			DATA[key.replace('shum','QV')] = DATA[key]
+			del DATA[key]
+	
+	DATA['lev'] = DATA['level']
+	del DATA['level']
+
+	return DATA
+
+def read_global(ncdf_path,mode,site_lat,site_lon_180,gravity_at_lat,varlist,surf_varlist):
+	"""
+	Read data from GEOS5 and MERRA2 datasets
+
+	This assumes those are saved locally in GGGPATH/ncdf with two files per dataset (inst3_3d_asm_np and inst3_2d_asm_nx)
+	"""
+
+	key_dict = {'merraglob':'MERRA','fpglob':'_fp_','fpitglob':'_fpit_'}
+
+	# assumes only one file with all the data exists in the GGGPATH/ncdf folder
+	# path to the netcdf file
+	ncdf_list = [i for i in os.listdir(ncdf_path) if key_dict[mode] in i]
+	
+	ncdf_file = ncdf_list[0]
+	dataset = netCDF4.Dataset(os.path.join(ncdf_path,ncdf_file),'r')
+	
+	surf_file = ncdf_list[1]
+	surface_dataset = netCDF4.Dataset(os.path.join(ncdf_path,surf_file),'r')
+
+	# get the min/max lat-lon indices of merra lat-lon that lies within a given box.
+	if 'fpglob' in mode: # geos5-fp has a smaller grid than merra2 amd geos5-fp-it
+		box_lat_half_width = 0.250001
+		box_lon_half_width = 0.312501
+	else:
+		box_lat_half_width = 0.500001
+		box_lon_half_width = 0.625001
+	lat_lon_box = querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half_width)
+
+	# multi-level data
+	print 'Read global',mode,'multi-level data ...'
+	DATA = read_data(dataset,varlist,lat_lon_box)
+	DATA['PHIS'] = DATA['PHIS'] / gravity_at_lat # convert from m2 s-2 to m
+
+	# single level data
+	print 'Read global',mode,'single-level data ...'
+	SURF_DATA = read_data(surface_dataset,surf_varlist,lat_lon_box)
+	
+	# merra/geos time is minutes since base time, need to convert to hours
+	DATA['time'] = DATA['time'] / 60.0 
+	SURF_DATA['time'] = SURF_DATA['time'] / 60.0
+
+	return DATA,SURF_DATA
 
 if __name__ == "__main__": # this is only executed when the code is used directly (e.g. not executed when imported from another python code)
 
@@ -606,113 +795,29 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 	ncdf_path = os.path.join(GGGPATH,'ncdf')
 
 	if 'ncep' in mode:
-		# path to the netcdf files
-		ncdf_AT_file = os.path.join(ncdf_path,'.'.join(['air','{:0>4}'.format(start_date.year),'nc']))
-		ncdf_GH_file = os.path.join(ncdf_path,'.'.join(['hgt','{:0>4}'.format(start_date.year),'nc']))
-		ncdf_SH_file = os.path.join(ncdf_path,'.'.join(['shum','{:0>4}'.format(start_date.year),'nc']))
-
-		print 'Read global',start_date.year,'NCEP data ...'
-		# Air Temperature
-		lev_AT,lat_AT, lon_AT, tim_AT, data_AT, data_scale_factor_AT, data_add_offset_AT, julday0 = read_data(ncdf_AT_file, 'air')
-		if len(lev_AT) < 17:
-			print 'Need 17 levels of AT data: found only ',len(lev_AT)
-		
-		# Geopotential Height
-		lev_GH,lat_GH, lon_GH, tim_GH, data_GH, data_scale_factor_GH, data_add_offset_GH, julday0 = read_data(ncdf_GH_file, 'hgt')
-		if len(lev_GH) < 17:
-			print 'Need 17 levels of GH data: found only ',len(lev_GH)
-		
-		# Specific Humidity
-		lev_SH,lat_SH, lon_SH, tim_SH, data_SH, data_scale_factor_SH, data_add_offset_SH, julday0 = read_data(ncdf_SH_file, 'shum')
-		if len(lev_SH) <  8:
-			print 'Need  8 levels of SH data: found only ',len(lev_SH)
+		DATA = read_ncep(ncdf_path,start_date.year)
+		varlist = ['T','H','QV']
 	elif 'glob' in mode:
-		key_dict = {'merraglob':'MERRA','fpglob':'_fp_','fpitglob':'_fpit_'}
-
-		# assumes only one file with all the data exists in the GGGPATH/ncdf folder
-		# path to the netcdf file
-		ncdf_list = [i for i in os.listdir(ncdf_path) if key_dict[mode] in i]
-		
-		ncdf_file = ncdf_list[0]
-		dataset = netCDF4.Dataset(os.path.join(ncdf_path,ncdf_file),'r')
-		
-		surf_file = ncdf_list[1]
-		surface_dataset = netCDF4.Dataset(os.path.join(ncdf_path,surf_file),'r')
-
-		# get the min/max lat-lon indices of merra lat-lon that lies within a given box.
-		if 'fpglob' in mode: # geos5-fp has a smaller grid than merra2 amd geos5-fp-it
-			box_lat_half_width = 0.250001
-			box_lon_half_width = 0.312501
-		else:
-			box_lat_half_width = 0.500001
-			box_lon_half_width = 0.625001
-		min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID = querry_indices(dataset,site_lat,site_lon_180,box_lat_half_width,box_lon_half_width)
-
-		# multi-level data
-		print 'Read global',start_date.year,mode,'multi-level data ...'
-		# Air temperature
-		lev_AT,lat_AT, lon_AT, tim_AT, data_AT, data_scale_factor_AT, data_add_offset_AT, julday0 = read_data(dataset,'T',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Specific humidity
-		lev_SH,lat_SH, lon_SH, tim_SH, data_SH, data_scale_factor_SH, data_add_offset_SH, julday0 = read_data(dataset,'QV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Relative humidity
-		lev_RH,lat_RH, lon_RH, tim_RH, data_RH, data_scale_factor_RH, data_add_offset_RH, julday0 = read_data(dataset,'RH',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Height
-		lev_H,lat_H, lon_H, tim_H, data_H, data_scale_factor_H, data_add_offset_H, julday0 = read_data(dataset,'H',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Potential vorticity
-		lev_EPV,lat_EPV, lon_EPV, tim_EPV, data_EPV, data_scale_factor_EPV, data_add_offset_EPV, julday0 = read_data(dataset,'EPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Ozone
-		lev_O3,lat_O3, lon_O3, tim_O3, data_O3, data_scale_factor_O3, data_add_offset_O3, julday0 = read_data(dataset,'O3',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-
-		# single level data
-		print 'Read global',start_date.year,mode,'single-level data ...'
-		# 2 meter Air Temperature
-		lev_surf_AT,lat_surf_AT, lon_surf_AT, tim_surf_AT, data_surf_AT, data_scale_factor_surf_AT, data_add_offset_surf_AT, julday0 = read_data(surface_dataset,'T2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
-		# 2 meter Specific humidity
-		lev_surf_SH,lat_surf_SH, lon_surf_SH, tim_surf_SH, data_surf_SH, data_scale_factor_surf_SH, data_add_offset_surf_SH, julday0 = read_data(surface_dataset,'QV2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
-		# Surface pressure
-		lev_surf_P,lat_surf_P, lon_surf_P, tim_surf_P, data_surf_P, data_scale_factor_surf_P, data_add_offset_surf_P, julday0 = read_data(surface_dataset,'PS',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-		# Sea level pressure
-		lev_SLP,lat_SLP, lon_SLP, tim_SLP, data_SLP, data_scale_factor_SLP, data_add_offset_SLP, julday0 = read_data(surface_dataset,'SLP',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		# surface geopotential height
-		lev_surf_GH,lat_surf_GH, lon_surf_GH, tim_surf_GH, data_surf_GH, data_scale_factor_surf_GH, data_add_offset_surf_GH, julday0 = read_data(dataset,'PHIS',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID) # surface geopotential height is in the levels datasets			
-		data_surf_GH = data_surf_GH / gravity_at_lat # convert from m2 s-2 to m
-		# Tropopause pressure (blended)
-		lev_TP,lat_TP, lon_TP, tim_TP, data_TP, data_scale_factor_TP, data_add_offset_TP, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		# Tropopause pressure (blended)
-		lev_TROPPB,lat_TROPPB, lon_TROPPB, tim_TROPPB, data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		# PV based Tropopause pressure
-		lev_TROPPV,lat_TROPPV, lon_TROPPV, tim_TROPPV, data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, julday0 = read_data(surface_dataset,'TROPPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		# Temperature based Tropopause pressure
-		lev_TROPPT,lat_TROPPT, lon_TROPPT, tim_TROPPT, data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, julday0 = read_data(surface_dataset,'TROPPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-		# Tropopause Temperature
-		lev_TROPT,lat_TROPT, lon_TROPT, tim_TROPT, data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, julday0 = read_data(surface_dataset,'TROPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			
-		# merra/geos time is minutes since base time, need to convert to hours
-		tim_AT = tim_AT / 60.0
-		tim_SH = tim_SH / 60.0
-		tim_RH = tim_RH / 60.0
-		tim_H = tim_H / 60.0
-		tim_EPV = tim_EPV / 60.0
-		tim_surf_AT = tim_surf_AT / 60.0
-		tim_surf_SH = tim_surf_SH / 60.0
-		tim_surf_GH = tim_surf_GH / 60.0
-		tim_surf_P = tim_surf_P / 60.0
-		tim_SLP = tim_SLP / 60.0
-		tim_TROPPB = tim_TROPPB / 60.0
-		tim_TROPPV = tim_TROPPV / 60.0
-		tim_TROPPT = tim_TROPPT / 60.0
-		tim_TROPT = tim_TROPT / 60.0
-		tim_O3 = tim_O3 / 60.0
+		varlist = ['T','QV','RH','H','EPV','O3','PHIS']
+		surf_varlist = ['T2M','QV2M','PS','SLP','TROPPB','TROPPV','TROPPT','TROPT']	
+		DATA,SURF_DATA = read_global(ncdf_path,mode,site_lat,site_lon_180,gravity_at_lat,varlist,surf_varlist)
 
 	if UTC:
-		date = start_date + timedelta(hours=HH-site_lon_180/15.0,minutes=MM) # date with local time
+		date = start_date + timedelta(hours=HH+site_lon_180/15.0,minutes=MM) # date with local time
 	else:
 		date = start_date + timedelta(hours=HH,minutes=MM) # date with local time
-	print 'Starting local time for interpolation:',date.strftime('%Y-%m-%d %H:%M')
 	astropy_date = Time(date)
+	print 'Starting local time for interpolation:',date.strftime('%Y-%m-%d %H:%M')
 
 	time_step = timedelta(hours=time_step) # time step between mod files; will need to change the mod file naming and gsetup to do sub-daily files
 	print 'Time step:',time_step.total_seconds()/3600.0,'hours'
+
+	if 'merradap' in mode: # read all the data first, this could take a while ...	
+		print 'Reading MERRA2 data via opendap'
+		varlist = ['T','QV','RH','H','EPV','O3','PHIS']
+		surf_varlist = ['T2M','QV2M','PS','SLP','TROPPB','TROPPV','TROPPT','TROPT']	
+		DATA,SURF_DATA = read_merradap(username,password,mode,site_lon_180,gravity_at_lat,date,end_date,time_step,varlist,surf_varlist)
+
 	new_year = False
 	while date<end_date:
 
@@ -725,190 +830,67 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 			mod_name = '{}_{:0>2.0f}{:>1}_{:0>3.0f}{:>1}.mod'.format(YYYYMMDD,round(abs(site_lat)),ns,round(abs(site_lon_180)),ew)
 		mod_file_path = os.path.join(mod_path,mod_name)
 		print '\n',mod_name
-
-		if 'merradap' in mode: # MERRA with openDAP
-
-			# in the url below, M2I3NVASM is for every 3 hour instantaneous assimilated meteorological fields; VASM is for 72 levels; PASM is for 42 levels
-			if 'merradap42' in mode:
-				letter = 'P'
-			elif 'merradap72' in mode:
-				letter = 'V'
-
-			UTC_date = date + timedelta(hours = -site_lon_180/15.0) # merra times are in UTC, so the date may be different than the local date, make sure to use the UTC date to querry the file
-
-			# multi levels data
-			url = 'https://goldsmr5.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2I3N{}ASM.5.12.4/{:0>4}/{:0>2}/MERRA2_400.inst3_3d_asm_N{}.{:0>4}{:0>2}{:0>2}.nc4'.format(letter,UTC_date.year,UTC_date.month,letter.lower(),UTC_date.year,UTC_date.month,UTC_date.day)
-			session = setup_session(username,password,check_url=url)
-			try:
-				dataset = open_url(url,session=session)
-			except HTTPError:
-				print 'url not valid\n',url
-				sys.exit()
-
-			# single level data, from M2I1NXASM ; it is on the goldsmr4 server and not goldsmr5 like above
-			surface_url = 'https://goldsmr4.gesdisc.eosdis.nasa.gov/opendap/hyrax/MERRA2/M2I1NXASM.5.12.4/{:0>4}/{:0>2}/MERRA2_400.inst1_2d_asm_Nx.{:0>4}{:0>2}{:0>2}.nc4'.format(UTC_date.year,UTC_date.month,UTC_date.year,UTC_date.month,UTC_date.day)
-			surface_session = setup_session(username,password,check_url=surface_url)
-			try:
-				surface_dataset = open_url(surface_url,session=surface_session)
-			except HTTPError:
-				print 'url not valid\n',url
-				sys.exit()				
-
-			# get the min/max lat-lon indices of merra lat-lon that lies within a lat-lon box centered on the site lat-lon.
-			min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID = querry_indices(dataset,site_lat,site_lon_180,2.5,2.5)
-
-			# Air temperature
-			lev_AT,lat_AT, lon_AT, tim_AT, data_AT, data_scale_factor_AT, data_add_offset_AT, julday0 = read_data(dataset,'T',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Specific humidity
-			lev_SH,lat_SH, lon_SH, tim_SH, data_SH, data_scale_factor_SH, data_add_offset_SH, julday0 = read_data(dataset,'QV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Relative humidity
-			lev_RH,lat_RH, lon_RH, tim_RH, data_RH, data_scale_factor_RH, data_add_offset_RH, julday0 = read_data(dataset,'RH',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Height
-			lev_H,lat_H, lon_H, tim_H, data_H, data_scale_factor_H, data_add_offset_H, julday0 = read_data(dataset,'H',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Potential vorticity
-			lev_EPV,lat_EPV, lon_EPV, tim_EPV, data_EPV, data_scale_factor_EPV, data_add_offset_EPV, julday0 = read_data(dataset,'EPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Ozone
-			lev_O3,lat_O3, lon_O3, tim_O3, data_O3, data_scale_factor_O3, data_add_offset_O3, julday0 = read_data(dataset,'O3',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)			
-
-			# 2 meter Air Temperature
-			lev_surf_AT,lat_surf_AT, lon_surf_AT, tim_surf_AT, data_surf_AT, data_scale_factor_surf_AT, data_add_offset_surf_AT, julday0 = read_data(surface_dataset,'T2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
-			# 2 meter Specific humidity
-			lev_surf_SH,lat_surf_SH, lon_surf_SH, tim_surf_SH, data_surf_SH, data_scale_factor_surf_SH, data_add_offset_surf_SH, julday0 = read_data(surface_dataset,'QV2M',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)		
-			# Surface pressure
-			lev_surf_P,lat_surf_P, lon_surf_P, tim_surf_P, data_surf_P, data_scale_factor_surf_P, data_add_offset_surf_P, julday0 = read_data(surface_dataset,'PS',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)
-			# Sea level pressure
-			lev_SLP,lat_SLP, lon_SLP, tim_SLP, data_SLP, data_scale_factor_SLP, data_add_offset_SLP, julday0 = read_data(surface_dataset,'SLP',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			# surface geopotential height
-			lev_surf_GH,lat_surf_GH, lon_surf_GH, tim_surf_GH, data_surf_GH, data_scale_factor_surf_GH, data_add_offset_surf_GH, julday0 = read_data(dataset,'PHIS',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID) # surface geopotential height is in the levels datasets			
-			data_surf_GH = data_surf_GH / gravity_at_lat # convert from m2 s-2 to m
-			# Tropopause pressure (blended)
-			lev_TROPPB,lat_TROPPB, lon_TROPPB, tim_TROPPB, data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, julday0 = read_data(surface_dataset,'TROPPB',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			# PV based Tropopause pressure
-			lev_TROPPV,lat_TROPPV, lon_TROPPV, tim_TROPPV, data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, julday0 = read_data(surface_dataset,'TROPPV',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			# Temperature based Tropopause pressure
-			lev_TROPPT,lat_TROPPT, lon_TROPPT, tim_TROPPT, data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, julday0 = read_data(surface_dataset,'TROPPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			# Tropopause Temperature
-			lev_TROPT,lat_TROPT, lon_TROPT, tim_TROPT, data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, julday0 = read_data(surface_dataset,'TROPT',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)								
-			
-			# merra/geos time is minutes since base time, need to convert to hours
-			tim_AT = tim_AT / 60.0
-			tim_SH = tim_SH / 60.0
-			tim_RH = tim_RH / 60.0
-			tim_H = tim_H / 60.0
-			tim_EPV = tim_EPV / 60.0
-			tim_surf_AT = tim_surf_AT / 60.0
-			tim_surf_SH = tim_surf_SH / 60.0
-			tim_surf_GH = tim_surf_GH / 60.0
-			tim_surf_P = tim_surf_P / 60.0
-			tim_SLP = tim_SLP / 60.0
-			tim_TROPPB = tim_TROPPB / 60.0
-			tim_TROPPV = tim_TROPPV / 60.0
-			tim_TROPPT = tim_TROPPT / 60.0
-			tim_TROPT = tim_TROPT / 60.0
-			tim_O3 = tim_O3 / 60.0
-
+		
 		"""
 		Interpolation time:
 			julday0 is the fractional julian day number of the base time of the dataset: dataset times are in UTC hours since base time
 			astropy_date.jd is the fractional julian day number of the current local day
 			(astropy_date.jd-julday0)*24.0 = local hours since julday0
 		"""
-		site_tim = (astropy_date.jd-julday0)*24.0 - site_lon_180/15.0 # UTC hours since julday0
-		
+		site_tim = (astropy_date.jd-DATA['julday0'])*24.0 - site_lon_180/15.0 # UTC hours since julday0
 		# interpolate the data to the site's location and the desired time
-		site_AT = trilinear_interp(data_AT, data_scale_factor_AT, data_add_offset_AT, site_lon_360, lon_AT, site_lat, lat_AT, site_tim, tim_AT) 
-		site_SH = trilinear_interp(data_SH, data_scale_factor_SH, data_add_offset_SH, site_lon_360, lon_SH, site_lat, lat_SH, site_tim, tim_SH)
+		INTERP_DATA = trilinear_interp(DATA,varlist,site_lon_360,site_lat,site_tim)
 
 		if 'ncep' in mode:
-			# ncep has geopotential height profiles
-			site_GH = trilinear_interp(data_GH, data_scale_factor_GH, data_add_offset_GH, site_lon_360, lon_GH, site_lat, lat_GH, site_tim, tim_GH)
-			site_TP = 0.0 # tropopause pressure not used with NCEP data
-			site_RH = 0 # won't be used, just to feed something to write_mod frh
-		else:
-			# interpolate height levels
-			site_H = trilinear_interp(data_H, data_scale_factor_H, data_add_offset_H, site_lon_360, lon_H, site_lat, lat_H, site_tim, tim_H)
-			# convert to geopotential
-			#site_GH = (site_H)/(1.0+site_H/earth_radius_at_lat)		# Convert from geometric to geopotential
-			site_GH = site_H # unclear if merra2 / geos5 height field is geopotential or geometric
-			# interpolate relative humidity
-			site_RH = trilinear_interp(data_RH, data_scale_factor_RH, data_add_offset_RH, site_lon_360, lon_RH, site_lat, lat_RH, site_tim, tim_RH)
-			# interpolate potential vorticity
-			site_EPV = trilinear_interp(data_EPV, data_scale_factor_EPV, data_add_offset_EPV, site_lon_360, lon_EPV, site_lat, lat_EPV, site_tim, tim_EPV)
-			# interpolate ozone
-			site_O3 = trilinear_interp(data_O3, data_scale_factor_O3, data_add_offset_O3, site_lon_360, lon_O3, site_lat, lat_O3, site_tim, tim_O3)
-
-		if 'merradap72' in mode:
-			# the merra 72 mid level pressures are not fixed, so need to interpolate to get just 1 array of levels
-			# Mid-level pressure
-			lev_PL,lat_PL, lon_PL, tim_PL, data_PL, data_scale_factor_PL, data_add_offset_PL, julday0 = read_data(dataset,'PL',min_lat_ID, max_lat_ID, min_lon_ID, max_lon_ID)			
-			tim_PL = tim_PL/60.0 # convert minutes to hours
-			# interpolate pressure levels
-			lev_AT = trilinear_interp(data_PL, data_scale_factor_PL, data_add_offset_PL, site_lon_360, lon_PL, site_lat, lat_PL, site_tim, tim_PL) 
-			lev_AT = lev_AT / 100.0 # convert from Pa to hPa
-
-		if 'ncep' not in mode:
+			INTERP_DATA['lev'] = np.copy(DATA['lev'])
+			INTERP_DATA['TROPP'] = 0  # tropopause pressure not used with NCEP data
+			INTERP_DATA['RH'] = 0 # won't be used, just to feed something to write_mod frh
+		else: # merra/geos5
+			if 'lev' not in varlist:
+				INTERP_DATA['lev'] = np.copy(DATA['lev'])
+			
 			# get rid of fill values
-			without_fill_IDs = np.where(site_AT<1e10) # merra/geos fill value is 1e15
-
-			site_AT = site_AT[without_fill_IDs]
-			site_GH = site_GH[without_fill_IDs]
-			site_SH = site_SH[without_fill_IDs]
-			site_RH = site_RH[without_fill_IDs]
-			site_EPV = site_EPV[without_fill_IDs]
-			site_O3 = site_O3[without_fill_IDs]
-			if 'glob' in mode:
-				lev_AT = lev_SH[without_fill_IDs] # I use lev_SH because lev_AT is not redefined in the while loop contrary to the others, otherwise it would trigger index errors
-			else:
-				lev_AT = lev_AT[without_fill_IDs]
+			without_fill_IDs = np.where(INTERP_DATA['T']<1e10) # merra/geos fill value is 1e15
+			for varname in list(set(varlist+['lev'])):
+				try:
+					INTERP_DATA[varname] = INTERP_DATA[varname][without_fill_IDs]
+				except IndexError:
+ 					pass
 
 		if ('merradap' in mode) or ('glob' in mode):
-			# interpolate the surface data
-			site_surf_AT = trilinear_interp(data_surf_AT, data_scale_factor_surf_AT, data_add_offset_surf_AT, site_lon_360, lon_surf_AT, site_lat, lat_surf_AT, site_tim, tim_surf_AT) 
-			site_surf_GH = trilinear_interp(data_surf_GH, data_scale_factor_surf_GH, data_add_offset_surf_GH, site_lon_360, lon_surf_GH, site_lat, lat_surf_GH, site_tim, tim_surf_GH)
-			site_surf_SH = trilinear_interp(data_surf_SH, data_scale_factor_surf_SH, data_add_offset_surf_SH, site_lon_360, lon_surf_SH, site_lat, lat_surf_SH, site_tim, tim_surf_SH)
-			site_surf_P = trilinear_interp(data_surf_P, data_scale_factor_surf_P, data_add_offset_surf_P, site_lon_360, lon_surf_P, site_lat, lat_surf_P, site_tim, tim_surf_P)
-			site_surf_P = site_surf_P / 100.0 # convert Pa to hPa
-			site_SLP = trilinear_interp(data_SLP, data_scale_factor_SLP, data_add_offset_SLP, site_lon_360, lon_SLP, site_lat, lat_SLP, site_tim, tim_SLP)
-			site_SLP = site_SLP / 100.0 # convert Pa to hPa
-			site_TROPPB = trilinear_interp(data_TROPPB, data_scale_factor_TROPPB, data_add_offset_TROPPB, site_lon_360, lon_TROPPB, site_lat, lat_TROPPB, site_tim, tim_TROPPB)
-			site_TROPPB = site_TROPPB / 100.0 # convert Pa to hPa
-			site_TROPPV = trilinear_interp(data_TROPPV, data_scale_factor_TROPPV, data_add_offset_TROPPV, site_lon_360, lon_TROPPV, site_lat, lat_TROPPV, site_tim, tim_TROPPV)
-			site_TROPPV = site_TROPPV / 100.0 # convert Pa to hPa
-			site_TROPPT = trilinear_interp(data_TROPPT, data_scale_factor_TROPPT, data_add_offset_TROPPT, site_lon_360, lon_TROPPT, site_lat, lat_TROPPT, site_tim, tim_TROPPT)
-			site_TROPPT = site_TROPPT / 100.0 # convert Pa to hPa
-			site_TROPT = trilinear_interp(data_TROPT, data_scale_factor_TROPT, data_add_offset_TROPT, site_lon_360, lon_TROPT, site_lat, lat_TROPT, site_tim, tim_TROPT)
-
-			# site_TROPPB = site_TROPPB/100.0 # convert from Pa to hPa
-			# I think the TROPPB is wrongly indicated as having 'Pa' units: the values are of order 1-3 *10e4, if we assume they are hPa this is usually between 8-16 km
-			# if we divide those by 100 we get values of order 1-3 *10e2 which is between 40-45 km !!
+			site_tim = (astropy_date.jd-SURF_DATA['julday0'])*24.0 - site_lon_180/15.0 # UTC hours since julday0
+			INTERP_SURF_DATA = trilinear_interp(SURF_DATA,surf_varlist,site_lon_360,site_lat,site_tim)
+			for varname in ['PS','SLP','TROPPB','TROPPV','TROPPT']:
+				INTERP_SURF_DATA[varname] = INTERP_SURF_DATA[varname] / 100.0 # convert Pa to hPa
 
 			if 'merradap72' in mode: # merra42 and ncep go from high pressure to low pressure, but merra 72 does the reverse
 				# reverse merra72 profiles
-				site_O3 = site_O3[::-1]
-				site_AT = site_AT[::-1]
-				site_GH = site_GH[::-1]
-				site_SH = site_SH[::-1]
-				site_RH = site_RH[::-1]
-				lev_AT = lev_AT[::-1]
+				INTERP_DATA['lev'] = INTERP_DATA['PL'] / 100.0
+				for varname in list(set(varlist+['lev'])):
+					try:
+						INTERP_DATA[varname] = INTERP_DATA[varname][::-1]
+					except IndexError:
+						pass
 
-		site_H2ODMF = rmm*site_SH/(1-site_SH) # Convert specific humidity, a wet mass mixing ratio, to dry mole fraction
-		site_GH = site_GH/1000.0	# Convert m to km
+		INTERP_DATA['H2O_DMF'] = rmm*INTERP_DATA['QV']/(1-INTERP_DATA['QV']) # Convert specific humidity, a wet mass mixing ratio, to dry mole fraction
+		INTERP_DATA['H'] = INTERP_DATA['H']/1000.0	# Convert m to km
 
 		if ('merradap' in mode) or ('glob' in mode):
-			site_surf_H2ODMF = rmm*site_surf_SH/(1-site_surf_SH)
-			site_surf_GH = site_surf_GH/1000.0
+			INTERP_SURF_DATA['H2O_DMF'] = rmm*INTERP_SURF_DATA['QV2M']/(1-INTERP_SURF_DATA['QV2M'])
+			INTERP_DATA['PHIS'] = INTERP_DATA['PHIS']/1000.0
 			# compute surface relative humidity
-			svp = svp_wv_over_ice(site_surf_AT)
-			h2o_wmf = site_surf_H2ODMF/(1+site_surf_H2ODMF) # wet mole fraction of h2o
-			site_surf_FRH = h2o_wmf*site_surf_P/svp # Fractional relative humidity
-			site_surf_mmw = 28.964*(1-h2o_wmf)+18.02*h2o_wmf
+			svp = svp_wv_over_ice(INTERP_SURF_DATA['T2M'])
+			INTERP_SURF_DATA['H2O_WMF'] = INTERP_SURF_DATA['H2O_DMF']/(1+INTERP_SURF_DATA['H2O_DMF']) # wet mole fraction of h2o
+			INTERP_SURF_DATA['RH'] = 100*INTERP_SURF_DATA['H2O_WMF']*INTERP_SURF_DATA['PS']/svp # Fractional relative humidity
+			INTERP_SURF_DATA['MMW'] = 28.964*(1-INTERP_SURF_DATA['H2O_WMF'])+18.02*INTERP_SURF_DATA['H2O_WMF']
+			INTERP_SURF_DATA['H'] = INTERP_DATA['PHIS']
 
 		# write the .mod file
 		version = 'mod_maker_10.6   2017-04-11   GCT'
 		if 'ncep' in mode:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TP,site_H2ODMF,frh=site_RH)
+			write_mod(mod_file_path,version,site_lat,data=INTERP_DATA)
 		else:
-			write_mod(mod_file_path,version,site_lat,lev_AT,site_AT,site_GH,site_TROPPB,site_H2ODMF,frh=site_RH,epv=site_EPV,ozone=site_O3,SLP=site_SLP,surf_P=site_surf_P,surf_AT=site_surf_AT,surf_GH=site_surf_GH,surf_FRH=site_surf_FRH,surf_mmw=site_surf_mmw,surf_H2ODMF=site_surf_H2ODMF,site_TROPPT=site_TROPPT,site_TROPPV=site_TROPPV,site_TROPT=site_TROPT)
+			write_mod(mod_file_path,version,site_lat,data=INTERP_DATA,surf_data=INTERP_SURF_DATA)
 
 		if ((date+time_step).year!=date.year):
 			new_year = True
@@ -917,25 +899,5 @@ if __name__ == "__main__": # this is only executed when the code is used directl
 		astropy_date = Time(date)
 		
 		if ('ncep' in mode) and new_year:
-			# path to the netcdf files
-			ncdf_AT_file = os.path.join(ncdf_path,'.'.join(['air','{:0>4}'.format(date.year),'nc']))
-			ncdf_GH_file = os.path.join(ncdf_path,'.'.join(['hgt','{:0>4}'.format(date.year),'nc']))
-			ncdf_SH_file = os.path.join(ncdf_path,'.'.join(['shum','{:0>4}'.format(date.year),'nc']))
-
-			print '\nRead global',date.year,'ncep data ...'
-			# Air Temperature
-			lev_AT,lat_AT, lon_AT, tim_AT, data_AT, data_scale_factor_AT, data_add_offset_AT, julday0 = read_data(ncdf_AT_file, 'air')
-			if len(lev_AT) < 17:
-				print 'Need 17 levels of AT data: found only ',len(lev_AT)
-			
-			# Geopotential Height
-			lev_GH,lat_GH, lon_GH, tim_GH, data_GH, data_scale_factor_GH, data_add_offset_GH, julday0 = read_data(ncdf_GH_file, 'hgt')
-			if len(lev_GH) < 17:
-				print 'Need 17 levels of GH data: found only ',len(lev_GH)
-			
-			# Specific Humidity
-			lev_SH,lat_SH, lon_SH, tim_SH, data_SH, data_scale_factor_SH, data_add_offset_SH, julday0 = read_data(ncdf_SH_file, 'shum')
-			if len(lev_SH) <  8:
-				print 'Need  8 levels of SH data: found only ',len(lev_SH)
-
+			DATA = read_ncep(ncdf_path,date.year)
 			new_year = False
