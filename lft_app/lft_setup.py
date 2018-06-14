@@ -1,4 +1,26 @@
+def site_data():
+	"""
+	Return a dictionary with information specific to each site and cell
+	"""
+
+	data = {}
+
+	data['hcl'] = hcl_cells()
+	data['n2o'] = n2o_cells()
+	data['hbr'] = hbr_cells()
+
+	# focal length of collimator (mm), add the one for your site with the appropriate two letter site abbreviation
+	data['FLC'] = {
+					'eu':418.0, # Eureka
+					'et':418.0, # East Trout Lake
+					}
+
+	return data
+
 def hcl_cells():
+	"""
+	Returns a dictionary of the HCl cells data
+	"""
 
 	cell = {}
 
@@ -16,9 +38,9 @@ def hcl_cells():
 				'location':None,
 				}
 	"""
-	# copy paste this template to add a cell
+	# Use the format below to add a cell
 	# site
-	cell['site'] = dict(template)
+	cell['site'] = {key:template[key] for key in template}
 	cell['site']['location'] =
 	cell['site']['owner'] = 
 	cell['site']['ID'] =
@@ -33,7 +55,7 @@ def hcl_cells():
 	"""
 	
 	# Eureka
-	cell['eu'] = dict(template)
+	cell['eu'] = {key:template[key] for key in template}
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['owner'] = 'University of Toronto'
 	cell['eu']['ID'] = 30
@@ -47,7 +69,7 @@ def hcl_cells():
 	cell['eu']['calibration_run'] = 1312
 
 	# East Trout Lake
-	cell['et'] = dict(template)
+	cell['et'] = {key:template[key] for key in template}
 	cell['et']['location'] = 'East Trout Lake'
 	cell['et']['owner'] = 'University of Toronto'
 	cell['et']['ID'] = 62
@@ -63,7 +85,9 @@ def hcl_cells():
 	return cell
 
 def hbr_cells():
-
+	"""
+	Returns a dictionary of the HBr cells data
+	"""
 	cell = {}
 
 	template = {
@@ -82,11 +106,20 @@ def hbr_cells():
 	cell['eu'] = dict(template)
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['pressure'] = 1.52
-	cell['eu']['column'] = 7.60e20
+	cell['eu']['column'] = 7.60e+20
+
+	# Toronto
+	cell['to'] = dict(template)
+	cell['to']['location'] = 'Toronto'
+	cell['to']['pressure'] = 2.4
+	cell['to']['column'] = 1.08e+21
 
 	return cell
 
 def n2o_cells():
+	"""
+	Returns a dictionary of the N2O cells data
+	"""
 
 	cell = {}
 
@@ -106,6 +139,12 @@ def n2o_cells():
 	cell['eu'] = dict(template)
 	cell['eu']['location'] = 'Eureka'
 	cell['eu']['pressure'] = 0.8734
-	cell['eu']['column'] = 4.373e20
+	cell['eu']['column'] = 4.373e+20
+
+	# Toronto
+	cell['to'] = dict(template)
+	cell['to']['location'] = 'Toronto'
+	cell['to']['pressure'] = 0.8734
+	cell['to']['column'] = 4.478e+20
 
 	return cell

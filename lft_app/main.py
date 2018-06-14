@@ -83,6 +83,7 @@ spectrumfilename1,temperature1,apt_size1,spectral_detuning1
 # Import libraries #
 ####################
 
+# generic libraries
 import os
 import sys
 import platform
@@ -95,22 +96,27 @@ from collections import OrderedDict
 import time
 from datetime import datetime, timedelta
 
+# interactive plotting library
 import bokeh
 from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Panel, Tabs, Legend, DataRange1d, RadioButtonGroup, Legend
 from bokeh.layouts import gridplot, widgetbox, Column, Row
 
+# special arrays with special functions for easier vectorized operations
 import numpy as np
 
-from cell_data import hbr_cells, n2o_cells, hcl_cells
+import lft_setup # where the site instrument and cell information is kept
 
+# for generating the pdf report with plots
 import pylab as pl
 import matplotlib.backends.backend_pdf as mpl_pdf
 
+# string parsing libraries
 import parse
 import re
 
+# color palettes for plots
 from bokeh.palettes import Viridis256,viridis
 
 #####################
@@ -137,7 +143,7 @@ def correct_column(P,T,l=0.1):
 
 def execute(cmd):
         '''
-        function to execute a prompt command and print the output as it is produced
+        Function to execute a prompt command and print the output as it is produced
         '''
         popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
         for stdout_line in iter(popen.stdout.readline, ""):
@@ -147,6 +153,13 @@ def execute(cmd):
         if return_code:
             raise subprocess.CalledProcessError(return_code, cmd)
 
+def linediv(color='lightblue',width=400):
+	"""
+	Function to generate a Div widget with a straight line.
+	This is because a same model cannot be used several times in a same document.
+	"""
+	return Div(text='<hr width="100%" color="{}">'.format(color),width=width)
+
 #########
 # Setup #
 #########
@@ -155,7 +168,7 @@ argu = sys.argv
 ignore_spec = False
 if 'light' in argu:
 	# bokeh serve lftp_app --args light 
-	ignore_spec = True
+	ignore_spec = True # the spectrum will not be plotted or saved in the numpy file
 
 system = platform.system()
 if system == 'Windows':
@@ -165,8 +178,6 @@ elif system == 'Linux':
 elif system == 'Darwin':
 	lft_command = ['./lft145_gfortran']
 
-FLC = 418.0 # focal length of collimator in mm
-
 specname_fmt = '{}_{}_{}_{:d}_{}_{:d}.dpt' # formatted string for spectrum file names YYMMDD_site_cell_X_MOPD_num
 
 fmt = '{:.2f},.false.,{:.4e},{:.3f},.false.,{:.3f},0.0075\n' # formatted string to read and edit the input file
@@ -174,7 +185,9 @@ fmt = '{:.2f},.false.,{:.4e},{:.3f},.false.,{:.3f},0.0075\n' # formatted string 
 reg_dpt = re.compile('.*[.]dpt$',re.IGNORECASE) # regular expression that will be used to select .dpt files
 reg_npy = re.compile('.*[.]npy$',re.IGNORECASE) # regular expression that will be used to select .npy files
 
-cell_map = {'hcl':hcl_cells(),'hbr':hbr_cells(),'n2o':n2o_cells()} # read cell data
+site_data = lft_setup.site_data()
+
+cell_map = {'hcl':site_data['hcl'],'hbr':site_data['hbr'],'n2o':site_data['n2o']} # read cell data
 
 # This is a color list of 20 "high contrast" colors.
 kelly_colors = [ 	'#F3C300','#875692', '#F38400', '#A1CAF1','#BE0032', '#C2B280', '#848482','#008856', '#E68FAC', '#0067A5',
@@ -281,13 +294,12 @@ all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' wi
 
 def busy(func):
 	'''
-	busy decorator that will display a loading animation when the program is working on something
+	Decorator function to display a loading animation when the program is working on something
 	'''
 	def wrapper():
 		# show the loading animation for time consuming tasks
-		infile = open(os.path.join(static_path,'loader.html'),'r')
-		loader_css = infile.read().replace('\n',"")
-		infile.close()
+		with open(os.path.join(static_path,'loader.html'),'r') as infile:
+			loader_css = infile.read().replace('\n',"")
 		curdoc().select_one({'name':'loader'}).text = loader_css
 
 		func() # run the decorated function
@@ -322,20 +334,20 @@ def get_inputs(spectrum):
 	print(site)
 
 	#get the temperature and aperture size
-	infile = open(os.path.join(specpath,'temp.dat'),'r')
-	content = infile.readlines()
-	infile.close()
+	with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+		content = infile.read().splitlines()
 
 	for line in content:
 		if spectrum.lower() in line.lower():
 			break
 
-	temperature = float(line.split(',')[1]) # scanner temperature in Kelvin
-	APT = float(line.split(',')[2].split('\n')[0]) # aperture diameter in millimeters
+	line = line.split(',')
+	temperature = float(line[1]) # scanner temperature in Kelvin
+	APT = float(line[2]) # aperture diameter in millimeters
 
 	# check for spectral detuning
 	try:
-		spectral_detuning = float(line.split(',')[3].split('\n')[0])
+		spectral_detuning = float(line[3])
 	except IndexError:
 		spectral_detuning = None
 
@@ -363,12 +375,11 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 	reg = curdoc().select_one({'name':'reg_input'}).value
 	reg_phase_mod = (reg,reg)
 
-	maxir = '{:>8.6f}'.format(APT/2.0/FLC) # maximum inclination of rays in the interferometer (aperture radius / focal length of collimator)
+	maxir = '{:>8.6f}'.format(APT/2.0/site_data['FLC'][site]) # maximum inclination of rays in the interferometer (aperture radius / focal length of collimator)
 
 	if cell == 'hcl':
-		infile = open(os.path.join(app_path,'lft14_hcl_template.inp'),'r')
-		content = infile.readlines()
-		infile.close()
+		with open(os.path.join(app_path,'lft14_hcl_template.inp'),'r') as infile:
+			content = infile.readlines()
 
 		for i in range(len(content)):
 			if 'Trans01.txt' in content[i]:
@@ -411,9 +422,8 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 				content[i+4] = '1.0e4,%s,0.0,%s,0.0\n' % reg_phase_mod
 
 	if cell in ['hbr','n2o']:
-		infile = open(os.path.join(app_path,'lft14_%s_template.inp' % cell),'r')
-		content = infile.readlines()
-		infile.close()
+		with open(os.path.join(app_path,'lft14_%s_template.inp' % cell),'r') as infile:
+			content = infile.readlines()
 
 		for i in range(len(content)):
 			if 'Trans01.txt' in content[i]:
@@ -439,9 +449,8 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 			elif 'Reg Modulation' in content[i]:
 				content[i+4] = '1.0e4,%s,0.0,%s,0.0\n' % reg_phase_mod
 
-	outfile = open(os.path.join(wdir,'lft14.inp'),'w') #rewrite input file
-	outfile.writelines(content)
-	outfile.close()
+	with open(os.path.join(wdir,'lft14.inp'),'w') as outfile: #rewrite input file
+		outfile.writelines(content)
 
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Input file updated'
 	print('\n\t- Input file updated')
@@ -488,11 +497,10 @@ def setup_linefit():
 
 	# preliminary check on the temp file to make sure it has the spectrum
 	# I write my own inputfile called 'temp.dat' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
-	infile = open(os.path.join(specpath,'temp.dat'),'r')
-	content = infile.readlines()
-	infile.close()
+	with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+		content = infile.readlines()
 
-	speclist = [line.split(',')[0] for line in content] # all the SpectrumName in the file
+	speclist = [line.split(',')[0] for line in content[1:]] # all the SpectrumName in the file
 
 	#if the spectrum is not listed in the temp file, go to next spectrum
 	if spectrum.lower() not in [spec.lower() for spec in speclist]:
@@ -578,9 +586,8 @@ def run_linefit(cell):
 		conv = False
 		while not conv:
 			# open the input file
-			infile = open(os.path.join(wdir,'lft14.inp'),'r')
-			content = infile.readlines()
-			infile.close()
+			with open(os.path.join(wdir,'lft14.inp'),'r') as infile:
+				content = infile.readlines()
 
 			# read the column and pressure
 			for i,line in enumerate(content):
@@ -589,9 +596,8 @@ def run_linefit(cell):
 					break
 
 			# read the column scale factor
-			infile = open(os.path.join(ergpath,'colparms.dat'),'r')
-			col_content = infile.readlines()
-			infile.close() 
+			with open(os.path.join(ergpath,'colparms.dat'),'r') as infile:
+				col_content = infile.readlines()
 
 			scale_factor = np.mean([float(x) for x in col_content[1:]])
 
@@ -613,9 +619,8 @@ def run_linefit(cell):
 			# replace the pressure in the input file
 			content[i+8] = fmt.format(temperature,column,new_pressure,new_pressure)
 
-			outfile = open(os.path.join(wdir,'lft14.inp'),'w')
-			content = outfile.writelines(content)
-			outfile.close()
+			with open(os.path.join(wdir,'lft14.inp'),'w') as outfile:
+				content = outfile.writelines(content)
 
 			# run a new iteration of linefit
 			status_div.text+='<br>- Running linefit iteration {}'.format(iteration)
@@ -638,9 +643,8 @@ def check_spectrum(spectrum_path,spectrum):
 
 	status_div = curdoc().select_one({"name":"status_div"})
 
-	infile = open(spectrum_path,'r')
-	content = infile.readlines()
-	infile.close()
+	with open(spectrum_path,'r') as infile:
+		content = infile.readlines()
 
 	specrange = [line.split()[0] for line in content]
 
@@ -648,9 +652,8 @@ def check_spectrum(spectrum_path,spectrum):
 		status_div.text += '<br>- Reordering {}'.format(spectrum)
 		print('\n\t- Reordering',spectrum)
 
-		outfile = open(spectrum_path,'w')
-		outfile.writelines(content[::-1])
-		outfile.close()
+		with open(spectrum_path,'w') as outfile:
+			outfile.writelines(content[::-1])
 
 def ratio_spectrum(spectrum_path,spectrum,cell):
 	'''
@@ -699,7 +702,7 @@ def ratio_spectrum(spectrum_path,spectrum,cell):
 
 def linefit_results(spectrum,colo):
 	'''
-	after linefit has finished running, this stores the results in all_data and updates the plots
+	After linefit has finished running, this stores the results in all_data and updates the plots
 	'''
 
 	global all_data, ignore_spec
@@ -708,10 +711,11 @@ def linefit_results(spectrum,colo):
 	test = '{} reg={}'.format(spectrum.split('.')[0],curdoc().select_one({'name':'reg_input'}).value)
 
 	# Add a new entry in the all_data dictionary
-	all_data[test] = {'ILS':0,'mw1':0,'mw2':0,'mw3':0,'mw4':0,'mw5':0,'mw6':0,'mw7':0,'mw8':0,'mw9':0,'mw10':0,'mw11':0,'mw12':0,'mw13':0,}
+	all_data[test] = {'statevec':0,'ILS':0,'AK':0,'mw1':0,'mw2':0,'mw3':0,'mw4':0,'mw5':0,'mw6':0,'mw7':0,'mw8':0,'mw9':0,'mw10':0,'mw11':0,'mw12':0,'mw13':0,}
 
-	# Update the title in the diag_panel
-	curdoc().select_one({"name":"cur_spec_div"}).text = "<font size=3 color='teal'><b>"+test+"</b></font>"
+	# Update the title in the ils_fits_panel and ak_panel
+	curdoc().select_one({"name":"cur_spec_div"}).text = "<font size=3 color='teal'><b>{}</b></font>".format(test)
+	curdoc().select_one({"name":"cur_spec_div2"}).text = "<font size=3 color='teal'><b>{}</b></font>".format(test)
 	# Update status
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding ME and PE plot'
 	
@@ -719,9 +723,8 @@ def linefit_results(spectrum,colo):
 	############################### Modulation Efficiency and Phase Error
 	print('\n\t- ME and PE')
 
-	infile = open(os.path.join(ergpath,'modulat.dat'),'r')
-	content = infile.readlines()
-	infile.close()
+	with open(os.path.join(ergpath,'modulat.dat'),'r') as infile:
+		content = infile.readlines()
 
 	content = [line.split() for line in content[1:]]
 	content = np.array([[float(elem) for elem in row] for row in content]).T
@@ -750,9 +753,8 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding column plot'
 	print('\n\t- column')
 
-	infile = open(os.path.join(ergpath,'colparms.dat'),'r')
-	content = infile.readlines()
-	infile.close()
+	with open(os.path.join(ergpath,'colparms.dat'),'r') as infile:
+		content = infile.readlines()
 
 	if 'hcl' in spectrum.lower():
 		secondID = [i for i,v in enumerate(content) if 'Species:   2' in v][0] #hcl37, I don't plot it though.
@@ -775,9 +777,8 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding ILS'
 	print('\n\t- Adding ILS')
 
-	infile = open(os.path.join(ergpath,'ilsre.dat'),'r')
-	content = infile.readlines()
-	infile.close()
+	with open(os.path.join(ergpath,'ilsre.dat'),'r') as infile:
+		content = infile.readlines()
 
 	content = np.array([[float(elem) for elem in line.split()] for line in content]).T
  
@@ -808,9 +809,8 @@ def linefit_results(spectrum,colo):
 	mwfiles = [i for i in os.listdir(ergpath) if 'specre' in i]
 
 	for it,mwfile in enumerate(mwfiles):
-		infile = open(os.path.join(ergpath,mwfile),'r')
-		content = infile.readlines()
-		infile.close()
+		with open(os.path.join(ergpath,mwfile),'r') as infile:
+			content = infile.readlines()
 
 		content = np.array([[float(elem) for elem in line.split()] for line in content]).T
 
@@ -831,6 +831,51 @@ def linefit_results(spectrum,colo):
 
 	# setup mw_buttons
 	MW_buttons = curdoc().select_one({'name':'MW_buttons'}).labels = ['MW {}'.format(i+1) for i in range(len(mwfiles))]
+
+	###############################
+	############################### Averaging Kernels
+	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding averaging kernels'
+	print('\n\t- Adding averaging kernels')
+
+	AKapo_fig = curdoc().select_one({"name":"AKapo_fig"})
+	AKphase_fig = curdoc().select_one({"name":"AKphase_fig"})
+
+	with open(os.path.join(ergpath,'actparms.dat'),'r') as infile:
+		content = infile.read().splitlines()
+
+	sumID = 0
+	all_data[test]['statevec'] = OrderedDict([('iterations',{})])
+	for line in content:
+		line = line.strip().split()
+		try:
+			it = int(line[0])
+		except ValueError:
+			try:
+				all_data[test]['statevec'][line[0]] = int(line[1])
+			except ValueError:
+				all_data[test]['statevec'][" ".join(line[:-1])] = int(line[-1])
+			if 'apo' in line:
+				AKapoID = sumID
+			elif 'phase' in line:
+				AKphaseID = sumID
+			sumID += int(line[-1])			
+		else:
+			all_data[test]['statevec']['iterations'][it] = np.array(line[1:]).astype(np.float)
+
+	with open(os.path.join(ergpath,'kernel.dat'),'r') as infile:
+		content = infile.read().splitlines()
+
+	content = np.array([line.split() for line in content]).astype(np.float)
+
+	points = AKphaseID-AKapoID
+
+	all_data[test]['AK'] = {'x':[all_data[test]['ME']['x'] for i in range(points)],'AKapo':content[AKapoID:AKapoID+points,AKapoID:AKapoID+points].tolist(),'AKphase':content[AKphaseID:AKphaseID+points,AKphaseID:AKphaseID+points].tolist()}
+
+	curdoc().select_one({"name":"AKapo_line"}).data_source.data.update(all_data[test]['AK'])
+	curdoc().select_one({"name":"AKphase_line"}).data_source.data.update(all_data[test]['AK'])
+
+	AKapo_fig.title.text = 'AK apo; DOFS = {:5.3f}'.format(np.sum(np.diag(all_data[test]['AK']['AKapo'])))
+	AKphase_fig.title.text = 'AK phase; DOFS = {:5.3f}'.format(np.sum(np.diag(all_data[test]['AK']['AKphase'])))
 
 	###############################
 	###############################
@@ -969,7 +1014,7 @@ def update_colors():
 def change_spectrum():
 	'''
 	callback for the spectrum buttons in 'button_box'
-	update the plots in 'spec_grid' to correspond to the desired spectrum
+	update the plots in 'ils_fits_grid' to correspond to the desired spectrum
 	'''
 	global all_data, ignore_spec
 
@@ -986,6 +1031,7 @@ def change_spectrum():
 	all_data['prev_clicks'] = [i for i in all_data['cur_clicks']]
 
 	curdoc().select_one({"name":"cur_spec_div"}).text = "<font size=3 color='teal'><b>{}</b></font>".format(test)
+	curdoc().select_one({"name":"cur_spec_div2"}).text = "<font size=3 color='teal'><b>{}</b></font>".format(test)
 	
 	# Select microwindow and residuals figures
 	mw_fig = curdoc().select_one({"name":"mw_fig"})
@@ -994,14 +1040,24 @@ def change_spectrum():
 	cur_MW = mw_fig.title.text.split()[1]	
 	# Update titles
 	resid_fig.title.text = 'RMS = '+all_data[test]['rms_resid_mw'+cur_MW]
-	# Get ILS and microwindow data for the new spectrum
+	# Get ILS, microwindow, and averaging kernel data for the new spectrum
 	new_mw_data =  all_data[test]['mw'+cur_MW]
 	new_ILS_data =  all_data[test]['ILS']
+	new_ak_data = all_data[test]['AK']
+
 	# Update lines
 	curdoc().select_one({"name":"meas_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"calc_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"resid_line"}).data_source.data.update(new_mw_data)
 	curdoc().select_one({"name":"ILS_line"}).data_source.data.update(new_ILS_data)
+	curdoc().select_one({"name":"AKapo_line"}).data_source.data.update(new_ak_data)
+	curdoc().select_one({"name":"AKphase_line"}).data_source.data.update(new_ak_data)
+
+	# Update AK figure titles with DOFs
+	AKapo_fig = curdoc().select_one({"name":"AKapo_fig"})
+	AKphase_fig = curdoc().select_one({"name":"AKphase_fig"})
+	AKapo_fig.title.text = 'AK apo; DOFS = {:5.3f}'.format(np.sum(np.diag(new_ak_data['AKapo'])))
+	AKphase_fig.title.text = 'AK phase; DOFS = {:5.3f}'.format(np.sum(np.diag(new_ak_data['AKphase'])))
 
 	if not ignore_spec:
 		curdoc().select_one({"name":"spec_line"}).data_source.data.update(new_spec_data)
@@ -1283,6 +1339,7 @@ def doc_maker():
 	status_text = Div(text='<font size=2 color="teal"><b>Status:</b></font>',name="status_text")
 	status_div = Div(text='Select a spectrum',width=300,name="status_div") # will display information on app status
 	cur_spec_div = Div(text="<font size=3 color='teal'><b>Spectrum</b></font>",width=400,name="cur_spec_div") # will display the current spectrum
+	cur_spec_div2 = Div(text="<font size=3 color='teal'><b>Spectrum</b></font>",width=400,name="cur_spec_div2") # duplicate widget for the averaging kernels panel
 	suptitle = Div(text='<font size=5 color="teal"><b>Linefit 14.5</b></font>',width=150,name='suptitle') # big title displayed at the top of the webpage
 	# Loader gif
 	loader = Div(text="",width=40,height=40,name="loader")
@@ -1293,10 +1350,7 @@ def doc_maker():
 	dum_div2 = Div(text='',height=10,name="dum_div2")
 	dum_div3 = Div(text='',height=15,name="dum_div3")
 	# Separation lines
-	line_div = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div")
-	line_div2 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div2")
-	line_div3 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div3")
-	line_div4 = Div(text='<hr width="100%" color="lightblue">',width= 220,name="line_div4")
+	line_div,line_div2,line_div3,line_div4 = [linediv(width=220) for i in range(4)]
 
 	## FIGURES
 	# Modulation efficiency
@@ -1326,6 +1380,14 @@ def doc_maker():
 	resid_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	resid_fig.title.text = 'RMS = '
 
+	# Averaging kernels
+	AKapo_fig = figure(title='AK apo',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-1.1, end=1.1),y_range=DataRange1d(start=0,end=45),tools=TOOLS,active_drag="box_zoom",name="AKapo_fig")
+	AKphase_fig = figure(title='AK phase',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-1.1, end=1.1),y_range=DataRange1d(start=0,end=45),tools=TOOLS,active_drag="box_zoom",name="AKphase_fig")
+	AKapo_fig.xaxis.axis_label = 'AK'
+	AKapo_fig.yaxis.axis_label = 'OPD'
+	AKphase_fig.xaxis.axis_label = 'AK'
+	AKphase_fig.yaxis.axis_label = 'OPD'	
+
 	if not ignore_spec:
 		# Spectrum
 		spec_fig = figure(title='Spectrum,',plot_width=800,plot_height=360,min_border_left=80,min_border_bottom=50,min_border_right=30,tools=TOOLS,active_drag="box_zoom",name="spec_fig")
@@ -1337,6 +1399,7 @@ def doc_maker():
 	## SOURCES
 	ILS_source = ColumnDataSource(data={'x':[],'y':[]})
 	mw_source = ColumnDataSource(data={'x':[],'meas':[],'calc':[],'resid':[]})
+	ak_source = ColumnDataSource(data={'x':[],'AKapo':[],'AKphase':[]})
 
 	## LINES
 	# Microwindows
@@ -1348,6 +1411,9 @@ def doc_maker():
 	resid_fig.line(x='x',y='resid',color='black',source=mw_source,name="resid_line")
 	# ILS
 	ILS_fig.line(x='x',y='y',source=ILS_source,name="ILS_line")
+	# AK
+	AKapo_fig.multi_line(xs='AKapo',ys='x',source=ak_source,name="AKapo_line")
+	AKphase_fig.multi_line(xs='AKphase',ys='x',source=ak_source,name="AKphase_line")
 
 	## LEGEND
 	dum_fig = figure(plot_width=265,plot_height=850,outline_line_alpha=0,toolbar_location=None,name='dum_fig')
@@ -1365,21 +1431,28 @@ def doc_maker():
 	mw_grid = gridplot([[mw_fig],[resid_fig]],toolbar_location=None)
 	# Subgrid2 with the ILS figure and the mw_grid subgrid 
 	if ignore_spec:
-		spec_grid = gridplot([[ILS_fig,mw_grid]],toolbar_location='left')
+		ils_fits_grid = gridplot([[ILS_fig,mw_grid]],toolbar_location='left')
 	else:
-		spec_grid = gridplot([[ILS_fig,mw_grid],[spec_fig]],toolbar_location='left')
-	# Grid with the 'cur_spec_div', the buttons for microwindows and the 'spec_grid'
-	diag_grid = gridplot([[cur_spec_div],[MW_buttons],[spec_grid]],toolbar_location=None)
-	# Panel for the diag_grid
-	diag_panel = Panel(child=diag_grid,title='ILS and fits',name="diag_panel")
+		ils_fits_grid = gridplot([[ILS_fig,mw_grid],[spec_fig]],toolbar_location='left')
+	# Grid with the 'cur_spec_div', the buttons for microwindows and the 'ils_fits_grid'
+	ils_fits_grid = gridplot([[cur_spec_div],[MW_buttons],[ils_fits_grid]],toolbar_location=None)
+	# Panel for the ils_fits_grid
+	ils_fits_panel = Panel(child=ils_fits_grid,title='ILS and fits',name="ils_fits_panel")
 
-	# put the diag_panel and MEPECOL_panel in a Tabs() object
-	final = Tabs(tabs=[MEPECOL_panel,diag_panel],width=920,name='final')
+	# Grid for the ME and phase averaging kernels
+	ak_grid = gridplot([[AKapo_fig,AKphase_fig]],toolbar_location='left')
+	ak_grid = gridplot([[cur_spec_div2],[ak_grid]],toolbar_location=None)
+
+	# Panel of the ak_grid
+	ak_panel = Panel(child=ak_grid,title='Averaging kernels')
+
+	# put the ils_fits_panel and MEPECOL_panel in a Tabs() object
+	final = Tabs(tabs=[MEPECOL_panel,ils_fits_panel,ak_panel],width=920,name='final')
 
 	# put all the widgets in a widget box
 	widget_box = widgetbox(space_div,refresh_button,session_input,load_button,line_div,dum_div,spec_input,dum_div2,reg_input,line_div2,lft_button,line_div4,save_input,save_button,line_div3,loop_input,loop_button,dum_div3,loader,status_text,status_div,css_classes=['side_widgets'],name="widget_box")
 
-	# empty widget box. After linefit is run, it will be filled with buttons that select the spectrum to be displayed in the diag_panel
+	# empty widget box. After linefit is run, it will be filled with buttons that select the spectrum to be displayed in the ils_fits_panel
 	button_box = Column(children=[widgetbox(width=255)],name='button_box')
 
 	# put the widget_box in a grid
