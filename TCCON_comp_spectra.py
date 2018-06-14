@@ -111,6 +111,7 @@ colors = {
 		'ao2':'purple',
 		'bo2':'purple',
 		'0o2':'green',
+		'o3':'firebrick',
 		'solar':'goldenrod',
 		'other':'salmon',
 		}
