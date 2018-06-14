@@ -104,8 +104,11 @@ The merged file can then be loaded from the browser.
 ### DISCLAIMER ###
 
 DISCLAIMER: if any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is
+
 The app may hang if there is any convergence problem, or if a significant spectral detuning is detected.
+
 There will be more detailed outputs in the terminal than in the browser.
+
 If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the temp.dat line of the spectrum:
 
 	spectrumfilename1,temperature1,apt_size1,spectral_detuning1
