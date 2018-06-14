@@ -1,12 +1,37 @@
 # README #
 
-This app requires python 2.7.x (not tested with python 3.x) with bokeh 0.12.10 (not yet tested with latest versions) and netCDF4 installed.
+This app requires python 2.7.x (not tested with python 3.x) with bokeh and netCDF4 installed.
 It also uses the parse package.
 
 	Bokeh: https://bokeh.pydata.org/en/latest/docs/installation.html
 	netCDF4: http://unidata.github.io/netcdf4-python/
 
+### Python ###
+
+I suggest downloading python from https://www.anaconda.com/download/
+Choose your operating system and get Python2.7
+
+To install bokeh use the command (with windows you need to run the terminal as administator):
+
+	conda install -c bokeh bokeh
+
+To install netCDF4:
+
+	conda install netCDF4
+
+If the "conda" command does not find the package, you can also use pip:
+
+	pip install PackageName
+
+If you encounter error messages related to bokeh when running the app, you can try to revert to an earlier version of the package with:
+
+	conda install bokeh=0.12.10
+
 ### How to use this app ###
+
+This does not yet read OPUS files.
+
+.dpt (data point table) files can be generated in OPUS via the pop-up window generated with "Save as" 
 
 - Put the lft_app folder in the linefit/lft145/ directory
 - Spectrum file names need to follow this naming convention: YYMMDD_site_cell_X_MOPD_num.dpt
@@ -21,27 +46,31 @@ It also uses the parse package.
 
 - For several tests in one day : 161122_eu_HCl_45_e_0.dpt, 161122_eu_HCl_45_e_1.dpt etc.
 - Spectra in .DPT format, with no headers, must be placed in lft_app/spectra/cut (cut the spectra, e.g. between ~5200-5900 wavenumbers for HCl cells)
-- In lft_app/spectra/cut/temp write the spectrum filename, scanner temperature, and aperture size
+- In lft_app/spectra/cut/temp.dat write the spectrum filename, scanner temperature, and aperture size. A 4th optional parameter can be added if the spectrum has a significant spectral detuning (see DISCLAIMER below).
 	
 		spectrumfilename1,temperature1,apt_size1
-		spectrumfilename2,temperature2,apt_size2
+		spectrumfilename2,temperature2,apt_size2,spectral_detuning2
 		etc.
 	
-- In lft_app/cell_data.py, add your cell information (follow the template)
+- In lft_app/lft_setup.py, add your cell information and the Focal Length of Collimator of your instrument (follow the template)
 
-- Run the app from the linefit/lft145/ directory with the command
+- To run the app, navigate to the linefit/lft145/ directory in your terminal and use the command
 
 	bokeh serve --show lft_app
+
+The --show option will pop up the browser.
 
 While the server is running, the app will be available in the browser at localhost:5006/lft_app
 
 - Python dictionaries of the data are saved in lft_app/saved_sessions/
-- PDF documents with all the plots are saved in lft_app/pdf/
+- PDF documents with the plots are saved in lft_app/pdf/
 
 By default the spectrum itself will be plotted in the browser and also saved in the data dictionary.
 This can lead to very large files and more loading time. To avoid this the app can be run in light mode with:
 
 	bokeh serve --show lft_app --args light
+
+There are two example spectra from Eureka in lft_app/spectra/cut/
 
 ### Rationg of spectra ###
 
@@ -67,7 +96,9 @@ Spectra should be ratioed to ~1 to be used with the linefit extended mode:
 ### Other info ###
 
 N2O and HBr cell spectra are processed in a loop until the cell pressure converges; this usually take 2-3 linefit runs.
+
 The python dictionaries saved in lft_app/saved_sessions/ can be merged with a utility program lft_app/utils/merge_sessions.py
+
 The merged file can then be loaded from the browser.
 
 ### DISCLAIMER ###
