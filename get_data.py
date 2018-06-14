@@ -243,8 +243,10 @@ def download_merradap(urllistpath,outpath,subdict={}):
 	else:
 		subsest_dataset_list = dataset_list
 
-	# name of files that will be saved in outpath
+	return subsest_dataset_list
 
+	# to_netcdf does not work directly on the datasets ...
+	# name of files that will be saved in outpath
 	filename_list = [i.split('/')[-1] for i in url_list]
 	print 'Downloading files:'
 	for i,dataset in enumerate(subsest_dataset_list):
