@@ -184,16 +184,24 @@ for spec_ID,spectrum in enumerate(select_spectra):
 		# spectrum figure 
 		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
 		# residual figure
-		fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-3,3),active_inspect=[],active_drag="box_zoom")
+		fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-1,1),active_inspect=[],active_drag="box_zoom")
 		
 		save_figs[spectrum[0]] = [fig,fig_resid]
 	else:
 		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
 		fig_resid = figure(plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range,active_inspect=[],active_drag="box_zoom")
 	# axes labels
-	fig_resid.xaxis.axis_label = 'Wavenumber (cm-1)'
+	fig_resid.xaxis.axis_label = u'Wavenumber (cm\u207B\u00B9)'
 	fig_resid.yaxis.axis_label = '% Residuals'
+	fig_resid.xaxis.axis_label_text_font_size = "12pt"
+	fig_resid.xaxis.axis_label_text_font_size = "12pt"
+	fig_resid.xaxis.major_label_text_font_size = "12pt"
+	fig_resid.yaxis.axis_label_text_font_size = "12pt"
+	fig_resid.yaxis.major_label_text_font_size = "12pt"
 	fig.yaxis.axis_label = 'Transmittance'
+	fig.yaxis.axis_label_text_font_size = "12pt"
+	fig.yaxis.major_label_text_font_size = "12pt"
+	fig.xaxis.major_label_text_font_size = "12pt"
 
 	# group of checkboxes that will be used to toggle line and HoverTool visibility
 	checkbox = CheckboxGroup(labels=header[3:]+['Measured','Calculated'],active=N_plots,width=200)
@@ -230,7 +238,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(residuals))],color='white',visible=False,alpha=0)
-	fig_resid_legend=Legend(items=[('               ',[dummy])],location=(0,0),border_line_alpha=0)
+	fig_resid_legend=Legend(items=[('                 ',[dummy])],location=(0,0),border_line_alpha=0)
 	fig_resid.add_layout(fig_resid_legend,'right')
 	
 	# checkbox group callback
