@@ -14,7 +14,22 @@ Public TCCON files can be downloaded from http://tccon.ornl.gov/
 
 	- While the server is running, the app will be available in the browser at localhost:5006/tccon_app
 
-For private TCCON files there are 1200+ variables. I only make a subset of those available for selection in the variable dropdown widgets.
-You can access more variables by editing the 'skip_list' list at the top of the main.py program.
+## init.py ##
 
-This code can read from any .eof.csv files. So it can also plot data from an EM27. You just need to add the appropriate key:value pairs to the T_FULL and T_LOC dictionaries in init.py
+For private TCCON files there are 1200+ variables. I only make a subset of those available for selection in the variable dropdown widgets.
+You can access more variables by editing the 'skip_list' list in the init.py program
+
+This code can read from any .eof.csv files.
+
+You just need to add the appropriate key:value pairs to the T_FULL and T_LOC dictionaries in init.py
+
+# cache #
+
+By default the program will cache data corresponding to specific sets of inputs to make loading faster.
+
+This is not useful when using netcdf files, to disable the caching just set cache_max_size to 0 in init.py
+
+
+## Contact ##
+
+sebastien.roche@mail.utoronto.ca
