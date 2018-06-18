@@ -93,8 +93,8 @@ ordered_site_list = ['']+sorted([T_FULL[i] for i in prefix_list])
 ## FIGURES SETUP
 
 site_input = Select(title='Site:',options = ordered_site_list,width=220,css_classes=['first_site']) # dropdown widget to select the TCCON site
-date_input = TextInput(title='start-end (yyyymmdd):',width=220,css_classes=['date_input']) # text input widget to specify dates between which data should be fetched
-flag_input = TextInput(title='Flag (an integer):',value='',width=130,css_classes=['flag_input']) # text input widget to specify the flag of the data to show
+date_input = TextInput(title='start-end (yyyymmdd):',width=150,css_classes=['date_input']) # text input widget to specify dates between which data should be fetched
+flag_input = TextInput(title='Flag (an integer):',value='',width=150,css_classes=['flag_input']) # text input widget to specify the flag of the data to show
 load_button = Button(label='Load Data',width=100,css_classes=['custom_button']) # this button will be used to start updating the plots according to the user inputs
 
 if layout_mode == 'comp':
@@ -307,34 +307,6 @@ setTimeout(function(){
 
 txt.text = "";
 """
-
-# in 'comp' mode, each plot has a different hover tool, I hide them and this button will click them all at once.
-hover_button_code="""
-if(cb_obj.button_type.includes("success")){
-cb_obj.button_type = 'warning';
-cb_obj.label = 'Disable hover tools'
-} else {
-	
-cb_obj.button_type = 'success';
-cb_obj.label= 'Enable hover tools';
-}
-
-var toolbar_list = document.getElementsByClassName("bk-toolbar-box");
-if(toolbar_list.length>1){
-	for(i=0;i<toolbar_list.length;i++){
-		if(toolbar_list[i].textContent.includes("Hover")){}
-	}
-}
-
-var toolbar_button_list = document.getElementsByClassName("bk-toolbar-button");
-if(toolbar_button_list.length>1){
-	for(i=0;i<toolbar_button_list.length;i++){
-		if(toolbar_button_list[i].textContent.includes("Hover")){toolbar_button_list[i].click()}
-	}
-}
-"""
-hover_button = Button(label='Enable hover',button_type='success',width=140,css_classes=["hover_button"])
-hover_button.callback = CustomJS(code=hover_button_code)
 
 ## END OF TOOLS SETUP
 #################################################################################
@@ -1236,25 +1208,34 @@ center_button.on_click(center) # assign the callback function to the button
 
 if layout_mode == 'comp':
 
+	figroup = gridplot([[fig],[fig2],[fig3,fig4]],toolbar_location='left')
+
+	hover_list = [i for i in figroup.select({"type":HoverTool})]
+
+	# in 'comp' mode, each plot has a different hover tool, I hide them and this button will click them all at once.
+	hover_button_code="""
+	if(cb_obj.button_type.includes("success")){
+	cb_obj.button_type = 'warning';
+	cb_obj.label = 'Disable hover tools'
+	} else {
+	cb_obj.button_type = 'success';
+	cb_obj.label= 'Enable hover tools';
+	}
+	"""+''.join(["hover{}.active = !hover{}.active;".format(i,i) for i in range(len(hover_list))])
+	hover_button = Button(label='Enable hover',button_type='success',width=140,css_classes=["hover_button"])
+	hover_button.callback = CustomJS(args={'hover{}'.format(i):elem for i,elem in enumerate(hover_list)},code=hover_button_code)
+
 	#add reset events
 	for curfig in [fig,fig2,fig3,fig4]:
 		curfig.js_on_event(Reset,CustomJS(args={'txt':select_div},code="txt.text='no data selected';"))
 
-	figrid = gridplot([[fig],[fig2]], toolbar_location = 'above') # time series plots
-	figrid2 = gridplot([[fig3,fig4]], toolbar_location = 'above') # correlation plots
-
-	for curgrid in [figrid,figrid2]:
-		curgrid.children[0].merge_tools = False # need to do that due to a bug in bokeh 0.12.6 that prevent gridplot to display the HoverTool in the toolbar
-		curgrid.children[0].tools = [i for i in curgrid.children[0].tools if type(i)==bokeh.models.tools.HoverTool]
-		curgrid.children[0].css_classes = ['hover_bar']
-
 	dumdiv2 = Div(text='',width=50) # dummy div for spacing
+
 	if not public:
 		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[duplicate_button],[linediv()],[date_input,flag_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 	else:
 		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv()],[date_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 
-	figroup = gridplot([[figrid],[figrid2]],toolbar_location='left')
 elif layout_mode == 'simple':
 
 	fig.js_on_event(Reset,CustomJS(args={'txt':select_div},code="txt.text='no data selected';"))
