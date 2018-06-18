@@ -18,13 +18,16 @@ label {
 	color:plum;
 }
 
-.date_input input {
-	width:160px;
+.flag_input {
+	margin-left:50px;
 }
 
 .date_input label, .flag_input label {
 	color:teal;
-	font-weight: bold;
+}
+
+.date_input input {
+	width:160px;
 }
 
 .flag_input input {
