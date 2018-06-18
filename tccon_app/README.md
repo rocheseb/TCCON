@@ -1,6 +1,6 @@
 ### README ###
 
-This app requires python 2.7.x (not tested with python 3.x) and bokeh 0.12.10 and netCDF4 installed.
+This app requires python 2.7.x (not tested with python 3.x) and bokeh (tested up to 0.12.16) and netCDF4 installed.
 
 	https://bokeh.pydata.org/en/latest/docs/installation.html
 
