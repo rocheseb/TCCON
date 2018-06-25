@@ -84,32 +84,58 @@ def load_spectrum():
 	if (spectrum == ""):
 		return
 
+	cur_path = curdoc().select_one({"name":"path_input"}).value
+
 	#read the spectrum file
 	if spectrum not in spt_data.keys():
-		spt_data[spectrum] = read_spt(os.path.join(spec_path,spectrum))
+		spt_data[spectrum] = read_spt(os.path.join(cur_path,spectrum))
 
 	spt_data['cur_spec'] = spectrum
 
 	doc_maker()
+
+def update_spec_path(attr,old,new):
+	"""
+	changes the path to the spectra
+	"""
+	global custom_path
+
+	custom_path = new
+
+	select_spectrum = curdoc().select_one({"name":"select_spectrum"})
+
+	if not os.path.isdir(custom_path):
+		print "The given path is not an existing directory\nReverting to default spectrum folder"
+		select_spectrum.options = ['']+os.listdir(spec_path)
+	else:
+		select_spectrum.options = ['']+os.listdir(custom_path)
 
 def doc_maker():
 	'''
 	make the whole document
 	'''
 
-	global spt_data
+	global spt_data, custom_path
 
 	curdoc().clear() # removes everything in the current document
 
 	# dropdown to select a spectrum
 	select_spectrum = Select(title="Select a spectrum:",value='',options=['']+os.listdir(spec_path),name="select_spectrum",width=200)
 
+	# textinput to give the full path to the location of spectra
+	path_input = TextInput(title='Spectra folder',width=200,name="path_input")
+	path_input.on_change('value',update_spec_path)
+
 	# button to load the spectrum selected in the 'select_spectrum' dropdown
 	load_button = Button(label='Load spectrum',width=200,css_classes=["custom_button"])
 	load_button.on_click(load_spectrum)
 
 	if spt_data == {}:
-		curdoc().add_root(widgetbox(select_spectrum,load_button))
+		curdoc().add_root(widgetbox(path_input,select_spectrum,load_button))
+		if custom_path:
+			path_input.value = custom_path
+		else:
+			path_input.value = spec_path
 		return
 
 	spectrum = spt_data['cur_spec']
@@ -203,20 +229,27 @@ def doc_maker():
 	outfile.write(file_html(grid,CDN,spectrum[:12]+spectrum[-3:]))
 	outfile.close()	
 
-	group=widgetbox(clear_button,check_button,select_spectrum,load_button,width=200)
+	group=widgetbox(clear_button,check_button,path_input,select_spectrum,load_button,width=200)
 
 	app_grid = gridplot([[sub_grid,group]],toolbar_location=None)
 
 	# add that grid to the document
 	curdoc().add_root(app_grid)
 
+	if custom_path:
+		path_input.value = custom_path
+	else:
+		path_input.value = spec_path
+
 #############
 #   Setup   #
 #############
 
 app_path = os.path.dirname(__file__) # full path to spectra_app
-spec_path = os.path.join(app_path,'spectra') # spectra_app/spectra
+spec_path = os.path.join(app_path,'spectra') # spectra_app/spectra ; default fodler to look for spectra
 save_path = os.path.join(app_path,'save') # spectra_app/save
+
+custom_path = '' # optional user specified path to the spectra
 
 TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures
 
