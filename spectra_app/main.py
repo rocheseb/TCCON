@@ -176,11 +176,11 @@ def doc_maker():
 			print('KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
-		#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 
 	# adding the measured spectrum
 	plots.append(fig.line(x=freq,y=tm,color='black',line_width=2,name='Tm'))
-	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+	fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Tm'],tooltips=OrderedDict( [('name','Measured'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 	
 	# adding the calculated spectrum
 	plots.append(fig.line(x=freq,y=tc,color='chartreuse',line_width=2,name='Tc'))
@@ -195,7 +195,7 @@ def doc_maker():
 	# now the residual figure
 	fig_resid.line(x=freq,y=residuals,color='black',name='residuals')
 	fig_resid.line(x=freq,y=np.zeros(len(freq)),color='red')
-	#fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($x{0.00} ; $y{0.000})'}))
+	fig_resid.add_tools(HoverTool(mode='vline',line_policy='prev',names=['residuals'],tooltips={'index':'$index','(x;y)':'($x{0.00} ; $y{0.000})'}))
 
 	# set up a dummy legend for the residual figure so that it aligns with the spectrum figure
 	dummy = fig_resid.line(x=freq,y=[0 for i in range(len(freq))],color='white',visible=False,alpha=0)
@@ -216,20 +216,36 @@ def doc_maker():
 	check_button = Button(label='Show all lines',width=200)
 	check_button_code = """checkbox.active="""+str(N_plots)+""";"""+checkbox_code
 	check_button.callback = CustomJS(args={key: value for key,value in checkbox_iterable}, code=check_button_code)
-	
-	# put all the widgets in a box
-	group=widgetbox(clear_button,check_button,width=200,name="group")
 
 	sub_grid = gridplot([[fig],[fig_resid]],toolbar_location="left")
 
+	# button to activate/deactivate hover tools
+	hover_button = Button(label='Enable hover tools',button_type='success',width=200)
+	hover_list = [i for i in sub_grid.select({"type":HoverTool})]
+	# in 'comp' mode, each plot has a different hover tool, I hide them and this button will click them all at once.
+	hover_button_code="""
+	if(cb_obj.button_type.includes("success")){
+	cb_obj.button_type = 'warning';
+	cb_obj.label = 'Disable hover tools'
+	} else {
+	cb_obj.button_type = 'success';
+	cb_obj.label= 'Enable hover tools';
+	}
+	"""+''.join(["hover{}.active = !hover{}.active;".format(i,i) for i in range(len(hover_list))])
+	hover_button.callback = CustomJS(args={'hover{}'.format(i):elem for i,elem in enumerate(hover_list)},code=hover_button_code)
+
+	# put all the widgets in a box
+	group=widgetbox(clear_button,check_button,hover_button,width=200,name="group")
+
+	# the final grid for static plots
 	grid = gridplot([[sub_grid,group]],toolbar_location=None)
-	
+
 	# save a standalone html document in spectra_app/save
 	outfile=open(os.path.join(save_path,spectrum+'.html'),'w')
 	outfile.write(file_html(grid,CDN,spectrum[:12]+spectrum[-3:]))
 	outfile.close()	
 
-	group=widgetbox(clear_button,check_button,path_input,select_spectrum,load_button,width=200)
+	group=widgetbox(clear_button,check_button,hover_button,path_input,select_spectrum,load_button,width=200)
 
 	app_grid = gridplot([[sub_grid,group]],toolbar_location=None)
 
