@@ -102,6 +102,7 @@ from bokeh.io import curdoc
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Panel, Tabs, Legend, DataRange1d, RadioButtonGroup, Legend
 from bokeh.layouts import gridplot, widgetbox, Column, Row
+from bokeh.palettes import viridis
 
 # special arrays with special functions for easier vectorized operations
 import numpy as np
@@ -869,10 +870,17 @@ def linefit_results(spectrum,colo):
 
 	points = AKphaseID-AKapoID
 
-	all_data[test]['AK'] = {'x':[all_data[test]['ME']['x'] for i in range(points)],'AKapo':content[AKapoID:AKapoID+points,AKapoID:AKapoID+points].tolist(),'AKphase':content[AKphaseID:AKphaseID+points,AKphaseID:AKphaseID+points].tolist()}
+	all_data[test]['AK'] = {
+							'x':[all_data[test]['ME']['x'] for i in range(points)],
+							'AKapo':content[AKapoID:AKapoID+points,AKapoID:AKapoID+points].tolist(),
+							'AKphase':content[AKphaseID:AKphaseID+points,AKphaseID:AKphaseID+points].tolist(),
+							'opd':all_data[test]['ME']['x'],
+							'fix':[-0.7 for i in range(points)],
+							'color':viridis(points),
+							}
 
-	curdoc().select_one({"name":"AKapo_line"}).data_source.data.update(all_data[test]['AK'])
-	curdoc().select_one({"name":"AKphase_line"}).data_source.data.update(all_data[test]['AK'])
+	for elem in ["AKapo_line","AKphase_line","AKapo_scatter","AKphase_scatter"]:
+		curdoc().select_one({"name":elem}).data_source.data.update(all_data[test]['AK'])
 
 	AKapo_fig.title.text = 'AK apo; DOFS = {:5.3f}'.format(np.sum(np.diag(all_data[test]['AK']['AKapo'])))
 	AKphase_fig.title.text = 'AK phase; DOFS = {:5.3f}'.format(np.sum(np.diag(all_data[test]['AK']['AKphase'])))
@@ -1379,14 +1387,12 @@ def doc_maker():
 	resid_fig.yaxis.axis_label = '% Residuals'
 	resid_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	resid_fig.title.text = 'RMS = '
-
 	# Averaging kernels
-	AKapo_fig = figure(title='AK apo',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-1.1, end=1.1),y_range=DataRange1d(start=0,end=45),tools=TOOLS,active_drag="box_zoom",name="AKapo_fig")
-	AKphase_fig = figure(title='AK phase',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-1.1, end=1.1),y_range=DataRange1d(start=0,end=45),tools=TOOLS,active_drag="box_zoom",name="AKphase_fig")
-	AKapo_fig.xaxis.axis_label = 'AK'
-	AKapo_fig.yaxis.axis_label = 'OPD'
-	AKphase_fig.xaxis.axis_label = 'AK'
-	AKphase_fig.yaxis.axis_label = 'OPD'	
+	AKapo_fig = figure(title='AK apo',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-0.8,end=1.1),tools="box_select,tap,box_zoom",active_drag="box_select",name="AKapo_fig")
+	AKphase_fig = figure(title='AK phase',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=AKapo_fig.x_range,y_range=AKapo_fig.y_range,tools="box_select,tap,pan,box_zoom,wheel_zoom,redo,undo,save",active_drag="box_select",name="AKphase_fig")
+	for elem in [AKapo_fig,AKphase_fig]:
+		elem.xaxis.axis_label = 'AK'
+		elem.yaxis.axis_label = 'OPD'
 
 	if not ignore_spec:
 		# Spectrum
@@ -1397,9 +1403,9 @@ def doc_maker():
 		spec_fig.line(x='x',y='y',source=spec_source,name="spec_line")
 	
 	## SOURCES
-	ILS_source = ColumnDataSource(data={'x':[],'y':[]})
-	mw_source = ColumnDataSource(data={'x':[],'meas':[],'calc':[],'resid':[]})
-	ak_source = ColumnDataSource(data={'x':[],'AKapo':[],'AKphase':[]})
+	ILS_source = ColumnDataSource(data={'x':[],'y':[]},name="ILS_source")
+	mw_source = ColumnDataSource(data={'x':[],'meas':[],'calc':[],'resid':[]},name="mw_source")
+	ak_source = ColumnDataSource(data={'x':[],'AKapo':[],'AKphase':[],'opd':[],'fix':[],'color':[]},name="ak_source")
 
 	## LINES
 	# Microwindows
@@ -1412,9 +1418,11 @@ def doc_maker():
 	# ILS
 	ILS_fig.line(x='x',y='y',source=ILS_source,name="ILS_line")
 	# AK
-	AKapo_fig.multi_line(xs='AKapo',ys='x',source=ak_source,name="AKapo_line")
-	AKphase_fig.multi_line(xs='AKphase',ys='x',source=ak_source,name="AKphase_line")
-
+	AKapo_fig.multi_line(xs='AKapo',ys='x',color='color',source=ak_source,name="AKapo_line")
+	AKphase_fig.multi_line(xs='AKphase',ys='x',color='color',source=ak_source,name="AKphase_line")
+	AKapo_fig.scatter(x='fix',y='opd',color='color',source=ak_source,name="AKapo_scatter")
+	AKphase_fig.scatter(x='fix',y='opd',color='color',source=ak_source,name="AKphase_scatter")
+	
 	## LEGEND
 	dum_fig = figure(plot_width=265,plot_height=850,outline_line_alpha=0,toolbar_location=None,name='dum_fig')
 	dum_fig.x_range.end = 1005
