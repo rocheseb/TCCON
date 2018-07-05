@@ -72,11 +72,10 @@ Spectra should be ratioed to ~1 to be used with the linefit extended mode:
 	- it will be ratioed with its own average to normalize it to ~ 1
 
 DISCLAIMER: if any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is
-The app may hang if there is any convergence problem, or if a significant spectral detuning is detected.
+The app may hang if there is any convergence problem.
 There will be more detailed outputs in the terminal than in the browser.
-If a significant spectral detuning is detected. Run linefit from the terminal, notice the value of spectral residuals given after the warning, and add it to the temp.dat line of the spectrum:
 
-spectrumfilename1,temperature1,apt_size1,spectral_detuning1
+spectrumfilename1,temperature1,apt_size1
 
 '''
 ####################
@@ -141,18 +140,6 @@ def correct_column(P,T,l=0.1):
 	Tin = float(T)
 	Pin = float(P)
 	return 7.243e24*Pin*l/Tin
-
-def execute(cmd):
-        '''
-        Function to execute a prompt command and print the output as it is produced
-        '''
-        popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
-        for stdout_line in iter(popen.stdout.readline, ""):
-            yield stdout_line
-        popen.stdout.close()
-        return_code = popen.wait()
-        if return_code:
-            raise subprocess.CalledProcessError(return_code, cmd)
 
 def linediv(color='lightblue',width=400):
 	"""
@@ -293,6 +280,38 @@ all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' wi
 # Main functions #
 ##################
 
+def execute(cmd):
+	'''
+	Function to execute a prompt command and print the output
+	'''
+	popen = subprocess.Popen(cmd,stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+	output,err = popen.communicate(input="0\n")
+	return_code = popen.wait()
+	if return_code:
+		raise subprocess.CalledProcessError(return_code, cmd)
+	print(output)
+
+	output = output.splitlines()
+	if "stop program" in output[-1]:
+		spectral_detuning = float(output[-2])
+		status_div = curdoc().select_one({"name":"status_div"})
+		
+		status_div.text+='<br>- Spectral detuning detected: {:9.2e}'.format(spectral_detuning)
+		status_div.text+='<br>- Rerun linefit with spectral detuning corrected'
+
+		input_file = os.path.join(wdir,'lft14.inp')
+		with open(input_file,'r') as infile:
+			content = infile.readlines()
+
+		for i,line in enumerate(content):
+			if ".true.,1.0" in line:
+				content[i] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
+
+		with open(input_file,'w') as outfile:
+			outfile.writelines(content)
+
+		execute(cmd)
+
 def busy(func):
 	'''
 	Decorator function to display a loading animation when the program is working on something
@@ -346,15 +365,9 @@ def get_inputs(spectrum):
 	temperature = float(line[1]) # scanner temperature in Kelvin
 	APT = float(line[2]) # aperture diameter in millimeters
 
-	# check for spectral detuning
-	try:
-		spectral_detuning = float(line[3])
-	except IndexError:
-		spectral_detuning = None
+	return site,cell,str(MOPD),APT,temperature,window_list
 
-	return site,cell,str(MOPD),APT,temperature,window_list,spectral_detuning
-
-def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectral_detuning):
+def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list):
 	'''
 	Update the linefit input file to correspond to the selected spectrum and regularisation factor.
 	For each site, the cell information must be added to the cell_data.py file
@@ -406,13 +419,6 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 				newcol = cell_map[cell][site]['h37cl_column'] # uncomment to use the column from the TCCON wiki
 				print(newP,newcol)
 				content[i+8+N_windows+1] = fmt.format(temperature,newcol,newP,newP)  #change retrieval parameters for 2nd species (HCl37 for hcl cell)
-				# HCl 35 and HCl 37
-				if spectral_detuning: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
-					for j in range(1,N_windows+1):
-						content[i+8+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
-						content[i+8+N_windows+1+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
-						
-					curdoc().select_one({"name":"status_div"}).text+="<br>- Spectral detuning corrected"
 
 			elif 'gas cell parameters' in content[i]:
 				content[i+13] = '{:.2f}'.format(temperature)+'\n'
@@ -438,10 +444,6 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectr
 				newP = cell_map[cell][site]['pressure'] # uncomment to use the initial cell pressure
 				newcol = cell_map[cell][site]['column'] # uncomment to use the initial cell column
 				content[i+8] = fmt.format(temperature,newcol,newP,newP) #change retrieval parameters for HBr cell
-				if spectral_detuning: # for spectra not taken in vaccum, first run linefit from, commandline, then edit the spectral detuning value here
-					for j in range(1,N_windows+1):
-						content[i+8+j] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
-					curdoc().select_one({"name":"status_div"}).text+="<br>- Spectral detuning corrected"
 			elif 'gas cell parameters' in content[i]:
 				content[i+13] = '{:.2f}'.format(temperature)+'\n'
 			elif 'focal length of collimator' in content[i]:
@@ -510,7 +512,7 @@ def setup_linefit():
 		all_data['ID'] += -1
 		return
 
-	site,cell,MOPD,APT,temperature,window_list,spectral_detuning = get_inputs(spectrum)
+	site,cell,MOPD,APT,temperature,window_list = get_inputs(spectrum)
 
 	colo = check_colors(add_one=True)
 
@@ -528,7 +530,7 @@ def setup_linefit():
 
 	# update the input file; make sure that it modifies everything that you need !
 	# the regularisation factors are updated from the browser
-	modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list,spectral_detuning)
+	modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list)
 
 	run_linefit(cell)
 
@@ -579,8 +581,7 @@ def run_linefit(cell):
 
 	status_div.text+='<br>- Running linefit ...'
 	print('\n\t- Running linefit ...')
-	for line in execute(lft_command): # run linefit and print the output live
-		print(line, end="")
+	execute(lft_command)
 
 	if cell in ['n2o','hbr']:
 		iteration = 1
@@ -626,9 +627,8 @@ def run_linefit(cell):
 			# run a new iteration of linefit
 			status_div.text+='<br>- Running linefit iteration {}'.format(iteration)
 			print('\n\t- Running linefit iteration',iteration)
-			for line in execute(['lft145.exe']): # run linefit and print the output live
-				print(line, end="")
-
+			execute(lft_command)
+				
 		if conv:
 			print('\n\t- convergence after',iteration,'iterations')
 			status_div.text+='<br>- pressure converged'
