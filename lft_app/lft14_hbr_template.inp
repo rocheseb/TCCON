@@ -59,43 +59,19 @@ $
 number of microwindows (max. 26)
 
 $
-14
+{{N_windows}}
 1.0d-3
-(2590.32, 2590.72)
-(2590.71, 2591.11)
-(2605.60, 2606.00)
-(2606.00, 2606.40)
-(2620.39, 2620.79)
-(2620.80, 2621.20)
-(2634.70, 2635.10)
-(2635.10, 2635.50)
-(2648.50, 2648.90)
-(2648.90, 2649.30)
-(2661.76, 2662.16)
-(2662.18, 2662.58)
-(2674.52, 2674.92)
-(2674.94, 2675.34)
-
+{% for window in window_list -%}
+{{window}}\n
+{%- endfor %}
 
 
 deweighting regions for each MW
 
 $
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-0
-
+{% for window in window_list -%}
+0\n
+{%- endfor %}
 
 
 Resampling of measured spectra? (T/F)
@@ -116,21 +92,9 @@ measurement files (one for each microwindow)
 
 $
 0
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-HBr_Trans01.txt
-
+{% for window in window_list -%}
+{{spectrum}}\n
+{%- endfor %}
 
 
 species parameters:
@@ -141,78 +105,29 @@ species parameters:
         for each MW: take species into account(T/F),column scaling factor, spectral scaling factor of species - 1
 
 $
-298.35,.false.,1.2909e22,4.78,.false.,4.78,0.0075
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-.true.,1.0,0.0
-
+{{temperature}},.false.,{{column}},{{pressure}},.false.,{{pressure}},0.0075
+{% for window in window_list -%}
+.true.,1.0,0.0\n
+{%- endfor %}
 
 
 MW dependent parameters I: (first-guess values in case of retrieval)
     for each microwindow:
         number of baseline parameters, values of baseline parameters        
 $
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-2  1.0  1.0
-
+{% for window in window_list -%}
+2  1.0  1.0\n
+{%- endfor %}
 
 
 MW dependent parameters II: (first-guess values in case of retrieval)
     for each microwindow and species
         number of spectral abscissa parameters, values of spectral abscissa parameters ...
 $
-MW1
-1  0.0d0
-MW2
-1  0.0d0
-MW3
-1  0.0d0
-MW4
-1  0.0d0
-MW5
-1  0.0d0
-MW6
-1  0.0d0
-MW7
-1  0.0d0
-MW8
-1  0.0d0
-MW9
-1  0.0d0
-MW10
-1  0.0d0
-MW11
-1  0.0d0
-MW12
-1  0.0d0
-MW13
-1  0.0d0
-MW14
-1  0.0d0
-
+{% for MW in MW_list -%}
+{{MW}}
+1  0.0d0\n
+{%- endfor %}
 
 
 channeling (first-guess values in case of retrieval)
@@ -260,9 +175,9 @@ instrumental parameters:
 
 $
 1
-180.0
+{{maxopd}}
 .true.
-0.0013756
+{{maxir}}
 
 
 gas cell parameters:
@@ -278,7 +193,7 @@ gas cell parameters:
 
 $
 0
-294.05
+{{temperature}}
 1273.0
 0.98
 0.8
@@ -312,7 +227,7 @@ Reg Modulation (dev+smooth), Reg Phase (dev+smooth),reg T(dev)
 Reg column (dev+smooth, per species), reg spectral scale (mean, per species)
 
 $
-1.0e4,5.0,0.0,5.0,0.0
+1.0e4,{{regularisation}},0.0,{{regularisation}},0.0
 0.0,0.01,0.0
 0.0,0.01,0.0
 

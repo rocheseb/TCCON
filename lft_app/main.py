@@ -116,6 +116,9 @@ import matplotlib.backends.backend_pdf as mpl_pdf
 import parse
 import re
 
+# template for modifying input file
+from jinja2 import Template
+
 # color palettes for plots
 from bokeh.palettes import Viridis256,viridis
 
@@ -194,65 +197,65 @@ window_dict = {}
 
 # MIR microwindows for HCl
 window_dict['hcl_test'] = [
-				(2843.1,2844.1), # 1
-				#(2596.8,2597.8),
-				#(2625.2,2626.2),
-				(2862.5,2863.5), # 2
-				(2864.6,2865.6), # 3
-				(2903.6,2904.6), # 4
-				(2905.7,2906.7), # 5
-				(2923.2,2924.2), # 6
-				(2923.2,2924.2), # 7
-				(2923.2,2924.2), # 8
-				(2925.4,2926.4), # 9
-				(2960.6,2961.6), # 10
-				#(2962.8,2963.8), # 11
-				(3011.6,3012.6), # 12
-				(3013.9,3014.9), # 13
-				(3027.3,3028.3), # 14
-				#(3029.6,3030.6), # 15
+				'(2843.1,2844.1)', # 1
+				#'(2596.8,2597.8)',
+				#'(2625.2,2626.2)',
+				'(2862.5,2863.5)', # 2
+				'(2864.6,2865.6)', # 3
+				'(2903.6,2904.6)', # 4
+				'(2905.7,2906.7)', # 5
+				'(2923.2,2924.2)', # 6
+				'(2923.2,2924.2)', # 7
+				'(2923.2,2924.2)', # 8
+				'(2925.4,2926.4)', # 9
+				'(2960.6,2961.6)', # 10
+				#'(2962.8,2963.8)', # 11
+				'(3011.6,3012.6)', # 12
+				'(3013.9,3014.9)', # 13
+				'(3027.3,3028.3)', # 14
+				#'(3029.6,3030.6)', # 15
 				]
 
 # NIR microwindows for HCL
 window_dict['hcl'] = [	
-				(5683.0,5684.0), # 1 
-				(5687.1,5688.1), # 2
-				(5701.5,5702.5), # 3
-				(5705.6,5706.6), # 4
-				(5718.7,5719.7), # 5 
-				(5734.6,5735.6), # 6 
-				(5738.8,5739.8), # 7
-				(5749.3,5750.3), # 8
-				(5753.5,5754.5), # 9
-				(5762.7,5763.7), # 10
-				(5766.9,5767.9), # 11
-				(5774.8,5775.8), # 12
-				(5779.0,5780.0), # 13
+				'(5683.0,5684.0)', # 1 
+				'(5687.1,5688.1)', # 2
+				'(5701.5,5702.5)', # 3
+				'(5705.6,5706.6)', # 4
+				'(5718.7,5719.7)', # 5 
+				'(5734.6,5735.6)', # 6 
+				'(5738.8,5739.8)', # 7
+				'(5749.3,5750.3)', # 8
+				'(5753.5,5754.5)', # 9
+				'(5762.7,5763.7)', # 10
+				'(5766.9,5767.9)', # 11
+				'(5774.8,5775.8)', # 12
+				'(5779.0,5780.0)', # 13
 				]
 
 # MIR microwindows for N2O
 window_dict['n2o'] = [
-				(2167.03,2185.25), # 1
-				(2222.825,2223.019), # 2	
-				(2224.457,2224.715), # 3
+				'(2167.03,2185.25)', # 1
+				'(2222.825,2223.019)', # 2	
+				'(2224.457,2224.715)', # 3
 				]
 
 # MIR microwindows for HBr
 window_dict['hbr'] = [
-				(2590.32, 2590.72), # 1
-				(2590.71, 2591.11), # 2
-				(2605.60, 2606.00), # 3
-				(2606.00, 2606.40), # 4
-				(2620.39, 2620.79), # 5
-				(2620.80, 2621.20), # 6
-				(2634.70, 2635.10), # 7
-				(2635.10, 2635.50), # 8
-				(2648.50, 2648.90), # 9
-				(2648.90, 2649.30), # 10
-				(2661.76, 2662.16), # 11
-				(2662.18, 2662.58), # 12
-				(2674.52, 2674.92), # 13
-				(2674.94, 2675.34), # 14
+				'(2590.32, 2590.72)', # 1
+				'(2590.71, 2591.11)', # 2
+				'(2605.60, 2606.00)', # 3
+				'(2606.00, 2606.40)', # 4
+				'(2620.39, 2620.79)', # 5
+				'(2620.80, 2621.20)', # 6
+				'(2634.70, 2635.10)', # 7
+				'(2635.10, 2635.50)', # 8
+				'(2648.50, 2648.90)', # 9
+				'(2648.90, 2649.30)', # 10
+				'(2661.76, 2662.16)', # 11
+				'(2662.18, 2662.58)', # 12
+				'(2674.52, 2674.92)', # 13
+				'(2674.94, 2675.34)', # 14
 				]
 
 app_path = os.path.dirname(__file__) # the app should be in ... /linefit/lft145/lft_app
@@ -275,6 +278,23 @@ if (cb_obj.value===""){
 TOOLS = "box_zoom,wheel_zoom,pan,redo,undo,reset,save" # tools that will be available to interact with the plots
 
 all_data = {'ID':0} # this dictionary will store all the data for plots; 'ID' will store the ID of the appriopriate color from 'kelly_colors'
+
+# Input file templates:
+template_map = {}
+for cell in ['hcl','n2o','hbr']:
+	with open(os.path.join(app_path,'lft14_{}_template.inp'.format(cell)),'r') as infile:
+		template_map[cell] = Template(infile.read())
+
+template_inputs = {
+	'maxopd':None,			# maximum optical path difference (cm)
+	'maxir':None,			# maximum inclination of rays in interferometer (apterture radius)/(focal length of colimator)
+	'temperature':None,		# scanner temperature (K)
+	'column':None,			# column density of first gas
+	'pressure':None,		# pressure of first gas
+	'regularisation':None,	# regularisation factor (for both modulation and phase)
+	'spectrum': None,		# full path to the spectrum
+	'window_list':None,		# list of tuples for microwindow boundaries
+}
 
 ##################
 # Main functions #
@@ -387,73 +407,60 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list):
 	N_windows = len(window_list)
 
 	reg = curdoc().select_one({'name':'reg_input'}).value
-	reg_phase_mod = (reg,reg)
 
 	maxir = '{:>8.6f}'.format(APT/2.0/site_data['FLC'][site]) # maximum inclination of rays in the interferometer (aperture radius / focal length of collimator)
 
+	template_inputs.update({
+		'maxopd':MOPD,											# maximum optical path difference (cm)
+		'maxir':maxir,											# maximum inclination of rays in interferometer (apterture radius)/(focal length of colimator)
+		'window_list':window_list,								# list of tuples for microwindow boundaries
+		'N_windows':N_windows,
+		'MW_list':['MW'+str(i+1) for i in range(N_windows)],		
+		'regularisation':reg,									# regularisation factor (for both modulation and phase)
+		'spectrum': os.path.join('lft_app','spectra',spectrum),	# full path to the spectrum
+		'temperature':'{:.2f}'.format(temperature),				# scanner temperature (K)
+		})
+
 	if cell == 'hcl':
-		with open(os.path.join(app_path,'lft14_hcl_template.inp'),'r') as infile:
-			content = infile.readlines()
+		# HCl35
+		newP = correct_Pressure(cell_map[cell][site]['effp_h35cl_296k'],temperature) # update the cell pressure
+		newcol = correct_column(newP,temperature,l=0.1) # update the cell column as described in the input file
+		print(newP,newcol)
+		#newP = cell_map[cell][site]['effp_h35cl_296k']  # uncomment to use the effective pressure from the TCCON wiki
+		newcol = cell_map[cell][site]['h35cl_column'] # uncomment to use the column from the TCCON wiki
+		print(newP,newcol)
 
-		for i in range(len(content)):
-			if 'Trans01.txt' in content[i]:
-				content[i] = os.path.join('lft_app','spectra',spectrum)+'\n' #path to spectrum for each microwindow
-			elif 'number of microwindows' in content[i]:
-				for wid,window in enumerate(window_list):
-					content[i+5+wid] = str(window)+'\n'
-			elif 'species parameters:' in content[i]:
-				# HCl35
-				newP = correct_Pressure(cell_map[cell][site]['effp_h35cl_296k'],temperature) # update the cell pressure
-				newcol = correct_column(newP,temperature,l=0.1) # update the cell column as described in the input file
-				print(newP,newcol)
-				#newP = cell_map[cell][site]['effp_h35cl_296k']  # uncomment to use the effective pressure from the TCCON wiki
-				newcol = cell_map[cell][site]['h35cl_column'] # uncomment to use the column from the TCCON wiki
-				print(newP,newcol)
-				content[i+8] = fmt.format(temperature,newcol,newP,newP) #change retrieval parameters for 1st species (HCl35 for hcl cell)		
+		template_inputs.update({
+				'column':'{:.4e}'.format(newcol),						# column density of first gas
+				'pressure':'{:.3f}'.format(newP),						# pressure of first gas
+			})
 
-				# HCl37
-				newP = correct_Pressure(cell_map[cell][site]['effp_h37cl_296k'],temperature) # update the cell pressure
-				newcol = correct_column(newP,temperature,l=0.1) # update the cell column as described in the input file
-				print(newP,newcol)
-				#newP = cell_map[cell][site]['effp_h37cl_296k'] # uncomment to use the effective pressure from the TCCON wiki
-				newcol = cell_map[cell][site]['h37cl_column'] # uncomment to use the column from the TCCON wiki
-				print(newP,newcol)
-				content[i+8+N_windows+1] = fmt.format(temperature,newcol,newP,newP)  #change retrieval parameters for 2nd species (HCl37 for hcl cell)
+		# HCl37
+		newP = correct_Pressure(cell_map[cell][site]['effp_h37cl_296k'],temperature) # update the cell pressure
+		newcol = correct_column(newP,temperature,l=0.1) # update the cell column as described in the input file
+		print(newP,newcol)
+		#newP = cell_map[cell][site]['effp_h37cl_296k'] # uncomment to use the effective pressure from the TCCON wiki
+		newcol = cell_map[cell][site]['h37cl_column'] # uncomment to use the column from the TCCON wiki
+		print(newP,newcol)
 
-			elif 'gas cell parameters' in content[i]:
-				content[i+13] = '{:.2f}'.format(temperature)+'\n'
-			elif 'focal length of collimator' in content[i]:
-				content[i+4] = MOPD+'\n'	# change MOPD value				
-				content[i+6] = maxir+'\n'	# change max inclination of rays in the interferometer
-			elif 'Reg Modulation' in content[i]:
-				content[i+4] = '1.0e4,%s,0.0,%s,0.0\n' % reg_phase_mod
+		template_inputs.update({
+			'column_2':'{:.4e}'.format(newcol),	# column density of second gas
+			'pressure_2':'{:.3f}'.format(newP),	# pressure of second gas
+			})
 
 	if cell in ['hbr','n2o']:
-		with open(os.path.join(app_path,'lft14_%s_template.inp' % cell),'r') as infile:
-			content = infile.readlines()
+		#newP = correct_Pressure(cell_map[cell][site]['pressure'],temperature) # update the cell pressure
+		#newcol = correct_column(newP,temperature,l=0.02) # update the cell column as described in the input file
+		newP = cell_map[cell][site]['pressure'] # uncomment to use the initial cell pressure
+		newcol = cell_map[cell][site]['column'] # uncomment to use the initial cell column
 
-		for i in range(len(content)):
-			if 'Trans01.txt' in content[i]:
-				content[i] = os.path.join('lft_app','spectra',spectrum)+'\n' #path to spectrum for each microwindow
-			elif 'number of microwindows' in content[i]:
-				for wid,window in enumerate(window_list):
-					content[i+5+wid] = str(window)+'\n'
-			elif 'species parameters:' in content[i]:
-				#newP = correct_Pressure(cell_map[cell][site]['pressure'],temperature) # update the cell pressure
-				#newcol = correct_column(newP,temperature,l=0.02) # update the cell column as described in the input file
-				newP = cell_map[cell][site]['pressure'] # uncomment to use the initial cell pressure
-				newcol = cell_map[cell][site]['column'] # uncomment to use the initial cell column
-				content[i+8] = fmt.format(temperature,newcol,newP,newP) #change retrieval parameters for HBr cell
-			elif 'gas cell parameters' in content[i]:
-				content[i+13] = '{:.2f}'.format(temperature)+'\n'
-			elif 'focal length of collimator' in content[i]:
-				content[i+4] = MOPD+'\n'	# change MOPD value				
-				content[i+6] = maxir+'\n'	# change max inclination of rays in the interferometer	
-			elif 'Reg Modulation' in content[i]:
-				content[i+4] = '1.0e4,%s,0.0,%s,0.0\n' % reg_phase_mod
+		template_inputs.update({
+			'column':'{:.4e}'.format(newcol),
+			'pressure':'{:.3f}'.format(newP),
+			})
 
 	with open(os.path.join(wdir,'lft14.inp'),'w') as outfile: #rewrite input file
-		outfile.writelines(content)
+		outfile.writelines(template_map[cell].render(**template_inputs).replace("\\n","\n"))
 
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Input file updated'
 	print('\n\t- Input file updated')
@@ -1362,19 +1369,19 @@ def doc_maker():
 
 	## FIGURES
 	# Modulation efficiency
-	ME_fig = figure(plot_width=600,plot_height=160,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,name="ME_fig")
+	ME_fig = figure(plot_width=600,plot_height=175,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,name="ME_fig")
 	ME_fig.yaxis.axis_label = 'Modulation Efficiency'
 	ME_fig.xaxis.axis_label = 'OPD (cm)'
 	# Phase Error
-	PE_fig = figure(plot_width=600,plot_height=160,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,x_range=ME_fig.x_range,name="PE_fig")
+	PE_fig = figure(plot_width=600,plot_height=175,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,x_range=ME_fig.x_range,name="PE_fig")
 	PE_fig.yaxis.axis_label = 'Phase Error (rad)'
 	PE_fig.xaxis.axis_label = 'OPD (cm)'
 	# Column
-	column_fig = figure(plot_width=600,plot_height=160,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,name="column_fig")
+	column_fig = figure(plot_width=600,plot_height=175,tools=TOOLS,active_drag="box_zoom",min_border_left=100,min_border_bottom=40,name="column_fig")
 	column_fig.yaxis.axis_label = 'column scale factor'
 	column_fig.xaxis.axis_label = 'Microwindow #'
 	# ME at MOPD time series
-	series_fig = figure(plot_width=600,plot_height=160,tools=TOOLS,active_drag="box_zoom",min_border_left=100,x_axis_type='datetime',min_border_bottom=40,name="series_fig")
+	series_fig = figure(plot_width=600,plot_height=175,tools=TOOLS,active_drag="box_zoom",min_border_left=100,x_axis_type='datetime',min_border_bottom=40,name="series_fig")
 	series_fig.xaxis.axis_label = 'Date'
 	series_fig.yaxis.axis_label = 'ME at MOPD'
 	# ILS
