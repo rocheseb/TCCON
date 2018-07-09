@@ -10,7 +10,7 @@ def site_data():
 	data['hbr'] = hbr_cells()
 
 	# focal length of collimator (mm), add the one for your site with the appropriate two letter site abbreviation
-	data['FLC'] = {
+	data['FOC'] = {
 					'eu':418.0, # Eureka
 					'et':418.0, # East Trout Lake
 					}

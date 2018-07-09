@@ -7,80 +7,140 @@ from __future__ import print_function # allows the use of Python 3.x print funct
 # Code Description #
 ####################
 '''
+# README #
 
-# How to run:
-the lft_app folder should be placed under ... /linefit/lft145/ 
-In the terminal, cd to the lft125 directory and type:
+Linefit is an instrument line shape-calculating program written by Frank Hase at the Institute for Meteorology und Climate Research (IMK) in Karlsruhe. 
 
-bokeh serve --show lft_app
+	Frank Hase, Thomas Blumenstock, and Clare Paton-Walsh, Analysis of the Instrumental Line Shape of High-Resolution Fourier Transform IR Spectrometers with Gas Cell Measurements and New Retrieval Software, Applied Optics, Vol. 38, Issue 15, pp. 3417-3422 (1999)
 
-A browser window will pop up with the app. If the window is closed it can still be accessed at http://localhost:5006/lft_app
-You can drop the --show if you do not want the browser to pop up.
+This app can be used to run linefit 14.5 and display its outputs.
 
-By default the app will plot and save the spectrum itself; This can make for very large saved sessions.
-To avoid this the app can be run in light mode with:
+This app requires python 2.7.x (not tested with python 3.x) with bokeh installed.
 
-bokeh serve --show lft_app --args light
+	Bokeh: https://bokeh.pydata.org/en/latest/docs/installation.html
 
-In light mode the spectrum plot will not appear and saved sessions will not include the spectrum.
-#
+### Python ###
 
-The folder 'lft_app' should be in the same directory as lft145.exe
+I suggest downloading python from https://www.anaconda.com/download/
+Choose your operating system and get Python2.7
 
-- reads all the .DPT ( not OPUS format !!! ) spectra in 'lft_app/spectra/cut/'
-- spectra should be cut to make the processing faster (e.g. between ~5200-5900 wavenumbers for HCl)
-- reads the scanner temperature and aperture size for each spectrum in the 'temp.dat' file of the 'lft_app/spectra/cut/' folder
-- modify linefit input file and runs linefit
-- plot Modulation efficiency and phase error vs OPD
-- plot column scale factor vs microwindow
-- plot ILS and fits in each microwindow
+To install bokeh use the command (with windows you need to run the terminal as administator):
 
-Spectrum file names need to follow this naming convention: YYMMDD_site_cell_X_MOPD_num.dpt
-- YYMMDD year month day
-- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
-- cell: one of 'hbr', 'n2o', 'hcl'
-- X: 'v' for vented instrument, 'e' for evacuated
-- MOPD: the maximum optical path difference in cm
-- num: an index number for the cell test (there might be more than one per day)
+	conda install -c bokeh bokeh
 
-e.g. 180308_eu_HCl_45_e_0
-for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+To install a package:
 
-In 'lft_app/spectra/cut/temp' you should list the spectrum file names with associated temperatures and entrance aperture size like this:
+	conda install PackageName
 
-spectrumfilename1,temperature1,apt_size1
-spectrumfilename2,temperature2,apt_size2
-etc.
+If the "conda" command does not find the package, you can also use pip:
+
+	pip install PackageName
+
+If you encounter error messages related to bokeh when running the app, you can try to revert to an earlier version of the package with:
+
+	conda install bokeh=0.12.10
+
+### How to use this app ###
+
+This can read both OPUS and .dpt files.
+
+Using .dpt files requires extra steps.
+
+- Put the lft_app folder in the linefit/lft145/ directory
+- Spectrum file names need to follow this naming convention: YYMMDD_site_cell_X_MOPD_num.ext
+	- YYMMDD year month day
+	- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
+	- cell: one of 'hbr', 'n2o', 'hcl'
+	- X: 'v' for vented instrument, 'e' for evacuated
+	- MOPD: the maximum optical path difference in cm
+	- num: an index number for the cell test (there might be more than one per day)
+	- ext: either 'dpt' or a number
+	
+		e.g. 180308_eu_HCl_45_e_0 for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+
+- For several tests in one day : 161122_eu_HCl_45_e_0.dpt, 161122_eu_HCl_45_e_1.dpt etc.
+- Spectra must be placed in lft_app/spectra/cut
+- For '.DPT' files:
+	- .dpt (data point table) files can be generated in OPUS via the pop-up window generated with "Save as" 
+	- they must have no headers and be cut e.g. between ~5200-5900 wavenumbers for HCl cells
+	- In lft_app/spectra/cut/temp.dat write the spectrum filename, scanner temperature, and aperture size.
+	
+			spectrumfilename1,temperature1,apt_size1
+			spectrumfilename2,temperature2,apt_size2
+			etc.
+
+	- in lft_app/lft_setup.py add the focal length of collimator of your instrument
+- For opus files the parameters are read directly from the file
+	
+- In lft_app/lft_setup.py, add your cell information (follow the template)
+
+- To run the app, navigate to the linefit/lft145/ directory in your terminal and use the command
+
+	bokeh serve --show lft_app --args light
+
+The --show option will pop up the browser.
+
+By default the spectrum itself will be plotted in the browser and also saved in the data dictionary. This can lead to very large files and more loading time.
+
+The --args light option will not display or save the whole spectrum.
+
+While the server is running, the app will be available in the browser at localhost:5006/lft_app
+
+- Python dictionaries of the data are saved in lft_app/saved_sessions/
+- PDF documents with the plots are saved in lft_app/pdf/
+
+There are two example spectra from Eureka in lft_app/spectra/cut/ so the app can be tested directly.
+
+### Rationg of spectra ###
 
 Spectra should be ratioed to ~1 to be used with the linefit extended mode:
 
-=> HCl cells: 
+- HCl cells: 
 	- no background
-	- I fit a 2nd order polynomial to the spectrum without the lines and use that to ratio the spectrum to normalize it to ~1 (seems more consistent than using a fixed numbers)
+	- In the code I fit a 2nd order polynomial to the spectrum without the lines and use that to ratio the spectrum to normalize it to ~1 (seems more consistent than using a fixed numbers)
 
-=> HBr cells:
+- HBr cells:
 	- background
-	- the background file should be cut the same way as the spectrum, have the same file name but starting with 'ref_' (e.g. ref_180308_eu_HBr_180_e_0.dpt)
+	- the background file should be cut the same way as the spectrum if .dpt files are used, have the same file name but starting with 'ref_' (e.g. ref_180308_eu_HBr_180_e_0.dpt)
 	- put the HBr background files in lft_app/spectra/background/
 	- the spectra are ratioed with the background
 	- the resulting ratioed spectrum is ratioed with its own average to normalize it to ~1
 
-=> N2O cells:
+- N2O cells:
 	- background, but different resolution from the spectrum
-	- the rationg of spectrum with background is done in OPUS
+	- the rationg of spectrum with background shoul be done in OPUS
 	- the resulting spectrum should be placed in lft_app/spectra/cut
 	- it will be ratioed with its own average to normalize it to ~ 1
 
-DISCLAIMER: if any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is
+### Other info ###
+
+N2O and HBr cell spectra are processed in a loop until the cell pressure converges; this usually take 2-3 linefit runs.
+
+The python dictionaries saved in lft_app/saved_sessions/ can be merged with a utility program lft_app/utils/merge_sessions.py
+
+The merged file can then be loaded from the browser.
+
+### DISCLAIMER ###
+
+If any warning or error message is given by linefit, this app will hang, you should then run linefit from the terminal to figure out what the problem is.
+
 The app may hang if there is any convergence problem.
+
 There will be more detailed outputs in the terminal than in the browser.
 
-spectrumfilename1,temperature1,apt_size1
+If a significant spectral detuning is detected, the app will use it to update the input file and re-run linefit.
+
+### Contact ###
+
+sebastien.roche@mail.utoronto.ca
 
 '''
 ####################
 # Import libraries #
 ####################
+
+# class to read opus files
+from opus import *
 
 # generic libraries
 import os
@@ -169,11 +229,12 @@ elif system == 'Linux':
 elif system == 'Darwin':
 	lft_command = ['./lft145_gfortran']
 
-specname_fmt = '{}_{}_{}_{:d}_{}_{:d}.dpt' # formatted string for spectrum file names YYMMDD_site_cell_X_MOPD_num
+specname_fmt = '{}_{}_{}_{:d}_{}_{:d}.{}' # formatted string for spectrum file names YYMMDD_site_cell_X_MOPD_num
 
 fmt = '{:.2f},.false.,{:.4e},{:.3f},.false.,{:.3f},0.0075\n' # formatted string to read and edit the input file
 
 reg_dpt = re.compile('.*[.]dpt$',re.IGNORECASE) # regular expression that will be used to select .dpt files
+reg_opus = re.compile('.*[.][\d]+$',re.IGNORECASE) # regular expression that will be used to select opus files
 reg_npy = re.compile('.*[.]npy$',re.IGNORECASE) # regular expression that will be used to select .npy files
 
 site_data = lft_setup.site_data()
@@ -348,12 +409,23 @@ def busy(func):
 		curdoc().select_one({'name':'loader'}).text = ""
 	return wrapper
 
-def get_inputs(spectrum):
+def get_inputs(spectrum,mode):
 	'''
 	retrieves info from the spectrum name
+	
+	Inputs:
+		- spectrum: spectrum file name
+		- mode: 'dpt' or 'opus'
+	Outputs:
+		- site: two letter site abbreviation
+		- cell: 'hcl', 'n2o', or 'hbr'
+		- MOPD: maximum optical path difference (cm)
+		- APT: aperture size (mm)
+		- temperature: scanner temperature (K)
+		- window_list: list of microwindows that corresponds to the cell
 	'''
 
-	date,site,cell,MOPD,ev,num = parse.parse(specname_fmt,spectrum)
+	date,site,cell,MOPD,ev,num,ext = parse.parse(specname_fmt,spectrum)
 
 	cell = cell.lower()
 	site = site.lower()
@@ -368,22 +440,30 @@ def get_inputs(spectrum):
 	else: # if the site is not specified, stop the program)
 		print("\nSite not recognized: filename must be YYMMDD_site_cell_OPD_ev_num.dpt , with 'site' the two letter site abbreviation")
 		print("\ne.g.170315_eu_HCl_45_e_0.dpt")
-		print("\nCheck that the cell information for the site is entered correctly in cell_data.py")
+		print("\nCheck that the cell information for the site is entered correctly in lft_setup.py")
 		curdoc().select_one({"name":"status_div"}).text += '<br>- Site not recognized'
 		sys.exit()
 	print(site)
 
-	#get the temperature and aperture size
-	with open(os.path.join(specpath,'temp.dat'),'r') as infile:
-		content = infile.read().splitlines()
+	if mode == 'dpt':
+		#get the temperature and aperture size
+		with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+			content = infile.read().splitlines()
 
-	for line in content:
-		if spectrum.lower() in line.lower():
-			break
+		for line in content:
+			if spectrum.lower() in line.lower():
+				break
 
-	line = line.split(',')
-	temperature = float(line[1]) # scanner temperature in Kelvin
-	APT = float(line[2]) # aperture diameter in millimeters
+		line = line.split(',')
+		temperature = float(line[1]) # scanner temperature in Kelvin
+		APT = float(line[2]) # aperture diameter in millimeters
+	elif mode == 'opus':
+		opus_file = Opus(os.path.join(specpath,spectrum))
+		opus_file.get_data(request='p') # only get parameters
+		parameters = opus_file.param[0]
+		temperature = parameters['TSC']+273.15
+		APT = float(parameters['APT'].split()[0])
+		site_data['FOC'][site] = parameters['FOC'] # if it existed, the value from lft_setup will be overwritten
 
 	return site,cell,str(MOPD),APT,temperature,window_list
 
@@ -408,7 +488,7 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list):
 
 	reg = curdoc().select_one({'name':'reg_input'}).value
 
-	maxir = '{:>8.6f}'.format(APT/2.0/site_data['FLC'][site]) # maximum inclination of rays in the interferometer (aperture radius / focal length of collimator)
+	maxir = '{:>8.6f}'.format(APT/2.0/site_data['FOC'][site]) # maximum inclination of rays in the interferometer (aperture radius / focal length of collimator)
 
 	template_inputs.update({
 		'maxopd':MOPD,											# maximum optical path difference (cm)
@@ -484,6 +564,11 @@ def setup_linefit():
 
 	spectrum = curdoc().select_one({"name":"spec_input"}).value
 
+	if reg_opus.match(spectrum):
+		mode = 'opus'
+	elif reg_dpt.match(spectrum):
+		mode = 'dpt'
+
 	if spectrum=='':
 		status_div.text = "Select a spectrum"
 		return
@@ -505,35 +590,39 @@ def setup_linefit():
 	status_div.text = "<b>Now doing:</b> <br>{}<br>reg= {}".format(spectrum,reg)
 	print('\nNow doing',spectrum,'with reg=',reg)
 
-	# preliminary check on the temp file to make sure it has the spectrum
-	# I write my own inputfile called 'temp.dat' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
-	with open(os.path.join(specpath,'temp.dat'),'r') as infile:
-		content = infile.readlines()
+	if mode == 'dpt':
+		# preliminary check on the temp file to make sure it has the spectrum
+		# I write my own inputfile called 'temp.dat' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
+		with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+			content = infile.readlines()
 
-	speclist = [line.split(',')[0] for line in content[1:]] # all the SpectrumName in the file
+		speclist = [line.split(',')[0] for line in content[1:]] # all the SpectrumName in the file
 
-	#if the spectrum is not listed in the temp file, go to next spectrum
-	if spectrum.lower() not in [spec.lower() for spec in speclist]:
-		status_div.text = spectrum+':</br>scanner temperature not listed in the temp file'
-		print(spectrum,'scanner temperature not listed in the temp file')
-		all_data['ID'] += -1
-		return
+		#if the spectrum is not listed in the temp file, go to next spectrum
+		if spectrum.lower() not in [spec.lower() for spec in speclist]:
+			status_div.text = spectrum+':</br>scanner temperature not listed in the temp file'
+			print(spectrum,'scanner temperature not listed in the temp file')
+			all_data['ID'] += -1
+			return
 
-	site,cell,MOPD,APT,temperature,window_list = get_inputs(spectrum)
-
+	site,cell,MOPD,APT,temperature,window_list = get_inputs(spectrum,mode)
+	
 	colo = check_colors(add_one=True)
-
-	# check that the spectral range is ordered (dpt files are written with decreasing wavenumbers and lienfit wants increasing wavenumbers)
-	# if it is not ordered, orders it.
+	
 	spectrum_path = os.path.join(specpath,spectrum)
-	check_spectrum(spectrum_path,spectrum)
-	# also check the background spectrum for MIR cells
-	if cell == 'hbr':
-		ref_path = os.path.join(refpath,'ref_'+spectrum)
-		check_spectrum(ref_path,'ref_'+spectrum)
+	
+	if mode == 'dpt':
+		# check that the spectral range is ordered (dpt files are written with decreasing wavenumbers and linefit wants increasing wavenumbers)
+		# if it is not ordered, orders it.
+		
+		check_spectrum(spectrum_path,spectrum)
+		# also check the background spectrum for MIR cells
+		if cell == 'hbr':
+			ref_path = os.path.join(refpath,'ref_'+spectrum)
+			check_spectrum(ref_path,'ref_'+spectrum)
 
 	# comment out to not ratio the spectrum, the temp file still needs to be in lft_app/spectra/cut and the spectrum will need to be directly in lft_app/spectra
-	ratio_spectrum(spectrum_path,spectrum,cell) 
+	ratio_spectrum(spectrum_path,spectrum,cell,mode) 
 
 	# update the input file; make sure that it modifies everything that you need !
 	# the regularisation factors are updated from the browser
@@ -663,14 +752,30 @@ def check_spectrum(spectrum_path,spectrum):
 		with open(spectrum_path,'w') as outfile:
 			outfile.writelines(content[::-1])
 
-def ratio_spectrum(spectrum_path,spectrum,cell):
+def ratio_spectrum(spectrum_path,spectrum,cell,mode):
 	'''
 	For HCl cells, fit a second order polynomial to a spectrum in order to ratio it to ~1
 
 	For N2O and HBr cells, use a background spectrum to do the ratio
 	'''
 
-	x,y = np.loadtxt(spectrum_path,unpack=True)	
+	if mode == 'dpt':
+		x,y = np.loadtxt(spectrum_path,unpack=True)	
+	elif mode == 'opus':
+		opus_file = Opus(spectrum_path)
+		opus_file.get_data()
+		x = opus_file.xdata[1] # need to check if this always corresponds to the correct data block
+		y = opus_file.ydata[1]
+		# cut the spectrum
+		if cell == 'hcl':
+			minwn,maxwn = (5200,5900)
+		elif cell == 'n2o':
+			minwn,maxwn = (2100,2300)
+		elif cell == 'hbr':
+			minwn,maxwn = (2500,2700)
+
+		y = y[(x>=minwn) & (x<=maxwn)]
+		x = x[(x>=minwn) & (x<=maxwn)]
 	
 	if cell == 'hcl':
 		if 0.7<np.mean(y)<1.3: # spectrum was already ratioed
@@ -687,8 +792,16 @@ def ratio_spectrum(spectrum_path,spectrum,cell):
 
 	elif cell == 'hbr':
 		ref_path = os.path.join(refpath,'ref_'+spectrum)
-		xref,yref = np.loadtxt(ref_path,unpack=True)
-
+		if mode == 'dpt':	
+			xref,yref = np.loadtxt(ref_path,unpack=True)
+		elif mode == 'opus':
+			ref_opus_file = Opus(ref_path)
+			ref_opus_file.get_data()
+			xref = ref_opus_file.xdata[1]
+			yref = ref_opus_file.ydata[1]
+			yref = yref[(xref>=minwn) & (xref<=maxwn)]
+			xref = xref[(xref>=minwn) & (xref<=maxwn)]
+			
 		if len(x)!=len(xref):
 			print('WARNING: background and cell spectra have different number of points !')
 			sys.exit() # the correct cutting of the spectra should be handled outside this code.
@@ -1317,7 +1430,7 @@ def update_dropdowns():
 	session_input.options = ['']+[i for i in os.listdir(save_path) if reg_npy.match(i)]
 
 	#update the dropdown of spectra
-	spec_input.options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i)]	
+	spec_input.options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i) or reg_opus.match(i)]	
 
 def doc_maker():
 	'''
@@ -1330,7 +1443,7 @@ def doc_maker():
 
 	## WIDGETS
 	# Inputs
-	spec_input = Select(title='Spectrum:',options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i)],width=150,css_classes=["spec_input"],name="spec_input")
+	spec_input = Select(title='Spectrum:',options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i) or reg_opus.match(i)],width=150,css_classes=["spec_input"],name="spec_input")
 	reg_input = TextInput(value='1.8',title='Regularisation factor:',width=150,css_classes=["small_input"],name="reg_input")
 	session_input = Select(title='Previous sessions:',width=150,options=['']+[i for i in os.listdir(save_path) if reg_npy.match(i)],css_classes=["spec_input"],name="session_input")
 	save_input = TextInput(title='Save name',value="_".join(str(datetime.now())[:-7].split()).replace(':','-'),css_classes=["save_input"],name="save_input")
@@ -1395,11 +1508,11 @@ def doc_maker():
 	resid_fig.xaxis.axis_label = 'Wavenumber (cm-1)'
 	resid_fig.title.text = 'RMS = '
 	# Averaging kernels
-	AKapo_fig = figure(title='AK apo',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-0.8,end=1.1),tools="box_select,tap,box_zoom",active_drag="box_select",name="AKapo_fig")
-	AKphase_fig = figure(title='AK phase',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=AKapo_fig.x_range,y_range=AKapo_fig.y_range,tools="box_select,tap,pan,box_zoom,wheel_zoom,redo,undo,save",active_drag="box_select",name="AKphase_fig")
+	AKapo_fig = figure(title='AK apo',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=DataRange1d(start=-0.8,end=1.1),tools="box_select,tap,pan,box_zoom,wheel_zoom,redo,undo,reset,save",active_drag="box_select",name="AKapo_fig")
+	AKphase_fig = figure(title='AK phase',plot_width=450,plot_height=400,min_border_left=80,min_border_bottom=50,min_border_right=30,x_range=AKapo_fig.x_range,y_range=AKapo_fig.y_range,tools="box_select,tap,pan,box_zoom,wheel_zoom,redo,undo,reset,save",active_drag="box_select",name="AKphase_fig")
 	for elem in [AKapo_fig,AKphase_fig]:
 		elem.xaxis.axis_label = 'AK'
-		elem.yaxis.axis_label = 'OPD'
+		elem.yaxis.axis_label = 'OPD (cm)'
 
 	if not ignore_spec:
 		# Spectrum
