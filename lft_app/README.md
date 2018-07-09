@@ -123,4 +123,10 @@ If a significant spectral detuning is detected, the app will use it to update th
 
 ### Contact ###
 
-sebastien.roche@mail.utoronto.ca
+For this app:
+
+	sebastien.roche@mail.utoronto.ca
+
+For the linefit program:
+
+	frank.hase@kit.edu
