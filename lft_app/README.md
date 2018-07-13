@@ -33,7 +33,9 @@ If you encounter error messages related to bokeh when running the app, you can t
 
 ### How to use this app ###
 
-This can read both OPUS and .dpt files.
+This can read both OPUS and .dpt files. 
+
+The program that can read opus files is not publicly available. It is included in a private repository: https://bitbucket.org/rocheseb/lft_app. Contact me if you would like access.
 
 Using .dpt files requires extra steps.
 
