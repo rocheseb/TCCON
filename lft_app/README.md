@@ -40,7 +40,7 @@ The program that can read opus files is not publicly available. It is included i
 Using .dpt files requires extra steps.
 
 - Put the lft_app folder in the linefit/lft145/ directory
-- Spectrum file names need to follow this naming convention: YYMMDD_site_cell_X_MOPD_num.ext
+- Spectrum file names need to follow this naming convention: YYMMDD_site_cell_MOPD_X_num.ext
 	- YYMMDD year month day
 	- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
 	- cell: one of 'hbr', 'n2o', 'hcl'
@@ -49,7 +49,9 @@ Using .dpt files requires extra steps.
 	- num: an index number for the cell test (there might be more than one per day)
 	- ext: either 'dpt' or a number
 	
-		e.g. 180308_eu_HCl_45_e_0 for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+		e.g. 180308_eu_HCl_45_e_0.dpt or 180308_eu_HCl_45_e_0.0 
+		For the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+		For opus files the extension number does not matter
 
 - For several tests in one day : 161122_eu_HCl_45_e_0.dpt, 161122_eu_HCl_45_e_1.dpt etc.
 - Spectra must be placed in lft_app/spectra/cut

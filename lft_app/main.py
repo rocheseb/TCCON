@@ -47,7 +47,7 @@ This can read both OPUS and .dpt files.
 Using .dpt files requires extra steps.
 
 - Put the lft_app folder in the linefit/lft145/ directory
-- Spectrum file names need to follow this naming convention: YYMMDD_site_cell_X_MOPD_num.ext
+- Spectrum file names need to follow this naming convention: YYMMDD_site_cell_MOPD_X_num.ext
 	- YYMMDD year month day
 	- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
 	- cell: one of 'hbr', 'n2o', 'hcl'
@@ -56,7 +56,9 @@ Using .dpt files requires extra steps.
 	- num: an index number for the cell test (there might be more than one per day)
 	- ext: either 'dpt' or a number
 	
-		e.g. 180308_eu_HCl_45_e_0 for the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+		e.g. 180308_eu_HCl_45_e_0.dpt or 180308_eu_HCl_45_e_0.0 
+		For the first HCl cell test with 45 MOPD in an evacuated instrument at Eureka on March 8 2018
+		For opus files the extension number does not matter
 
 - For several tests in one day : 161122_eu_HCl_45_e_0.dpt, 161122_eu_HCl_45_e_1.dpt etc.
 - Spectra must be placed in lft_app/spectra/cut
@@ -320,13 +322,25 @@ window_dict['hbr'] = [
 				]
 
 app_path = os.path.dirname(__file__) # the app should be in ... /linefit/lft145/lft_app
-specpath = os.path.join(app_path,'spectra','cut') # ... /linefit/lft145/lft_app/spectra/cut
-refpath = os.path.join(app_path,'spectra','background') # ... /linefit/lft145/lft_app/spectra/background
+spec_path = os.path.join(app_path,'spectra','cut') # ... /linefit/lft145/lft_app/spectra/cut
+ref_path = os.path.join(app_path,'spectra','background') # ... /linefit/lft145/lft_app/spectra/background
 save_path = os.path.join(app_path,'saved_sessions') # ... /linefit/lft145/lft_app/saved_sessions
 static_path = os.path.join(app_path,'static') # ... /linefit/lft145/lft_app/static
 
 wdir = os.sep.join(app_path.split(os.sep)[:-1]) # get the working directory; path to ... /linefit/lft145
-ergpath = os.path.join(wdir,'ergs') # ... /linefit/lft145/ergs
+erg_path = os.path.join(wdir,'ergs') # ... /linefit/lft145/ergs
+
+print('app_path:',app_path)
+print('spec_path:',spec_path)
+print('ref_path:',ref_path)
+print('save_path:',save_path)
+print('static_path:',static_path)
+print('wdir:',wdir)
+print('erg_path:',erg_path)
+
+for path in [app_path,spec_path,ref_path,save_path,static_path,erg_path]:
+	if not os.path.exists(path):
+		print('WARNING: Missing path',path)
 
 spec_input_code = """
 if (cb_obj.value===""){
@@ -361,11 +375,11 @@ template_inputs = {
 # Main functions #
 ##################
 
-def execute(cmd):
+def execute(cmd,cwd=os.getcwd()):
 	'''
 	Function to execute a prompt command and print the output
 	'''
-	popen = subprocess.Popen(cmd,stdout=subprocess.PIPE,stdin=subprocess.PIPE)
+	popen = subprocess.Popen(cmd,stdout=subprocess.PIPE,stdin=subprocess.PIPE,cwd=cwd)
 	output,err = popen.communicate(input="0\n")
 	return_code = popen.wait()
 	if return_code:
@@ -391,7 +405,7 @@ def execute(cmd):
 		with open(input_file,'w') as outfile:
 			outfile.writelines(content)
 
-		execute(cmd)
+		execute(cmd,cwd=cwd)
 
 def busy(func):
 	'''
@@ -447,7 +461,7 @@ def get_inputs(spectrum,mode):
 
 	if mode == 'dpt':
 		#get the temperature and aperture size
-		with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+		with open(os.path.join(spec_path,'temp.dat'),'r') as infile:
 			content = infile.read().splitlines()
 
 		for line in content:
@@ -458,7 +472,7 @@ def get_inputs(spectrum,mode):
 		temperature = float(line[1]) # scanner temperature in Kelvin
 		APT = float(line[2]) # aperture diameter in millimeters
 	elif mode == 'opus':
-		opus_file = Opus(os.path.join(specpath,spectrum))
+		opus_file = Opus(os.path.join(spec_path,spectrum))
 		opus_file.get_data(request='p') # only get parameters
 		parameters = opus_file.param[0]
 		temperature = parameters['TSC']+273.15
@@ -593,7 +607,7 @@ def setup_linefit():
 	if mode == 'dpt':
 		# preliminary check on the temp file to make sure it has the spectrum
 		# I write my own inputfile called 'temp.dat' that has lines with 'SpectrumName,Scannertemperature,ApertureSize'
-		with open(os.path.join(specpath,'temp.dat'),'r') as infile:
+		with open(os.path.join(spec_path,'temp.dat'),'r') as infile:
 			content = infile.readlines()
 
 		speclist = [line.split(',')[0] for line in content[1:]] # all the SpectrumName in the file
@@ -609,7 +623,7 @@ def setup_linefit():
 	
 	colo = check_colors(add_one=True)
 	
-	spectrum_path = os.path.join(specpath,spectrum)
+	spectrum_path = os.path.join(spec_path,spectrum)
 	
 	if mode == 'dpt':
 		# check that the spectral range is ordered (dpt files are written with decreasing wavenumbers and linefit wants increasing wavenumbers)
@@ -618,7 +632,7 @@ def setup_linefit():
 		check_spectrum(spectrum_path,spectrum)
 		# also check the background spectrum for MIR cells
 		if cell == 'hbr':
-			ref_path = os.path.join(refpath,'ref_'+spectrum)
+			ref_path = os.path.join(ref_path,'ref_'+spectrum)
 			check_spectrum(ref_path,'ref_'+spectrum)
 
 	# comment out to not ratio the spectrum, the temp file still needs to be in lft_app/spectra/cut and the spectrum will need to be directly in lft_app/spectra
@@ -677,7 +691,8 @@ def run_linefit(cell):
 
 	status_div.text+='<br>- Running linefit ...'
 	print('\n\t- Running linefit ...')
-	execute(lft_command)
+	print('\t executing command {} in {}'.format(lft_command[0],wdir))
+	execute(lft_command,cwd=wdir)
 
 	if cell in ['n2o','hbr']:
 		iteration = 1
@@ -694,7 +709,7 @@ def run_linefit(cell):
 					break
 
 			# read the column scale factor
-			with open(os.path.join(ergpath,'colparms.dat'),'r') as infile:
+			with open(os.path.join(erg_path,'colparms.dat'),'r') as infile:
 				col_content = infile.readlines()
 
 			scale_factor = np.mean([float(x) for x in col_content[1:]])
@@ -723,7 +738,7 @@ def run_linefit(cell):
 			# run a new iteration of linefit
 			status_div.text+='<br>- Running linefit iteration {}'.format(iteration)
 			print('\n\t- Running linefit iteration',iteration)
-			execute(lft_command)
+			execute(lft_command,cwd=wdir)
 				
 		if conv:
 			print('\n\t- convergence after',iteration,'iterations')
@@ -791,7 +806,7 @@ def ratio_spectrum(spectrum_path,spectrum,cell,mode):
 		base_y = fit[0]*x**2+fit[1]*x+fit[2]-0.0004 # use the fit to get the fit line for each x
 
 	elif cell == 'hbr':
-		ref_path = os.path.join(refpath,'ref_'+spectrum)
+		ref_path = os.path.join(ref_path,'ref_'+spectrum)
 		if mode == 'dpt':	
 			xref,yref = np.loadtxt(ref_path,unpack=True)
 		elif mode == 'opus':
@@ -844,7 +859,7 @@ def linefit_results(spectrum,colo):
 	############################### Modulation Efficiency and Phase Error
 	print('\n\t- ME and PE')
 
-	with open(os.path.join(ergpath,'modulat.dat'),'r') as infile:
+	with open(os.path.join(erg_path,'modulat.dat'),'r') as infile:
 		content = infile.readlines()
 
 	content = [line.split() for line in content[1:]]
@@ -874,7 +889,7 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding column plot'
 	print('\n\t- column')
 
-	with open(os.path.join(ergpath,'colparms.dat'),'r') as infile:
+	with open(os.path.join(erg_path,'colparms.dat'),'r') as infile:
 		content = infile.readlines()
 
 	if 'hcl' in spectrum.lower():
@@ -898,7 +913,7 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding ILS'
 	print('\n\t- Adding ILS')
 
-	with open(os.path.join(ergpath,'ilsre.dat'),'r') as infile:
+	with open(os.path.join(erg_path,'ilsre.dat'),'r') as infile:
 		content = infile.readlines()
 
 	content = np.array([[float(elem) for elem in line.split()] for line in content]).T
@@ -927,10 +942,10 @@ def linefit_results(spectrum,colo):
 	curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectral fits with residuals'
 	print('\n\t- Adding spectral fits with residuals')
 
-	mwfiles = [i for i in os.listdir(ergpath) if 'specre' in i]
+	mwfiles = [i for i in os.listdir(erg_path) if 'specre' in i]
 
 	for it,mwfile in enumerate(mwfiles):
-		with open(os.path.join(ergpath,mwfile),'r') as infile:
+		with open(os.path.join(erg_path,mwfile),'r') as infile:
 			content = infile.readlines()
 
 		content = np.array([[float(elem) for elem in line.split()] for line in content]).T
@@ -961,7 +976,7 @@ def linefit_results(spectrum,colo):
 	AKapo_fig = curdoc().select_one({"name":"AKapo_fig"})
 	AKphase_fig = curdoc().select_one({"name":"AKphase_fig"})
 
-	with open(os.path.join(ergpath,'actparms.dat'),'r') as infile:
+	with open(os.path.join(erg_path,'actparms.dat'),'r') as infile:
 		content = infile.read().splitlines()
 
 	sumID = 0
@@ -983,7 +998,7 @@ def linefit_results(spectrum,colo):
 		else:
 			all_data[test]['statevec']['iterations'][it] = np.array(line[1:]).astype(np.float)
 
-	with open(os.path.join(ergpath,'kernel.dat'),'r') as infile:
+	with open(os.path.join(erg_path,'kernel.dat'),'r') as infile:
 		content = infile.read().splitlines()
 
 	content = np.array([line.split() for line in content]).astype(np.float)
@@ -1430,7 +1445,7 @@ def update_dropdowns():
 	session_input.options = ['']+[i for i in os.listdir(save_path) if reg_npy.match(i)]
 
 	#update the dropdown of spectra
-	spec_input.options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i) or reg_opus.match(i)]	
+	spec_input.options = ['']+[i for i in os.listdir(spec_path) if reg_dpt.match(i) or reg_opus.match(i)]	
 
 def doc_maker():
 	'''
@@ -1443,7 +1458,7 @@ def doc_maker():
 
 	## WIDGETS
 	# Inputs
-	spec_input = Select(title='Spectrum:',options = ['']+[i for i in os.listdir(specpath) if reg_dpt.match(i) or reg_opus.match(i)],width=150,css_classes=["spec_input"],name="spec_input")
+	spec_input = Select(title='Spectrum:',options = ['']+[i for i in os.listdir(spec_path) if reg_dpt.match(i) or reg_opus.match(i)],width=150,css_classes=["spec_input"],name="spec_input")
 	reg_input = TextInput(value='1.8',title='Regularisation factor:',width=150,css_classes=["small_input"],name="reg_input")
 	session_input = Select(title='Previous sessions:',width=150,options=['']+[i for i in os.listdir(save_path) if reg_npy.match(i)],css_classes=["spec_input"],name="session_input")
 	save_input = TextInput(title='Save name',value="_".join(str(datetime.now())[:-7].split()).replace(':','-'),css_classes=["save_input"],name="save_input")
