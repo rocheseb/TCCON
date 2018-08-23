@@ -47,6 +47,7 @@ This can read both OPUS and .dpt files.
 Using .dpt files requires extra steps.
 
 - Put the lft_app folder in the linefit/lft145/ directory
+- lft145.exe and the directories 'hit' and 'ergs' must be present in the linefit/lft145/ directory
 - Spectrum file names need to follow this naming convention: YYMMDD_site_cell_MOPD_X_num.ext
 	- YYMMDD year month day
 	- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
@@ -375,37 +376,79 @@ template_inputs = {
 # Main functions #
 ##################
 
-def execute(cmd,cwd=os.getcwd()):
+def execute(cmd,cwd=os.getcwd(),inputs=[0]):
 	'''
 	Function to execute a prompt command and print the output
+	
+	cmd: command to execute (in a list)
+	cwd: working directory in which the command will be executed
+	input: what will be fed to the program if it prompts for input
 	'''
-	popen = subprocess.Popen(cmd,stdout=subprocess.PIPE,stdin=subprocess.PIPE,cwd=cwd)
-	output,err = popen.communicate(input="0\n")
+
+	status_div = curdoc().select_one({"name":"status_div"})
+
+	popen = subprocess.Popen(cmd,stdout=subprocess.PIPE,stdin=subprocess.PIPE,stderr=subprocess.PIPE,cwd=cwd)
+	for elem in inputs:
+		popen.stdin.write('{}\n'.format(elem))
+	output, err = popen.communicate()
 	return_code = popen.wait()
-	if return_code:
-		raise subprocess.CalledProcessError(return_code, cmd)
+	#if return_code:
+	#	raise subprocess.CalledProcessError(return_code, cmd)
 	print(output)
 
+	undersampled = False
+	if 'undersampled' in output:
+		undersampled = True
+	spectral_detuning = False
+	if 'significant spectral detuning detected' in output:
+		spectral_detuning = True
+	shift_too_big = False
+	if 'Shift too big!' in output:
+		shift_too_big = True
+
 	output = output.splitlines()
-	if "stop program" in output[-1]:
-		spectral_detuning = float(output[-2])
-		status_div = curdoc().select_one({"name":"status_div"})
-		
-		status_div.text+='<br>- Spectral detuning detected: {:9.2e}'.format(spectral_detuning)
-		status_div.text+='<br>- Rerun linefit with spectral detuning corrected'
 
-		input_file = os.path.join(wdir,'lft14.inp')
-		with open(input_file,'r') as infile:
-			content = infile.readlines()
+	if undersampled:
+		print('Undersampled:',undersampled)
+	if spectral_detuning:
+		print('Significant spectral detuning:',spectral_detuning)
+	if shift_too_big:
+		status_div.text+='<br>- Shift too big'
+		print('Shift too big:',shift_too_big)
+		print('The app cannot handle the "Shift too big" warning')
+		return
 
-		for i,line in enumerate(content):
-			if ".true.,1.0" in line:
-				content[i] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
+	if True in [elem in output[-1] for elem in ["shutdown program", 'stop program']]:
 
-		with open(input_file,'w') as outfile:
-			outfile.writelines(content)
+		if undersampled and not spectral_detuning and not shift_too_big:
+			status_div.text+='<br>- Spectrum undersampled'
+			status_div.text+='<br>- Rerun linefit and ignore warning'
+			execute(cmd,cwd=cwd,inputs=[1])
+		else:
+			
+			if spectral_detuning:
+				spectral_detuning = float(output[-2])
+						
+				status_div.text+='<br>- Spectral detuning detected: {:9.2e}'.format(spectral_detuning)
+				status_div.text+='<br>- Rerun linefit with spectral detuning corrected'
 
-		execute(cmd,cwd=cwd)
+				input_file = os.path.join(wdir,'lft14.inp')
+				with open(input_file,'r') as infile:
+					content = infile.readlines()
+
+				for i,line in enumerate(content):
+					if ".true.,1.0" in line:
+						content[i] = ".true.,1.0,{:.2E}\n".format(spectral_detuning)
+
+				with open(input_file,'w') as outfile:
+					outfile.writelines(content)
+
+			if undersampled and shift_too_big:
+				execute(cmd,cwd=cwd,inputs=[1,0])
+			elif undersampled:
+				execute(cmd,cwd=cwd,inputs=[1])
+			else:
+				execute(cmd,cwd=cwd)
 
 def busy(func):
 	'''
@@ -511,7 +554,7 @@ def modify_input_file(spectrum,site,cell,MOPD,APT,temperature,window_list):
 		'N_windows':N_windows,
 		'MW_list':['MW'+str(i+1) for i in range(N_windows)],		
 		'regularisation':reg,									# regularisation factor (for both modulation and phase)
-		'spectrum': os.path.join('lft_app','spectra',spectrum),	# full path to the spectrum
+		'spectrum': os.path.join('lft_app','spectra',spectrum.split('.')[0]+'.dpt'),	# full path to the spectrum
 		'temperature':'{:.2f}'.format(temperature),				# scanner temperature (K)
 		})
 
@@ -779,8 +822,14 @@ def ratio_spectrum(spectrum_path,spectrum,cell,mode):
 	elif mode == 'opus':
 		opus_file = Opus(spectrum_path)
 		opus_file.get_data()
-		x = opus_file.xdata[1] # need to check if this always corresponds to the correct data block
-		y = opus_file.ydata[1]
+		subIDs = [elem['subID'] for elem in opus_file.param[1:]]
+		try:
+			ID = subIDs.index(136)
+		except ValueError:
+			ID = subIDs.index(4)
+		print(ID)
+		x = [elem for elem in opus_file.xdata if elem[0]!=0][0] # need to check if this always corresponds to the correct data block
+		y = opus_file.ydata[ID]
 		# cut the spectrum
 		if cell == 'hcl':
 			minwn,maxwn = (5200,5900)
@@ -802,7 +851,7 @@ def ratio_spectrum(spectrum_path,spectrum,cell,mode):
 
 		fit = np.polyfit(resample_x,resample_y_max,2) # second order polynomial fit
 
-		# I substract the 0.0004 because the way I fit will always be a bit too high as it will include values above the base line
+		# I substract an offset because the way I fit will always be a bit too high as it will include values above the base line
 		base_y = fit[0]*x**2+fit[1]*x+fit[2]-0.0004 # use the fit to get the fit line for each x
 
 	elif cell == 'hbr':
@@ -831,7 +880,7 @@ def ratio_spectrum(spectrum_path,spectrum,cell,mode):
 
 	new_y = y/base_y # ratio to ~1
 
-	np.savetxt(os.path.join('lft_app','spectra',spectrum),np.transpose([x,new_y]),fmt='%10.5f\t%.5f') # write the ratioed spectrum in lft_app/spectra
+	np.savetxt(os.path.join('lft_app','spectra',spectrum.split('.')[0]+'.dpt'),np.transpose([x,new_y]),fmt='%10.5f\t%.5f') # write the ratioed spectrum in lft_app/spectra
 
 	curdoc().select_one({"name":"status_div"}).text += '<br>- Spectrum ratioed to ~{:.4f}'.format(np.mean(new_y))
 
@@ -928,7 +977,7 @@ def linefit_results(spectrum,colo):
 		curdoc().select_one({"name":"status_div"}).text+='<br>- Adding spectrum'
 		print('\n\t- Adding spectrum')
 
-		x,y = np.loadtxt(os.path.join('lft_app','spectra','cut',spectrum),unpack=True)
+		x,y = np.loadtxt(os.path.join('lft_app','spectra',spectrum.split('.')[0]+'.dpt'),unpack=True)
 	 
 		all_data[test]['spec'] = {'x':x,'y':y}
 

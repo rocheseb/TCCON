@@ -40,6 +40,7 @@ The program that can read opus files is not publicly available. It is included i
 Using .dpt files requires extra steps.
 
 - Put the lft_app folder in the linefit/lft145/ directory
+- lft145.exe and the directories 'hit' and 'ergs' must be present in the linefit/lft145/ directory
 - Spectrum file names need to follow this naming convention: YYMMDD_site_cell_MOPD_X_num.ext
 	- YYMMDD year month day
 	- site: two letter site abbreviation (e.g. eu for Eureka, oc for Lamont)
