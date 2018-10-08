@@ -23,7 +23,7 @@ The ncep mode requires the global NCEP netcdf files of the given year to be pres
 
 There is dictionary of sites with their respective lat/lon, so this works for all TCCON sites, lat/lon values were taken from the wiki page of each site.
 
-note: still need to make it work for Darwin, or any site that changed location at some point and must use different lat/lon for different periods
+Note: still need to make it work for Darwin, or any site that changed location at some point and must use different lat/lon for different periods, or use runlogs again like the .pro code
 """
 
 import os, sys
@@ -65,9 +65,9 @@ def write_mod(mod_path,version,site_lat,data=0,surf_data=0):
 	"""
 
 	# Define US Standard Atmosphere (USSA) for use above 10 mbar
-	p_ussa=[10.0,  5.0,   2.0,   1.0,   0.1,   0.01,  0.001, 0.0001]
-	t_ussa=[227.7, 239.2, 257.9, 270.6, 231.6, 198.0, 189.8, 235.0]
-	z_ussa=[31.1,  36.8,  42.4,  47.8,  64.9,  79.3,  92.0,  106.3]
+	p_ussa=[10.0,  5.0,   2.0,   1.0,   0.5,    0.2,   0.1,   0.01,  0.001, 0.0001]
+	t_ussa=[227.7, 239.2, 257.9, 270.6,, 264.3, 245.2, 231.6, 198.0, 189.8, 235.0]
+	z_ussa=[31.1,  36.8,  42.4,  47.8,,  53.3,  60.1,  64.9,  79.3,  92.0,  106.3]
 
 	if type(surf_data)==int: # ncep mode
 
