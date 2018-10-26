@@ -19,7 +19,7 @@ def ssp(date):
 	Get the latitude and longitude of the sub-solar point
 
 	Inputs:
-		- date : datetime object
+		- date : UTC datetime object
 	Outputs:
 		- lat : sub-solar point latitude (radians)
 		- lon : sub-solar point longitude (radians)
@@ -195,6 +195,8 @@ def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 			'lat'		geodetic latitude of slant points	(degrees)
 			'lon'		loongitude of slant points			(degrees)
 			'alt'		altitude of slant points			(km)
+			'sza'		solar zenith angle					(degrees)
+			'azim'		azimuth angle						(degrees)
 	"""
 
 	if lon>180:
@@ -246,19 +248,16 @@ def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 	P_tp = Po + t_tp*vsp	# position of tangent point
 
 	tp_lat,tp_lon,tp_alt = lat_lon_alt_at_position(P_tp,re,rp,n) # degrees, degrees, meters
-
-	fixed_slant_distances = np.arange(0,5000001,1000) # fixed 1 km slant spacing
-
+ 
+	fixed_slant_distances = np.arange(0,5000001,1000) # fixed 1 km slant spacing up to 5000 km
 	fixed_slant_positions = [Po+elem*vsp for elem in fixed_slant_distances]
 	fixed_slant_coords = [lat_lon_alt_at_position(position,re,rp,n) for position in fixed_slant_positions]
 
-	P_slant = np.array([elem[2] for elem in fixed_slant_coords]) # vertical distance from geoid surface for each slant point
+	P_slant = np.array([elem[2] for elem in fixed_slant_coords]) # vertical distance from geoid surface for each fixed slant point
 	P_vertical = vertical_distances
 
 	slant_distances = np.interp(P_vertical,P_slant,fixed_slant_distances) # slant distances along sun ray corresponding to the vertical distances
-
 	slant_positions = [Po+elem*vsp for elem in slant_distances] # position vectors corresponding to the slant distances along the sun ray
-
 	slant_coords = [lat_lon_alt_at_position(position,re,rp,n) for position in slant_positions]
 
 	data = {}
@@ -350,6 +349,7 @@ def show_sunrays_over_time(date_list,lat,lon,alt,h):
 def show_distances(re,rp,n,Pg,Po,P_tp,t_tp,tp_alt,v,vsp,h,title=''):
 	"""
 	First plot: distance from Earth center vs distance along the vertical and the sun ray, also shows the tangent point distance along the sun ray
+
 	Second plot: same but the distances along the sun ray were interpolated to that the distances from Earth center match the vertical ones
 	"""
 
