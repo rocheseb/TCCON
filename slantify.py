@@ -136,9 +136,9 @@ def lat_lon_alt_at_position(position,re,rp,n):
 		- rp : polar radius of Earth (meters)
 		- n : oblateness of Earth (meters)
 	Outputs:
-		- lat : geodetic latitude at position
-		- lon : longitude at position
-		- alt : altitude above geoid surface at position
+		- lat : geodetic latitude at position (degrees)
+		- lon : longitude at position (degrees)
+		- alt : vertical distance from geoid surface at position lat/lon (meters)
 	"""
 
 	x,y,z = position
@@ -149,9 +149,30 @@ def lat_lon_alt_at_position(position,re,rp,n):
 
 	rg = r_geoid(lat,lon,re,rp)
 
-	alt = np.linalg.norm(position)-rg # altitude above geoid surface (meters)
+	Pg = geoid_position(lat,lon,re,n)
+
+	alt = distance_between(position,Pg) # vertical distance from geoid surface (meters)
+
+	if np.linalg.norm(position)<rg:
+		alt = -alt
 
 	return rad2deg(lat),rad2deg(lon),alt
+
+def distance_between(position1,position2):
+	"""
+	Inputs:
+		- position1 : 3d position vector
+		- position2 : 3d position vector
+	Outputs:
+		- d : distance between the two positions
+	"""
+
+	x1,y1,z1 = position1
+	x2,y2,z2 = position2
+
+	d = np.sqrt((x2-x1)**2+(y2-y1)**2+(z2-z1)**2)
+
+	return d
 
 def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 	"""
@@ -206,9 +227,6 @@ def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 	corrected_sza= 0.5*np.pi-sun.alt	# solar zenith angle (radians)
 	azim = sun.az	# azimuth angle (radians)
 
-	# print 'SZA',rad2deg(corrected_sza)
-	# print 'AZIM',rad2deg(azim)
-
 	ssp_lat,ssp_lon = ssp(date)		# latitude and longitude of sub-solar point
 
 	vs = vertical_unit_vector(ssp_lat,ssp_lon)	# vertical unit vector at sub-solar point
@@ -230,8 +248,12 @@ def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 	tp_lat,tp_lon,tp_alt = lat_lon_alt_at_position(P_tp,re,rp,n) # degrees, degrees, meters
 
 	fixed_slant_distances = np.arange(0,5000001,1000) # fixed 1 km slant spacing
-	P_slant = np.array([np.linalg.norm(Po+elem*vsp) for elem in fixed_slant_distances]) # distance from Earth center for each slant point
-	P_vertical = np.array([np.linalg.norm(Pg+elem*v) for elem in vertical_distances])	# distance from Earth center for each vertical point
+
+	fixed_slant_positions = [Po+elem*vsp for elem in fixed_slant_distances]
+	fixed_slant_coords = [lat_lon_alt_at_position(position,re,rp,n) for position in fixed_slant_positions]
+
+	P_slant = np.array([elem[2] for elem in fixed_slant_coords]) # vertical distance from geoid surface for each slant point
+	P_vertical = vertical_distances
 
 	slant_distances = np.interp(P_vertical,P_slant,fixed_slant_distances) # slant distances along sun ray corresponding to the vertical distances
 
@@ -251,8 +273,8 @@ def slantify(date,lat,lon,alt,vertical_distances,pres=0,temp=0,plots=False):
 	data['azim'] = rad2deg(azim)							# degrees
 
 	if plots:
-		title = datetime.strftime(date,'%y%m%d %H:%M')+'; lat={:.3f}; lon={:.3f}; sza={:.3f}'.format(rad2deg(lat),rad2deg(lon),rad2deg(corrected_sza))
-		#show_distances(Pg,Po,P_tp,t_tp,v,vsp,vertical_distances,title=title)
+		title = datetime.strftime(date,'%Y %b %d at %H:%M')+'; lat={:.3f}; lon={:.3f}; sza={:.3f}'.format(rad2deg(lat),rad2deg(lon),rad2deg(corrected_sza))
+		show_distances(re,rp,n,Pg,Po,P_tp,t_tp,tp_alt,v,vsp,vertical_distances,title=title)
 		#show_positions(slant_positions)
 		show_sunray(data,title=title)
 
@@ -325,7 +347,7 @@ def show_sunrays_over_time(date_list,lat,lon,alt,h):
 	pl.show()
 
 
-def show_distances(Pg,Po,P_tp,t_tp,v,vsp,h,title=''):
+def show_distances(re,rp,n,Pg,Po,P_tp,t_tp,tp_alt,v,vsp,h,title=''):
 	"""
 	First plot: distance from Earth center vs distance along the vertical and the sun ray, also shows the tangent point distance along the sun ray
 	Second plot: same but the distances along the sun ray were interpolated to that the distances from Earth center match the vertical ones
@@ -334,8 +356,12 @@ def show_distances(Pg,Po,P_tp,t_tp,v,vsp,h,title=''):
 	t = t = np.arange(-10000000,10000001,1000) # slant distances
 	h = h # vertical distance
 
-	Pt = np.array([np.linalg.norm(Po+elem*vsp) for elem in t])
-	Ph = np.array([np.linalg.norm(Pg+elem*v) for elem in h])
+	fixed_slant_positions = [Po+elem*vsp for elem in t]
+	fixed_slant_coords = [lat_lon_alt_at_position(position,re,rp,n) for position in fixed_slant_positions]
+
+	Pt = np.array([elem[2] for elem in fixed_slant_coords]) # vertical distance from geoid surface for each slant point
+	Ph = h
+
 	IDs = np.where(Pt<(np.max(Ph)+2000))
 	min_ID = IDs[0][0]
 	max_ID = IDs[0][-1]
@@ -350,13 +376,17 @@ def show_distances(Pg,Po,P_tp,t_tp,v,vsp,h,title=''):
 	Ph = Ph / 1000.0
 	t_tp = t_tp / 1000.0
 	P_tp = P_tp / 1000.0
+	tp_alt = tp_alt / 1000.0
 
-	plot([(t,Pt,'Along sun ray','blue'),(h,Ph,'Along vertical','green'),([t_tp],[np.linalg.norm(P_tp)],'Tangent point','red')],xlab='Distance (km)',ylab='Distane from Earth center (km)',title=title)
+	plot([(t,Pt,'Along sun ray','blue'),(h,Ph,'Along vertical','green'),([t_tp],[tp_alt],'Tangent point','red')],xlab='Distance (km)',ylab='Vertical distance from geoid surface (km)',title=title)
 
 	t_interp = np.interp(Ph,Pt[t>=0],t[t>=0])
-	Pt_interp = np.array([np.linalg.norm(Po+elem*vsp) for elem in 1000.0*t_interp])/1000.0
+	slant_positions = [Po+elem*vsp for elem in 1000.0*t_interp]
+	slant_coords = [lat_lon_alt_at_position(position,re,rp,n) for position in slant_positions]
 
-	plot([(t_interp,Pt_interp,'Along sun ray','blue'),(h,Ph,'Along vertical','green')],xlab='Distance (km)',ylab='Distane from Earth center (km)',title=title)
+	Pt_interp = np.array([elem[2] for elem in slant_coords]) / 1000.0 # vertical distance from geoid surface for each slant point
+
+	plot([(t_interp,Pt_interp,'Along sun ray','blue'),(h,Ph,'Along vertical','green')],xlab='Distance (km)',ylab='Vertical distance from geoid surface (km)',title=title)
 
 def plot(arg,line=False,xlab='x',ylab='y',title=''):
 	"""
