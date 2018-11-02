@@ -830,23 +830,27 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 
 			# use the value of the 'date_input' widget to determine the range of dates over which data should be fetched
 			try: # for the minimum of the range
-				mindate = date_val.split('-')[0] # if the 'date_input' widget is empty, this will raise an exception
-				mindate = calendar.timegm(datetime(int(mindate[:4]),int(mindate[4:6]),int(mindate[6:8])).timetuple())/24/3600 # if the date is entered wrong, this will raise an exception
+				# if the 'date_input' widget is empty, this will raise an exception
+				mindate = datetime.strptime(date_val.split('-')[0],'%Y%m%d') # if the date is entered wrong, this will raise an exception
 			except: # catch all exceptions
-				mindate = calendar.timegm(datetime(1970,1,1).timetuple())/24/3600 # if an exception has been caught, just use a very early date
+				mindate =datetime(1970,1,1) # if an exception has been caught, just use a very early date
 
 			try: # for the maximum of the range 
-				maxdate = date_val.split('-')[1] # if the 'date_input' widget is empty, or if only the minimum date is given, this will raise an exception
-				maxdate = calendar.timegm(datetime(int(maxdate[:4]),int(maxdate[4:6]),int(maxdate[6:8])).timetuple())/24/3600 # if the date is entered wrong, this will raise an exception
+				# if the 'date_input' widget is empty, or if only the minimum date is given, this will raise an exception
+				maxdate = cdatetime.strptime(date_val.split('-')[1],'%Y%m%d') # if the date is entered wrong, this will raise an exception
 			except: # catch all exceptions
-				maxdate = calendar.timegm(datetime(2050,1,1).timetuple())/24/3600 # if an exception has been caught, just use a very late date
+				maxdate = datetime(2050,1,1) # if an exception has been caught, just use a very late date
 
 			# perform a quick check on date ranges based on file names to avoid looping over files for nothing
 			if filenum==0:
-				all_file_min = site_file_list[0][2:10]		# minimum YYYYMMDD of all files
-				all_file_max = site_file_list[-1][11:19]	# maximum YYYYMMDD of all files
-				all_file_min_date = calendar.timegm(datetime(int(all_file_min[:4]),int(all_file_min[4:6]),int(all_file_min[6:8])).timetuple())/24/3600
-				all_file_max_date = calendar.timegm(datetime(int(all_file_max[:4]),int(all_file_max[4:6]),int(all_file_max[6:8])).timetuple())/24/3600
+				mindate_list = []
+				maxdate_list = []
+				for site_file in site_file_list:
+					mindate_list.append( datetime.strptime(site_file[2:10],'%Y%m%d') )
+					maxdate_list.append( datetime.strptime(site_file[11:19],'%Y%m%d') )
+
+				all_file_min_date = min(mindate_list)		# minimum YYYYMMDD of all files
+				all_file_max_date = max(maxdate_list)	# maximum YYYYMMDD of all files
 
 				# break out of the for loop if min or max dates from the file names are not compatible with the date input
 				if (mindate>all_file_max_date) or (maxdate<all_file_min_date):
@@ -865,14 +869,15 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 					return
 
 			# for each file, fastforward to next iteration of the for loop if the dates in the file name are not compatible with the date input
-			file_min = site_file[2:10]
-			file_max = site_file[11:19]
-			file_min_date = calendar.timegm(datetime(int(file_min[:4]),int(file_min[4:6]),int(file_min[6:8])).timetuple())/24/3600
-			file_max_date = calendar.timegm(datetime(int(file_max[:4]),int(file_max[4:6]),int(file_max[6:8])).timetuple())/24/3600
+			file_min_date = datetime.strptime(site_file[2:10],'%Y%m%d')
+			file_max_date = datetime.strptime(site_file[11:19],'%Y%m%d')
 			if (mindate>file_max_date) or (maxdate<file_min_date):
 				if netcdf:
 					f.close() # close the netcdf reader
 				continue
+
+			mindate = calendar.timegm(mindate.timetuple())/24/3600
+			maxdate = calendar.timegm(maxdate.timetuple())/24/3600
 
 			newtime = nctime[(nctime>=mindate) & (nctime<maxdate)] # list of times that satisfy the 'date_input' value (still fractional days since 1970)
 
