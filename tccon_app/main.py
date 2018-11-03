@@ -1239,7 +1239,7 @@ if layout_mode == 'comp':
 	if not public:
 		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[duplicate_button],[linediv()],[date_input,flag_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 	else:
-		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[linediv()],[date_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
+		side_box = gridplot([[site_input,site_input2],[var_input,var_input3],[var_input2,var_input4],[duplicate_button],[linediv()],[date_input],[linediv()],[load_button],[status_text,status_div],[linediv()],[center_button,dumdiv2,hover_button],[select_text,select_div],[data_table],[linediv()],[notes_div]],toolbar_location=None)
 
 elif layout_mode == 'simple':
 
