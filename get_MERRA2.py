@@ -84,7 +84,7 @@ def collection_info(collection):
 
 	return code,server
 
-def URLlist_MERRA2(collection,date_range,timestep=timedelta(days=1),lat_range=[-90,90],lon_range=[-180,180],variables=[],outpath=''):
+def URLlist_MERRA2(collection,date_range,timestep=timedelta(days=1),lat_range=[-90,90],lon_range=[-180,180],variables=[],outpath='get_MERRA2.dat'):
 	"""
 	MERRA-2 data has one global file every 1 days (from 00:00 to 21:00 UTC each day)
 	collection: shortdname of data collection
@@ -93,7 +93,7 @@ def URLlist_MERRA2(collection,date_range,timestep=timedelta(days=1),lat_range=[-
 	lat_range: latitude range of subset (-90 to 90)
 	lon_range: longitude range of subset (-180 to 180)
 	variables: list of exact variables names (pressure,latitude,longitude, and time will always be read)
-	outpath: full path to the file in which the list of URLs will be written
+	outpath: full path to the file in which the list of URLs will be written. If no specified full path to make the file, just write a file in the current directory 
 	"""
 
 	collection_code,server = collection_info(collection)
@@ -107,9 +107,6 @@ def URLlist_MERRA2(collection,date_range,timestep=timedelta(days=1),lat_range=[-
 		fmt = "http://goldsmr{}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2F{}.5.12.4%2F{}%2F{:0>2}%2FMERRA2_{}.{}.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_{}.{}.{}.SUB.nc&SHORTNAME={}&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4\n"
 	else:
 		fmt = "http://goldsmr{}.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2F{}.5.12.4%2F{}%2F{:0>2}%2FMERRA2_{}.{}.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_{}.{}.{}.SUB.nc&SHORTNAME={}&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4&VARIABLES="+'%2C'.join(variables)+'\n'
-
-	if outpath=='': # if no specified full path to make the file, just write a file in the current directory 
-		outpath = 'getMERRA2.dat'
 
 	print('Writting URL list in:',outpath)
 
