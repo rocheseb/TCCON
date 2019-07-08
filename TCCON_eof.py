@@ -81,7 +81,7 @@ from math import ceil
 
 # html plots
 from bokeh.plotting import figure
-from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, VBox, Div, BoxSelectTool, DataTable, TableColumn, AutocompleteInput, Select
+from bokeh.models import Panel, Tabs, CustomJS, ColumnDataSource, RadioGroup, Div, BoxSelectTool, DataTable, TableColumn, AutocompleteInput, Select
 from bokeh.layouts import gridplot, widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -752,7 +752,7 @@ if __name__ == "__main__":
 	TOOLS = "pan,wheel_zoom,box_zoom,undo,redo,reset,save"
 
 	# special bokh object to store data inside the HTML page
-	all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['_Version','ak_','prio','checksum','graw','spectrum','year','ada'],flag=flag), id='all_source')
+	all_source = ColumnDataSource(data=merged_tccon_data(path=path,diag_var=diag_var,diag_key=diag_key,skip_list=['_Version','ak_','prio','checksum','graw','spectrum','ada'],flag=flag), id='all_source')
 
 	main_source_list = [] # this source will be empty and filled from all_source via callbacks
 	err_source_list = [] # this source will be empty and filled from all_source via callbacks
@@ -862,7 +862,7 @@ if __name__ == "__main__":
 										code=code)
 
 				radiogroup = RadioGroup(labels=var_list,active=0,callback=callback)
-				radiobox = VBox(radiogroup,width=100)
+				radiobox = widgetbox(radiogroup,width=100)
 
 				if bok_struct[panel_key][fig_key]['errlines'] is True:
 					grid = gridplot([[fig_list[1]],[fig_list[0],radiobox]],toolbar_location='left',tools=TOOLS)
