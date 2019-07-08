@@ -118,13 +118,12 @@ def URLlist2_MERRA2(start,end,timestep=timedelta(days=1),surf=False,lat_range=[-
 	min_lon, max_lon = lon_range
 
 	if surf:
-		fmt = "http://goldsmr4.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2FM2I1NXASM.5.12.4%2F{}%2F{}%2FMERRA2_400.inst1_2d_asm_Nx.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_400.inst1_2d_asm_Nx.{}.SUB.nc&SHORTNAME=M2I1NPASM&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4\n"
+		fmt = "http://goldsmr4.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2FM2I1NXASM.5.12.4%2F{}%2F{:0>2}%2FMERRA2_400.inst1_2d_asm_Nx.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_400.inst1_2d_asm_Nx.{}.SUB.nc&SHORTNAME=M2I1NPASM&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4\n"
 	else:
-		fmt = "http://goldsmr5.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2FM2I3NPASM.5.12.4%2F{}%2F{}%2FMERRA2_400.inst3_3d_asm_Np.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_400.inst3_3d_asm_Np.{}.SUB.nc&SHORTNAME=M2I3NPASM&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4\n"
-
+		fmt = "http://goldsmr5.gesdisc.eosdis.nasa.gov/daac-bin/OTF/HTTP_services.cgi?FILENAME=%2Fdata%2FMERRA2%2FM2I3NPASM.5.12.4%2F{}%2F{:0>2}%2FMERRA2_400.inst3_3d_asm_Np.{}.nc4&FORMAT=bmM0Yy8&BBOX={}%2C{}%2C{}%2C{}&LABEL=MERRA2_400.inst3_3d_asm_Np.{}.SUB.nc&SHORTNAME=M2I3NPASM&SERVICE=SUBSET_MERRA2&VERSION=1.02&DATASET_VERSION=5.12.4\n"
 	if outpath=='': # if no specified full path to make the file, just write a file in the current directory 
 		outpath = 'getMERRA2.dat'
-	
+
 	print 'Writting URL list in:',outpath
 
 	curdate = start
@@ -277,6 +276,3 @@ if __name__=="__main__":
 
 	if download:
 		get_data(URL_list)
-
-
-

@@ -11,7 +11,7 @@ def setup():
 
 	layout_mode = 'comp' # can be set to 'simple' or 'comp'; in 'simple' mode there is just one plot with one site and one variable to select
 
-	cache_max_size = 2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
+	cache_max_size = 0 #2E8 # maximum size of the cache file (in bytes), any new cached data after that will remove the oldest data following certain rules (see add_cache function)
 	# set cache_max_size to 0 if you do not want to make a cache file (reading from netcdf files can be faster than from the cache file)
 
 	# if you modify the plotting colors, you will need to remove your cache_dic.npy file; you will also need to edit the styles.css in tccon_app/templates/styles.css to match the new colors.
@@ -66,6 +66,21 @@ def setup():
 				'we':'Jena',
 				#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
 				'zf':'site or instrument name',
+				'ek':'Eureka no cor',
+				'eg':'Eureka SG cor',
+				'ef':'Eureka SZA cor',
+				'ee':'Eureka SZAv2 cor',
+				'ed':'Eureka SZAv3 cor',
+				'ez':'Eureka SZA SG cor',
+				'ep':'Eureka SZAv4 cor',
+				'el':'Eureka SZAv4 SG cor',
+				'en':'Eureka R3 no cor',
+				'eb':'Eureka R3 SZA cor',
+				'ec':'Eureka R3 SZA SG cor',
+				'ey':'ETL prof ret',
+				'wq':'Eureka R2',
+				'st':'ETL scl',
+				'pt':'ETL prf',
 			 }
 
 	# dictonnary with the country/state of TCCON sites
@@ -104,6 +119,21 @@ def setup():
 				'we':'Germany',
 				#to add a new site (like for em27 data), just make up a new 2 letter site abbreviation and add it to this dictionary like this:
 				'zf':'site or instrument location',
+				'ek':'Canada',
+				'eg':'Canada',
+				'ee':'Canada',
+				'ed':'Canada',
+				'ef':'Canada',
+				'ez':'Canada',
+				'ep':'Canada',
+				'el':'Canada',
+				'ey':'Canada',
+				'en':'Canada',
+				'eb':'Canada',
+				'ec':'Canada',
+				'wq':'Canada',
+				'st':'Canada',
+				'pt':'Canada',
 			 }
 
 	return layout_mode, cache_max_size, main_color, main_color2, flag_color, hover_color, boxselecttool_dimensions, skip_list, T_FULL, T_LOC
