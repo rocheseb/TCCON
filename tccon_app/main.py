@@ -577,7 +577,7 @@ def set_site(site='',site_ID=0):
 		return
 	
 	prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated files
+	site_file_list = sorted([i for i in tccon_file_list if prefix in i]) # a list of the associated files
 
 	if layout_mode=='comp' and site_ID==1:
 		corfig = fig3
@@ -641,7 +641,7 @@ def set_var(site='',site_ID=0):
 		return
 
 	prefix = [key for key in T_FULL if T_FULL[key]==site][0] # TCCON 2 letters abbreviation of the site
-	site_file_list = [i for i in tccon_file_list if prefix in i] # a list of the associated files
+	site_file_list = sorted([i for i in tccon_file_list if prefix in i]) # a list of the associated files
 
 	fig.yaxis[0].axis_label = var_input.value
 	if layout_mode == 'comp':
@@ -833,11 +833,11 @@ def load_var(site_file_list,site,site_source,site_ID,mode=""):
 				# if the 'date_input' widget is empty, this will raise an exception
 				mindate = datetime.strptime(date_val.split('-')[0],'%Y%m%d') # if the date is entered wrong, this will raise an exception
 			except: # catch all exceptions
-				mindate =datetime(1970,1,1) # if an exception has been caught, just use a very early date
+				mindate = datetime(1970,1,1) # if an exception has been caught, just use a very early date
 
 			try: # for the maximum of the range 
 				# if the 'date_input' widget is empty, or if only the minimum date is given, this will raise an exception
-				maxdate = cdatetime.strptime(date_val.split('-')[1],'%Y%m%d') # if the date is entered wrong, this will raise an exception
+				maxdate = datetime.strptime(date_val.split('-')[1],'%Y%m%d') # if the date is entered wrong, this will raise an exception
 			except: # catch all exceptions
 				maxdate = datetime(2050,1,1) # if an exception has been caught, just use a very late date
 
