@@ -27,7 +27,7 @@ from collections import OrderedDict
 import bokeh
 from bokeh.io import curdoc
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Legend, Range1d, CheckboxGroup, HoverTool
+from bokeh.models import ColumnDataSource, CustomJS, Button, Div, TextInput, Select, Legend, Range1d, CheckboxGroup, HoverTool, CrosshairTool
 from bokeh.layouts import gridplot, widgetbox, Column
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -108,6 +108,24 @@ def update_spec_path(attr,old,new):
 	else:
 		select_spectrum.options = ['']+os.listdir(custom_path)
 
+def add_vlinked_crosshairs(fig1, fig2):
+	js_move = '''if(cb_obj.x >= fig.x_range.start && cb_obj.x <= fig.x_range.end && cb_obj.y >= fig.y_range.start && cb_obj.y <= fig.y_range.end)
+					{ cross.spans.height.computed_location = cb_obj.sx }
+				else 
+					{ cross.spans.height.computed_location = null }'''
+	js_leave = 'cross.spans.height.computed_location = null'
+
+	cross1 = CrosshairTool()
+	cross2 = CrosshairTool()
+	fig1.add_tools(cross1)
+	fig2.add_tools(cross2)
+	args = {'cross': cross2, 'fig': fig1}
+	fig1.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+	fig1.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
+	args = {'cross': cross1, 'fig': fig2}
+	fig2.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+	fig2.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
+
 def doc_maker():
 	'''
 	make the whole document
@@ -151,9 +169,9 @@ def doc_maker():
 	sigma_rms = spt_data[spectrum]['rms_resid'] # sqrt(mean(residuals**2))
 
 	# spectrum figure 
-	fig = figure(name="spec_fig",title=spectrum+'; SZA='+SZA+'; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
+	fig = figure(name="spec_fig",title=spectrum+'; SZA='+SZA+'; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect="crosshair",active_drag="box_zoom")
 	# residual figure
-	fig_resid = figure(name="resid_fig",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
+	fig_resid = figure(name="resid_fig",plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,y_range=Range1d(-3,3),outline_line_alpha=0,active_inspect="crosshair",active_drag="box_zoom")
 	
 	# axes labels
 	fig_resid.xaxis.axis_label =  u'Wavenumber (cm\u207B\u00B9)'
@@ -229,7 +247,9 @@ def doc_maker():
 
 	# title div
 	div = Div(text='<p align="center"><font size=4><b>{}</b></font></p>'.format(ext),width=fig.plot_width-100)
-
+	
+	add_vlinked_crosshairs(fig, fig_resid)
+	
 	sub_grid = gridplot([[fig],[fig_resid],[div]],toolbar_location="left")
 
 	# button to activate/deactivate hover tools
