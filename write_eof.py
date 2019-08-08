@@ -261,9 +261,10 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 		eof.description = '\n'+header_content
 		eof.history = "Created {} (UTC)".format(time.asctime(time.gmtime(time.time())))
 		eof.source = "Created with Python {} and the library netCDF4 {}".format(platform.python_version(),netCDF4.__version__)
-		eof.Number_of_spectral_windows = str(nwin)
 		eof.Flag_info = 'The Vmin and Vmax attributes of some variables indicate the range of values out of which the data would be flagged bad'
-
+		eof.Number_of_species = str(nwin)
+		eof.Number_of_spectral_windows = str(len(col_file_list))
+		
 		proc = subprocess.Popen(['hg','summary'],cwd=GGGPATH,stdout=subprocess.PIPE)
 		out, err = proc.communicate()
 		eof.GGGtip = "The output of 'hg summary' from the GGG repository:\n"+out
@@ -328,7 +329,7 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 		for var in aux_var_list: 
 			qc_id = list(qc_data['variable']).index(var)
 			digit = int(qc_data['format'][qc_id].split('.')[-1])
-			eof.createVariable(var,np.float64,('time',),least_significant_digit=digit)
+			eof.createVariable(var,np.float64,('time',),zlib=True,least_significant_digit=digit)
 			if var in standard_name_dict.keys():
 				eof[var].standard_name = standard_name_dict[var]
 				eof[var].long_name = long_name_dict[var]
@@ -344,13 +345,15 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 			xvar = 'x'+var
 			qc_id = list(qc_data['variable']).index(xvar)
 
-			eof.createVariable(xvar,np.float64,('time',))
+			digit = int(qc_data['format'][qc_id].split('.')[-1])
+			eof.createVariable(xvar,np.float64,('time',),zlib=True,least_significant_digit=digit)
 			eof[xvar].standard_name = xvar
 			eof[xvar].long_name = xvar.replace('_',' ')
 			eof[xvar].description = qc_data['description'][qc_id]
 			eof[xvar].units = qc_data['unit'][qc_id].replace('(','').replace(')','').strip()
 			eof[xvar].vmin = qc_data['vmin'][qc_id]
 			eof[xvar].vmax = qc_data['vmax'][qc_id]
+			eof[xvar].precision = qc_data['format'][qc_id]
 
 			eof.createVariable('vsf_'+var,np.float64,('time',))
 			eof['vsf_'+var].description = var+" Volume Scale Factor"
