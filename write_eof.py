@@ -370,10 +370,11 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 
 		# lse data
 		lse_description = {'lst':'Laser sampling T','lse':'Laser sampling error','lsu':'Laser sampling U'}
+		common_spec = np.intersect1d(aia_data['spectrum'],lse_data['spectrum'],return_indices=True)[2]
 		for var in lse_description.keys():
 			eof.createVariable(var,np.float64,('time',))
 			eof[var].description = lse_description[var]
-			eof[var][:] = lse_data[var][eof['spectrum']==lse_data['spectrum'].values]
+			eof[var][:] = lse_data[var][common_spec].values
 
 		# corrections
 		for var in correction_data['gas']:
