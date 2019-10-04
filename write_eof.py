@@ -64,12 +64,19 @@ def file_info(file_name):
 
 if __name__=='__main__': # execute only when the code is run by itself, and not when it is imported
 
-	GGGPATH = os.environ['GGGPATH']
+	try:
+		GGGPATH = os.environ['GGGPATH']
+	except:
+		try:
+			GGGPATH = os.environ['gggpath']
+		except:
+			print('You need to set a GGGPATH (or gggpath) environment variable')
+			sys.exit()
 
-	we_version = ' WRITE_EOF             Version 0.49     2019-06-13     SR '
-	print(we_version)
+	wnc_version = ' WRITE_NC             Version 1.0     2019-10-04     SR '
+	print(wnc_version)
 
-	description = we_version + "\nThis writes TCCON EOF files in NETCDF"
+	description = wnc_version + "\nThis writes TCCON EOF files in NETCDF"
 	
 	parser = argparse.ArgumentParser(description=description,formatter_class=argparse.RawTextHelpFormatter)
 	
@@ -85,7 +92,7 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 			parser.error("file doesn't end with one of {}".format(choices))
 		return file_name
 	
-	parser.add_argument('--tav-file',type=lambda file_name:file_choices(('tav'),file_name),help='The .tav file',required=True)
+	parser.add_argument('tav-file',type=lambda file_name:file_choices(('tav'),file_name),help='The .tav file')
 
 	args = parser.parse_args()
 
@@ -103,7 +110,7 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 	header_file = os.path.join(GGGPATH,'tccon','{}_oof_header.dat'.format(siteID))
 	correction_file =  os.path.join(GGGPATH,'tccon','corrections.dat')
 	lse_file = os.path.join(GGGPATH,'lse','gnd',tav_file.split(os.sep)[-1].replace('.tav','.lse'))
-	nc_file = tav_file.replace('.tav','.nc')
+	nc_file = tav_file.replace('.tav','.nc') # the final output file
 
 	col_file_list = sorted([i for i in os.listdir(os.getcwd()) if '.col' in i])
 	map_file_list = sorted([i for i in os.listdir(os.getcwd()) if '.map' in i])
@@ -242,11 +249,11 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 	'zpres':'pressure_altitude',
 	}
 
-	checksum_var_list = ['config','apriori','runlog','levels','mav','ray','isotopologs','windows','atm','atmnv','gct','fcia','scia','solar']
+	checksum_var_list = ['config','apriori','runlog','levels','mav','ray','isotopologs','windows','telluric_linelists','solar']
 
 	standard_name_dict.update({var+'_checksum':var+'_checksum' for var in checksum_var_list})
 
-	long_name_dict = {key:val.replace('_',' ') for key,val in standard_name_dict.iteritems()}
+	long_name_dict = {key:val.replace('_',' ') for key,val in standard_name_dict.iteritems()} # standard names without underscores
 
 	if os.path.exists(nc_file):
 		os.remove(nc_file)
@@ -301,7 +308,7 @@ if __name__=='__main__': # execute only when the code is run by itself, and not 
 			checksum_var = eof.createVariable(var+'_checksum','S1',('time','fixstring32'))
 			checksum_var.standard_name = standard_name_dict[var+'_checksum']
 			checksum_var.long_name = long_name_dict[var+'_checksum']
-			checksum_var.description = 'md5 sum of the {} file'.format(var)
+			checksum_var.description = 'hexdigest hash string of the md5 sum of the {} file'.format(var)
 
 		# code versions
 		eof.createVariable('gfit_version',np.float64,('time',))
