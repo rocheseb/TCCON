@@ -58,8 +58,8 @@ def read_spt(path):
 	for var in head:
 		DATA['columns'][var] = content_T[head.index(var)]
 
-	DATA['sza'] = float(content[1].split()[3])
-	DATA['zobs'] = float(content[1].split()[4])
+	DATA['sza'] = float(content[1].split()[4])
+	DATA['zobs'] = float(content[1].split()[5])
 
 	resid = 100.0*(DATA['columns']['Tm']-DATA['columns']['Tc']) #the % residuals, tm and tc are transmittances so we just need to multiply by 100 to get %
 	rms_resid = np.sqrt(np.mean(np.square(resid)))  #rms of residuals
@@ -165,6 +165,8 @@ def doc_maker():
 	freq=species[0] # the frequency list
 	tm=species[1]	# measured transmittance list
 	tc=species[2]	# calculated transmittance list
+	cont = species[3] # continuum
+	not_gas = 4 # number of column that are not retrieved species
 	residuals = spt_data[spectrum]['resid'] # 100*(calculated - measured)
 	sigma_rms = spt_data[spectrum]['rms_resid'] # sqrt(mean(residuals**2))
 
@@ -187,21 +189,21 @@ def doc_maker():
 		elem.xaxis.axis_label_text_font_size = "14pt"
 		elem.xaxis.major_label_text_font_size = "13pt"
 
-	N_plots = list(range(len(species)-1)) # a range list from 0 to the number of plots, used by the checkbox group
+	N_plots = list(range(len(species)-2)) # a range list from 0 to the number of plots, used by the checkbox group
 	
 	# group of checkboxes that will be used to toggle line and HoverTool visibility
 	checkbox = CheckboxGroup(labels=header[3:]+['Measured','Calculated'],active=N_plots,width=200)
 	
 	# plotting species lines
 	plots = []
-	for j in range(len(species)-3):
+	for j in range(len(species)-not_gas):
 		try:
-			plots.append(fig.line(x=freq,y=species[j+3],color=colors[header[j+3]],line_width=2,name=header[j+3]))
+			plots.append(fig.line(x=freq,y=species[j+not_gas],color=colors[header[j+not_gas]],line_width=2,name=header[j+not_gas]))
 		except KeyError:
-			print('KeyError:',header[j+3],'is not specified in the "colors" dictionary, you need to add it with an associated color')
+			print('KeyError:',header[j+not_gas],'is not specified in the "colors" dictionary, you need to add it with an associated color')
 			sys.exit()
 		# each line has a associated hovertool with a callback that looks at the checkboxes status for the tool visibility.
-		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+3]],tooltips=OrderedDict( [('name',header[j+3]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+		fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j]],names=[header[j+not_gas]],tooltips=OrderedDict( [('name',header[j+not_gas]),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
 	
 	# adding the measured spectrum
 	plots.append(fig.line(x=freq,y=tm,color='black',line_width=2,name='Tm'))
@@ -210,9 +212,14 @@ def doc_maker():
 	# adding the calculated spectrum
 	plots.append(fig.line(x=freq,y=tc,color='chartreuse',line_width=2,name='Tc'))
 	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+2]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+
+	# adding the continuum
+	#plots.append(fig.line(x=freq,y=cont,color='#FF3399',line_dash='dashed',line_width=2,name='Cont'))
+	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[j+1]],names=['Cont'],tooltips=OrderedDict( [('name','Continuum'),('index','$index'),('(x;y)','(@x{0.00} ; @y{0.000})')] )) )
+	
 	
 	# legend outside of the figure
-	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
+	fig_legend=Legend(items=[(header[j+not_gas],[plots[j]]) for j in range(len(species)-not_gas)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
 	fig.add_layout(fig_legend,'right')
 	fig.legend.click_policy = "hide"
 	fig.legend.inactive_fill_alpha = 0.6
