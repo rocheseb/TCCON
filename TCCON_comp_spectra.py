@@ -30,7 +30,7 @@ import sys
 
 # interactive html plots with bokeh
 from bokeh.plotting import figure, output_file
-from bokeh.models import Legend, CustomJS, ColumnDataSource, HoverTool, CheckboxGroup, Button, PreText, Range1d, Panel, Tabs
+from bokeh.models import Legend, CustomJS, ColumnDataSource, HoverTool, CheckboxGroup, Button, PreText, Range1d, Panel, Tabs, CrosshairTool
 from bokeh.layouts import gridplot,widgetbox
 from bokeh.resources import CDN
 from bokeh.embed import file_html
@@ -52,14 +52,15 @@ def progress(i,tot,bar_length=20,word=''):
 	sys.stdout.write("\rPercent:[{0}] {1}%".format(hashes + spaces, int(round(percent * 100)))+"    "+str(i+1)+"/"+str(tot)+'  Now plotting: '+word)
 	sys.stdout.flush()
 
-# spt files are the spectrum files output by GFIT/GFIT2
 def read_spt(path):
+	"""
+	spt files are the spectrum files output by GFIT/GFIT2
+	"""
 
 	DATA = {}
 
-	infile=open(path,'r')
-	content=infile.readlines()
-	infile.close()
+	with open(path,'r') as infile:
+		content=infile.readlines()
 
 	head = content[2].split()
 
@@ -71,8 +72,8 @@ def read_spt(path):
 	for var in head:
 		DATA['columns'][var] = content_T[head.index(var)]
 
-	DATA['sza'] = float(content[1].split()[3])
-	DATA['zobs'] = float(content[1].split()[4])
+	DATA['sza'] = float(content[1].split()[4])
+	DATA['zobs'] = float(content[1].split()[5])
 
 	resid = 100.0*(DATA['columns']['Tm']-DATA['columns']['Tc']) #the % residuals, tm and tc are transmittances so we just need to multiply by 100 to get %
 	rms_resid = np.sqrt(np.mean(np.square(resid)))  #rms of residuals
@@ -83,6 +84,24 @@ def read_spt(path):
 	DATA['params'] = content[1].split()
 
 	return DATA
+
+def add_vlinked_crosshairs(fig1, fig2):
+	js_move = '''if(cb_obj.x >= fig.x_range.start && cb_obj.x <= fig.x_range.end && cb_obj.y >= fig.y_range.start && cb_obj.y <= fig.y_range.end)
+					{ cross.spans.height.computed_location = cb_obj.sx }
+				else 
+					{ cross.spans.height.computed_location = null }'''
+	js_leave = 'cross.spans.height.computed_location = null'
+
+	cross1 = CrosshairTool()
+	cross2 = CrosshairTool()
+	fig1.add_tools(cross1)
+	fig2.add_tools(cross2)
+	args = {'cross': cross2, 'fig': fig1}
+	fig1.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+	fig1.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
+	args = {'cross': cross1, 'fig': fig2}
+	fig2.js_on_event('mousemove', CustomJS(args = args, code = js_move))
+	fig2.js_on_event('mouseleave', CustomJS(args = args, code = js_leave))
 
 #########
 # Setup #
@@ -100,7 +119,10 @@ colors = {
 		'4co2':'indigo',
 		'0co2':'green',
 		'ch4':'green',
+		'2ch4':'olive',
+		'3ch4':'hotpink',
 		'co':'darkred',
+		'2co':'darkgray',
 		'th2o':'blue',
 		'h2o':'blue',
 		'hdo':'cyan',
@@ -111,7 +133,11 @@ colors = {
 		'ao2':'purple',
 		'bo2':'purple',
 		'0o2':'green',
-		'o3':'firebrick',
+		'n2':'red',
+		'o3':'red',
+		'no':'pink',
+		'nh3':'yellow',
+		'hcn':'darkgray',
 		'solar':'goldenrod',
 		'other':'salmon',
 		}
@@ -135,9 +161,9 @@ save_path=os.path.join(path,'SAVE')
 if not os.path.isdir(save_path):
 	os.makedirs(save_path)
 
-spectra = os.listdir(path) # list of everything in the given directory
+spectra = [i for i in os.listdir(path) if 'sfddaa' in i] # list of everything in the given directory
 
-window_dic = {'y':'6339','w':'6073','z':'6220','s':'4852'} # dictionary to associate a spectrum prefix letter to a window center wavenumber.
+window_dic = {'y':'6339','w':'6073','z':'6220','s':'4852','k':'6500'} # dictionary to associate a spectrum prefix letter to a window center wavenumber.
 
 TOOLS = "box_zoom,wheel_zoom,pan,undo,redo,reset,crosshair,save" #tools for bokeh figures, the first tool in the list will be active by default
 
@@ -172,10 +198,14 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	species = np.array([spt_data['columns'][var] for var in header])
 	freq=species[0] # the frequency list
+	tm=species[1]	# measured transmittance list
+	tc=species[2]	# calculated transmittance list
+	cont = species[3] # continuum
+	not_gas = 4 # number of column that are not retrieved species
 	residuals = spt_data['resid'] # 100*(calculated - measured)
 	sigma_rms = spt_data['rms_resid'] # sqrt(mean(residuals**2))
 
-	N_plots = range(len(species)-1) # a range list from 0 to the number of plots, used by the checkbox group
+	N_plots = list(range(len(species)-2)) # a range list from 0 to the number of plots, used by the checkbox group
 
 	source_list[spectrum] = ColumnDataSource(data={var:spt_data['columns'][var] for var in header})
 	source_list[spectrum].data['resid'] = residuals
@@ -183,14 +213,14 @@ for spec_ID,spectrum in enumerate(select_spectra):
 
 	if first_check:
 		# spectrum figure 
-		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
+		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=Range1d(-0.04,1.04),outline_line_alpha=0,active_inspect="crosshair",active_drag="box_zoom")
 		# residual figure
-		fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-1,1),active_inspect=[],active_drag="box_zoom")
+		fig_resid = figure(plot_width=1000,plot_height=150,x_range=fig.x_range,tools=TOOLS,toolbar_location=None,y_range=Range1d(-1,1),active_inspect="crosshair",active_drag="box_zoom")
 		
 		save_figs[spectrum[0]] = [fig,fig_resid]
 	else:
-		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0,active_inspect=[],active_drag="box_zoom")
-		fig_resid = figure(plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range,active_inspect=[],active_drag="box_zoom")
+		fig = figure(title=spectrum+'; SZA='+SZA+'°; zobs='+zobs+'km; %resid=100*(Measured-Calculated); RMSresid='+('%.4f' % sigma_rms)+'%',plot_width = 1000,plot_height=400,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][0].y_range,x_range=save_figs[spectrum[0]][0].x_range,outline_line_alpha=0,active_inspect="crosshair",active_drag="box_zoom")
+		fig_resid = figure(plot_width=1000,plot_height=150,tools=TOOLS,toolbar_location=None,y_range=save_figs[spectrum[0]][1].y_range,x_range=save_figs[spectrum[0]][1].x_range,active_inspect="crosshair",active_drag="box_zoom")
 	# axes labels
 	fig_resid.xaxis.axis_label = u'Wavenumber (cm\u207B\u00B9)'
 	fig_resid.yaxis.axis_label = '% Residuals'
@@ -205,11 +235,11 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	fig.xaxis.major_label_text_font_size = "12pt"
 
 	# group of checkboxes that will be used to toggle line and HoverTool visibility
-	checkbox = CheckboxGroup(labels=header[3:]+['Measured','Calculated'],active=N_plots,width=200)
+	checkbox = CheckboxGroup(labels=header[not_gas:]+['Measured','Calculated'],active=N_plots,width=200)
 	
 	# plotting species lines
 	plots = []
-	for j,gas in enumerate(header[3:]):
+	for j,gas in enumerate(header[not_gas:]):
 		try:
 			plots.append(fig.line(x='Freq',y=gas,color=colors[gas],line_width=2,name=gas,source=source_list[spectrum]))
 		except KeyError:
@@ -227,7 +257,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	#fig.add_tools( HoverTool(mode='vline',line_policy='prev',renderers=[plots[-1]],names=['Tc'],tooltips=OrderedDict( [('name','Calculated'),('index','$index'),('(x;y)','($~x{0.00} ; @Tc{0.000})')] )) )
 
 	# legend outside of the figure
-	fig_legend=Legend(items=[(header[j+3],[plots[j]]) for j in range(len(species)-3)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
+	fig_legend=Legend(items=[(header[j+not_gas],[plots[j]]) for j in range(len(species)-not_gas)]+[('Measured',[plots[-2]]),('Calculated',[plots[-1]])],location=(0,0),border_line_alpha=0)
 	fig.add_layout(fig_legend,'right')
 	fig.legend.click_policy = "hide"
 	fig.legend.inactive_fill_alpha = 0.6
@@ -260,6 +290,9 @@ for spec_ID,spectrum in enumerate(select_spectra):
 	# put all the widgets in a box
 	group=widgetbox(clear_button,check_button,width=120)	
 
+	# add vertical crosshair linked between the spectrum and residual figures
+	add_vlinked_crosshairs(fig,fig_resid)
+
 	# define the grid with the figures and widget box
 	grid = gridplot([[fig,group],[fig_resid]],tools=TOOLS,toolbar_location='left')
 
@@ -278,7 +311,7 @@ for spec_ID,spectrum in enumerate(select_spectra):
 final=Tabs(tabs=window_tabs,width=1100)
 
 # write the HTML file
-outfile=open(os.path.join(save_path,'comp_spectra_ncbf.html'),'w')
+outfile=open(os.path.join(save_path,'comp_spectra_syn2.html'),'w')
 outfile.write(file_html(final,CDN,'GFIT2 spectra'))
 outfile.close()
 
