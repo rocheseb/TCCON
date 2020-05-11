@@ -104,9 +104,9 @@ def update_spec_path(attr,old,new):
 
 	if not os.path.isdir(custom_path):
 		print("The given path is not an existing directory\nReverting to default spectrum folder")
-		select_spectrum.options = ['']+os.listdir(spec_path)
+		select_spectrum.options = ['']+sorted(os.listdir(spec_path))
 	else:
-		select_spectrum.options = ['']+os.listdir(custom_path)
+		select_spectrum.options = ['']+sorted(os.listdir(custom_path))
 
 def add_vlinked_crosshairs(fig1, fig2):
 	js_move = '''if(cb_obj.x >= fig.x_range.start && cb_obj.x <= fig.x_range.end && cb_obj.y >= fig.y_range.start && cb_obj.y <= fig.y_range.end)
@@ -136,7 +136,7 @@ def doc_maker():
 	curdoc().clear() # removes everything in the current document
 
 	# dropdown to select a spectrum
-	select_spectrum = Select(title="Select a spectrum:",value='',options=['']+os.listdir(spec_path),name="select_spectrum",width=200)
+	select_spectrum = Select(title="Select a spectrum:",value='',options=['']+sorted(os.listdir(spec_path)),name="select_spectrum",width=200)
 
 	# textinput to give the full path to the location of spectra
 	path_input = TextInput(title='Spectra folder',width=200,name="path_input")
